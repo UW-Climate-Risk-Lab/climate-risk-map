@@ -1,0 +1,4 @@
+0 white
+5 blue
+10 yellow
+15 red
