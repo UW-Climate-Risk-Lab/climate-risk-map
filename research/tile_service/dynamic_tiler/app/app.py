@@ -6,8 +6,8 @@ import httpx
 app = Dash()
 COLORMAP = "reds"
 
-titiler_endpoint = "http://titiler:80"
-file_url = "http://fileserver:8080/NA_wildfire_100km_ssp585_avg.tif"
+titiler_endpoint = "http://localhost:8000"
+file_url = "http://fileserver:8080/OutputCOG.tif"
 
 r = httpx.get(
     f"{titiler_endpoint}/cog/statistics",
