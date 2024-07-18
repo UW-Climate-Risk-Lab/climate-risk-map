@@ -1,0 +1,36 @@
+name: 'climate-risk-app'
+services:
+  app:
+    build:
+      dockerfile: Dockerfile
+      context: app/
+    ports:
+      - "8050:8050"
+    depends_on:
+      titiler:
+        condition: service_healthy
+      fileserver:
+        condition: service_started
+
+  titiler:
+    image: ghcr.io/developmentseed/titiler:latest
+    ports:
+      - "8000:80"
+    platform: linux/amd64
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/healthz"]
+      interval: 10s
+      retries: 5
+      start_period: 60s
+      timeout: 10s
+
+  fileserver:
+    build:
+      dockerfile: Dockerfile
+      context: server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/usr/src/app/data
+    environment:
+      - DIRECTORY=/usr/src/app/data
