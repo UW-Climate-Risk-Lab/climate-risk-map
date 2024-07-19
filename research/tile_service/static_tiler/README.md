@@ -26,8 +26,9 @@ This method offers a performance advantage over dynamic tiling by pre-generating
 
 To use Static Tiler, run the following command in your terminal, substituting the placeholders with your specific file paths and desired settings:
 
-## Parameters
 `python static_tiler.py --input_file /path/to/data/climate.tif --color_file /path/to/col.txt --output_crs EPSG_CODE --max_zoom_level MAX_ZOOM --output_dir /path/to/output`
+
+## Parameters
 
 - `--input_file`: Path to the input GeoTIFF file.
 - `--color_file`: Path to the color file (.txt) for tile styling.

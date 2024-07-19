@@ -71,7 +71,7 @@ def main(
         "gdal2tiles.py",
         "-z", f"0-{max_zoom_level}",
         "-w", "leaflet",
-        "-s", "EPSG:3857",
+        "-s", f"EPSG:{output_crs}",
         "--processes=6",
         "--xyz",
         f"{filename}_{output_crs}_color.vrt",
