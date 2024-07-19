@@ -7,7 +7,7 @@ app = Dash()
 COLORMAP = "reds"
 
 titiler_endpoint = "http://localhost:8000"
-file_url = "http://fileserver:8080/OutputCOG.tif"
+file_url = "http://fileserver:8080/OutputCOG.tif" # Assumes you are running the docker-compose.yml in the directory
 
 r = httpx.get(
     f"{titiler_endpoint}/cog/statistics",
@@ -73,4 +73,4 @@ app.layout = html.Div(
 
 
 if __name__ == "__main__":
-    app.run_server(port=8050, host='0.0.0.0')
+    app.run_server(port=8050, host='127.0.0.1')
