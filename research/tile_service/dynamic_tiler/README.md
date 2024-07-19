@@ -8,7 +8,7 @@ The goal is to visualize gridded climate data on a map application.
 ## How to Use
 ### 1. Data Generation
 
-In the `/data` directory, there is a small Jupyter notebook that gives an example of processing a NetCDF file using the Xarray package, and outputting a Cloud Optimized GeoTIFF file (COG). A COG is optimal data file type to use with TiTiler, and outputs with a .tif extension.
+In the `/data` directory, there is a small Jupyter notebook that gives an example of processing a NetCDF file using the Xarray package, and outputting a Cloud Optimized GeoTIFF file (COG). A COG is the optimal data file type to use with TiTiler, and outputs with a .tif extension.
 
 Use the notebook with your own input NetCDF (or any input of your choice), and output the COG from the Xarray dataset as `OutputCOG.tif` in the `/data` directory.
 
@@ -26,7 +26,7 @@ This will begin running both the TiTiler application and the custom "file servin
 
 ### 3. Run the Dash App
 
-Finally, we will run the map application. Navigate to the `/app` directory and install the packages in `requirements.txt` (preferably in a virtual environment or conda environment!)
+Finally we will run the map application. Navigate to the `/app` directory and install the packages in `requirements.txt` (preferably in a virtual environment or conda environment!)
 
 Next, run the app in a new terminal tab.
 
@@ -34,4 +34,6 @@ Next, run the app in a new terminal tab.
 python app.py
 ```
 
-The app should now be running on your local machine and can be accessed by going to http://127.0.0.1 in your web browser. 
+The app should now be running on your local machine and can be accessed by going to http://127.0.0.1 in your web browser.
+
+*Note* The dash app was not added to the docker compose stack because of isseus with CORS (Cross-Origin Resource Sharing). When added, the interaction with TiTiler was blocked while running locally. Given this is simply for experimentation, more time was not spent troubleshooting to find a solution. 
