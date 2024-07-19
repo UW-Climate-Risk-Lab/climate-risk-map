@@ -34,6 +34,6 @@ Next, run the app in a new terminal tab.
 python app.py
 ```
 
-The app should now be running on your local machine and can be accessed by going to http://127.0.0.1 in your web browser.
+The app should now be running on your local machine and can be accessed by going to http://127.0.0.1:8050 in your web browser.
 
 *Note* The dash app was not added to the docker compose stack because of isseus with CORS (Cross-Origin Resource Sharing). When added, the interaction with TiTiler was blocked while running locally. Given this is simply for experimentation, more time was not spent troubleshooting to find a solution. 
