@@ -14,7 +14,11 @@ GRANT CREATE ON DATABASE osminfra
 GRANT CREATE ON SCHEMA public
     TO pgosm_flex;
 
-
+-- Creates a read only user for queries
+CREATE ROLE ro_user WITH LOGIN PASSWORD 'mysecretpassword'
+GRANT CONNECT ON DATABASE osminfra TO ro_user;
+GRANT USAGE ON SCHEMA osm to ro_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA osm to rouser;
 
 
 
