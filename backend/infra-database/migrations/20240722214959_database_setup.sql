@@ -1,6 +1,8 @@
 -- Add migration script here
 CREATE DATABASE osminfra;
 
+\connect osminfra;
+
 CREATE EXTENSION postgis;
 
 CREATE ROLE pgosm_flex WITH LOGIN PASSWORD 'mysecretpassword';
