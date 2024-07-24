@@ -1,6 +1,0 @@
-POSTGRES_USER=pgosm_flex
-POSTGRES_PASSWORD=mysecretpassword
-POSTGRES_HOST=host.docker.internal
-POSTGRES_DB=osminfra
-POSTGRES_PORT=5432
-RAM=8

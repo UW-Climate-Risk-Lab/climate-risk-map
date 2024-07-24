@@ -1,4 +1,4 @@
--- Add migration script here
+-- Creation of osminfra database
 CREATE DATABASE osminfra;
 
 \connect osminfra;
@@ -15,10 +15,10 @@ GRANT CREATE ON SCHEMA public
     TO pgosm_flex;
 
 -- Creates a read only user for queries
-CREATE ROLE ro_user WITH LOGIN PASSWORD 'mysecretpassword'
-GRANT CONNECT ON DATABASE osminfra TO ro_user;
-GRANT USAGE ON SCHEMA osm to ro_user;
-GRANT SELECT ON ALL TABLES IN SCHEMA osm to rouser;
+CREATE ROLE osm_ro_user WITH LOGIN PASSWORD 'mysecretpassword';
+GRANT CONNECT ON DATABASE osminfra TO osm_ro_user;
+GRANT USAGE ON SCHEMA osm to osm_ro_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA osm GRANT SELECT ON TABLES TO osm_ro_user;
 
 
 
