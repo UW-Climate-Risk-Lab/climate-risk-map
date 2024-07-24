@@ -37,7 +37,7 @@ source $(pwd)/backend/infra-etl-service/pgosm_flex/.env
 docker run --name pgosm -d --rm \
   -v ~/pgosm-data:/app/output \
   -v /etc/localtime:/etc/localtime:ro \
-  -v $(pwd)/backend/infra-etl-service/custom-layerset:/custom-layerset \
+  -v $(pwd)/backend/infra-etl-service/pgosm_flex/custom-layerset:/custom-layerset \
   -e POSTGRES_USER=$POSTGRES_USER \
   -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
   -e POSTGRES_HOST=$POSTGRES_HOST \
