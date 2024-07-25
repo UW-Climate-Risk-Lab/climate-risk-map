@@ -29,7 +29,7 @@ RAM=8
  3. You can use this command to set all environment variables in your .env files.
 
 ```bash
-source $(pwd)/backend/physical-asset-etl-service/pgosm_flex/.env
+source $(pwd)/backend/physical-asset/etl/pgosm_flex/.env
 ```
 4. Run the pgosm-flex image, noting to pass in appropiate volume mounts and environement variables. Notice version 1.0.0 is pinned to avoid breaking changes in production.
 
@@ -37,7 +37,7 @@ source $(pwd)/backend/physical-asset-etl-service/pgosm_flex/.env
 docker run --name pgosm -d --rm \
   -v ~/pgosm-data:/app/output \
   -v /etc/localtime:/etc/localtime:ro \
-  -v $(pwd)/backend/physical-asset-etl-service/pgosm_flex/custom-layerset:/custom-layerset \
+  -v $(pwd)/backend/physical-asset/etl/pgosm_flex/custom-layerset:/custom-layerset \
   -e POSTGRES_USER=$POSTGRES_USER \
   -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
   -e POSTGRES_HOST=$POSTGRES_HOST \
@@ -47,7 +47,7 @@ docker run --name pgosm -d --rm \
   -d rustprooflabs/pgosm-flex:1.0.0
 ```
 
-5. Once the container is running, use this command to execute the script that runs the ETL process. Replication will check if data has already been imported and if so, will perform a data update only. 
+5. Once the container is running, use this command to execute the script that runs the ETL process. Replication will check if data has already been imported and if so, will perform a data update only. This example uses Washington State data.
 ```bash
 docker exec -it \
     pgosm python3 docker/pgosm_flex.py \
