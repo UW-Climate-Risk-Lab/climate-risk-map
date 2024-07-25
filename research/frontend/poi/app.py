@@ -12,7 +12,7 @@ app = Dash()
 def query_postgis(query: str):
     # Connect to your PostGIS database
     conn = psycopg2.connect(
-        "dbname='pgosm_flex' user='osm_ro_user' host='localhost' password='mysecretpassword'"
+        "dbname='pgosm_flex_washington' user='osm_ro_user' host='localhost' password='mysecretpassword'"
     )
     cur = conn.cursor()
 
@@ -50,7 +50,7 @@ app.layout = html.Div(
                                         data=query_postgis(sql.GET_INFRASTRUCTURE_LINE),
                                         id="infrastructure-line",
                                         hoverStyle=arrow_function(
-                                            dict(weight=5, color="blue", dashArray="")
+                                            dict(weight=5, color="yellow", dashArray="")
                                         ),
                                         style={
                                             "color": "#008000",
@@ -68,10 +68,12 @@ app.layout = html.Div(
                             dl.LayerGroup(
                                 [
                                     dl.GeoJSON(
-                                        data=query_postgis(sql.GET_INFRASTRUCTURE_POLYGON),
+                                        data=query_postgis(
+                                            sql.GET_INFRASTRUCTURE_POLYGON
+                                        ),
                                         id="infrastructure-polygon",
                                         hoverStyle=arrow_function(
-                                            dict(weight=5, color="blue", dashArray="")
+                                            dict(weight=5, color="yellow", dashArray="")
                                         ),
                                         style={
                                             "color": "#FF0000",
@@ -79,7 +81,7 @@ app.layout = html.Div(
                                             "fillColor": "#FF0000",
                                             "fillOpacity": 0.5,
                                         },
-                                    )
+                                    ),
                                 ]
                             ),
                             name="Infrastructure Polygons",
@@ -88,10 +90,10 @@ app.layout = html.Div(
                     ]
                 ),
             ],
-            center={"lat": 37.0902, "lng": -95.7129},
-            zoom=5,
+            center={"lat": 47.7511, "lng": -120.7401},
+            zoom=8,
             style={"height": "100vh"},
-            id="map",
+            id="map"
         ),
     ]
 )
