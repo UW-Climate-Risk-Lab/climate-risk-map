@@ -54,8 +54,8 @@ docker exec -it \
     --layerset=infrastructure \
     --layerset-path=/custom-layerset/ \
     --ram=$RAM \
-    --region=north-america \
-    --subregion=us-west \
+    --region=north-america/us \
+    --subregion=washington \
     --srid=3857 \
     --replication
 ```
