@@ -1,7 +1,7 @@
 -- Creation of osminfra database
-CREATE DATABASE osminfra;
+CREATE DATABASE pgosm_flex;
 
-\connect osminfra;
+\connect pgosm_flex;
 
 CREATE EXTENSION postgis;
 
