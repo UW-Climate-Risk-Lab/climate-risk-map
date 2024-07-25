@@ -57,6 +57,5 @@ docker exec -it \
     --region=north-america \
     --subregion=us-west \
     --srid=3857 \
-    --replication \
-    --pg-dump
+    --replication
 ```
