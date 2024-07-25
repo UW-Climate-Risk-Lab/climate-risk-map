@@ -9,16 +9,18 @@ CREATE ROLE pgosm_flex WITH LOGIN PASSWORD 'mysecretpassword';
 
 CREATE SCHEMA osm AUTHORIZATION pgosm_flex;
 
-GRANT CREATE ON DATABASE osminfra
+GRANT CREATE ON DATABASE pgosm_flex
     TO pgosm_flex;
 GRANT CREATE ON SCHEMA public
     TO pgosm_flex;
 
 -- Creates a read only user for queries
 CREATE ROLE osm_ro_user WITH LOGIN PASSWORD 'mysecretpassword';
-GRANT CONNECT ON DATABASE osminfra TO osm_ro_user;
+GRANT CONNECT ON DATABASE pgosm_flex TO osm_ro_user;
 GRANT USAGE ON SCHEMA osm to osm_ro_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA osm GRANT SELECT ON TABLES TO osm_ro_user;
 
+-- Us pgosm_flex role to grant future table read privileges
+SET ROLE pgosm_flex;
+ALTER DEFAULT PRIVILEGES IN SCHEMA osm GRANT SELECT ON TABLES TO osm_ro_user;
 
 
