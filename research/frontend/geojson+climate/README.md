@@ -17,17 +17,16 @@ The sample climate data in the `data/` directory is % burnt area mean over ~50 y
 docker compose up --build
 ```
 
-2. Create a conda env to install necessary packages
+2. Create a conda env to install necessary packages and activate
 ```bash
 conda env create -f app/environment.yml
 ```
 
-3. Export appropiate ENV variables
-
 ```bash
-export TITILER_BASE_ENDPOINT=http://localhost:8000
-export FILE_URL=http://fileserver:8080/OutputCOG.tif
+conda activate frontend-geojson-climate
 ```
+
+3. Create `.env` file based on `env.sample`. The database details will need to be set based on the database you are connecting to.
 
 4. Run the dash app and go to `http://127.0.0.1:8050/` in your broswer to see the map.
 

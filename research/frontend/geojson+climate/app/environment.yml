@@ -56,6 +56,7 @@ dependencies:
   - pycparser=2.22=pyhd8ed1ab_0
   - pysocks=1.7.1=pyha2e5f31_6
   - python=3.12.4=h30c5eda_0_cpython
+  - python-dotenv=1.0.1=pyhd8ed1ab_0
   - python_abi=3.12=4_cp312
   - readline=8.2=h92ec313_1
   - requests=2.32.3=pyhd8ed1ab_0

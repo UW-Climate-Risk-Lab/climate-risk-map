@@ -2,7 +2,11 @@ import psycopg2
 import httpx
 import os
 
+from dotenv import load_dotenv
+
 import constants
+
+load_dotenv()
 
 TITILER_BASE_ENDPOINT = os.environ["TITILER_BASE_ENDPOINT"]
 FILE_URL = os.environ["FILE_URL"]
