@@ -1,51 +1,17 @@
 from dash import Dash, Input, Output
 from dash import html
 import dash_leaflet as dl
-import httpx
-import psycopg2
 from dash_extensions.javascript import arrow_function
 import dash_leaflet.express as dlx
 
-import sql
+import app_sql
+import app_utils
+import constants
 
 app = Dash()
-COLORMAP = "reds"
+  # Assumes you are running the docker-compose.yml in the directory
 
-titiler_endpoint = "http://localhost:8000"
-file_url = "http://fileserver:8080/OutputCOG.tif"  # Assumes you are running the docker-compose.yml in the directory
-
-r = httpx.get(
-    f"{titiler_endpoint}/cog/statistics",
-    params={
-        "url": file_url,
-    },
-).json()
-
-min = r["b1"]["min"]
-max = r["b1"]["max"]
-
-r = httpx.get(
-    f"{titiler_endpoint}/cog/tilejson.json",
-    params={"url": file_url, "rescale": f"{min},{max}", "colormap_name": COLORMAP},
-).json()
-
-
-def query_postgis(query: str):
-    # Connect to your PostGIS database
-    conn = psycopg2.connect(
-        "dbname='pgosm_flex_washington' user='osm_ro_user' host='localhost' password='mysecretpassword'"
-    )
-    cur = conn.cursor()
-
-    # Execute the query
-    cur.execute(query)
-    result = cur.fetchone()[0]
-
-    cur.close()
-    conn.close()
-
-    return result
-
+min_climate_value, max_climate_value = app_utils.get_climate_min_max()
 
 app.layout = html.Div(
     children=[
@@ -66,7 +32,7 @@ app.layout = html.Div(
                     [
                         dl.Overlay(
                             dl.LayerGroup(
-                                [dl.TileLayer(url=r["tiles"][0], opacity=0.6)]
+                                [dl.TileLayer(url=app_utils.get_tilejson_url(), opacity=constants.CLIMATE_LAYER_OPACITY)]
                             ),
                             name="Percentage of Entire Grid cell that is Covered by Burnt Vegetation",
                             checked=True,
@@ -75,7 +41,7 @@ app.layout = html.Div(
                             dl.LayerGroup(
                                 [
                                     dl.GeoJSON(
-                                        data=query_postgis(sql.GET_INFRASTRUCTURE_LINE),
+                                        data=app_utils.query_postgis(app_sql.GET_INFRASTRUCTURE_LINE),
                                         id="infrastructure-line",
                                         hoverStyle=arrow_function(
                                             dict(weight=5, color="yellow", dashArray="")
@@ -96,8 +62,8 @@ app.layout = html.Div(
                             dl.LayerGroup(
                                 [
                                     dl.GeoJSON(
-                                        data=query_postgis(
-                                            sql.GET_INFRASTRUCTURE_POLYGON
+                                        data=app_utils.query_postgis(
+                                            app_sql.GET_INFRASTRUCTURE_POLYGON
                                         ),
                                         id="infrastructure-polygon",
                                         hoverStyle=arrow_function(
@@ -118,7 +84,7 @@ app.layout = html.Div(
                         dl.Overlay(
                             dl.LayerGroup(
                                 children=dl.GeoJSON(
-                                    data=query_postgis(sql.GET_INFRASTRUCTURE_POINT),
+                                    data=app_utils.query_postgis(app_sql.GET_INFRASTRUCTURE_POINT),
                                     id="infrastructure-point",
                                     hoverStyle=arrow_function(
                                         dict(weight=5, color="yellow", dashArray="")
@@ -140,11 +106,11 @@ app.layout = html.Div(
                     ]
                 ),
                 dl.Colorbar(
-                    colorscale=COLORMAP,
+                    colorscale=constants.COLORMAP,
                     width=20,
                     height=150,
-                    min=min,
-                    max=max,
+                    min=min_climate_value,
+                    max=max_climate_value,
                     unit="%",
                     position="bottomleft",
                 ),
@@ -153,11 +119,9 @@ app.layout = html.Div(
             zoom=5,
             style={"height": "100vh"},
             id="map",
-        )
+        ),
     ]
 )
-
-
 
 if __name__ == "__main__":
     app.run_server(port=8050, host="127.0.0.1", debug=True)
