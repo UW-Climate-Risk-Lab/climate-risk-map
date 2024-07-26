@@ -6,12 +6,18 @@ import constants
 
 TITILER_BASE_ENDPOINT = os.environ["TITILER_BASE_ENDPOINT"]
 FILE_URL = os.environ["FILE_URL"]
-
+PG_DBNAME=os.environ["PG_DBNAME"]
+PG_USER=os.environ["PG_USER"]
+PG_HOST=os.environ["PG_HOST"]
+PG_PASSWORD=os.environ["PG_PASSWORD"]
 
 def query_postgis(query: str):
     # Connect to your PostGIS database
     conn = psycopg2.connect(
-        "dbname='pgosm_flex_washington' user='osm_ro_user' host='localhost' password='mysecretpassword'"
+        database=PG_DBNAME,
+        host=PG_HOST,
+        user=PG_USER,
+        password=PG_PASSWORD
     )
     cur = conn.cursor()
 
