@@ -2,9 +2,9 @@
 
 ## Overview
 
-This directory combines approaches from `research/frontend/geojson` and `research/tile_service/dynamic_tiler` to generate a map app that shows both infrastructure and climate data visualized on a single map. It uses a dash app and dash-leaflet as the front end.
+This directory combines approaches from `experimentation/frontend/geojson` and `experimentation/tile_service/dynamic_tiler` to generate a map app that shows both infrastructure and climate data visualized on a single map. It uses a dash app and dash-leaflet as the front end.
 
-The sample climate data in the `data/` directory is % burnt area mean over ~50 years. This can be replaced by a custom COG (Cloud Optimized GeoTIFF) of your choosing. See `research/tile_service/dynamic_tiler/data` for notebook on generating GeoTIFFs for climate data.
+The sample climate data in the `data/` directory is % burnt area mean over ~50 years. This can be replaced by a custom COG (Cloud Optimized GeoTIFF) of your choosing. See `experimentation/tile_service/dynamic_tiler/data` for notebook on generating GeoTIFFs for climate data.
 
 
 
