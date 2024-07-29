@@ -61,22 +61,20 @@ fig.update_layout(
         {
             "below": 'traces',
             "sourcetype": "raster",
-            "sourceattribution": "United States Geological Survey",
+            "sourceattribution": "Wildfire Burnt Area %",
             "opacity": 0.5,
             "source": [
                 get_tilejson_url()
             ]
         },
          {
-            "below": 'traces',
+            "below": "'traces'",
             "sourcetype": "vector",
             "sourcelayer": "osm_line",
             "sourceattribution": "OSM",
-            "opacity": 0.5,
-            "source": ["http://localhost:8070/{z}/{x}/{y}.pbf"],
+            "opacity": 1,
+            "source": ["http://localhost:8070/maps/osm_map/{z}/{x}/{y}.vector.pbf"],
             "type" : "line",
-            "color" : "#3366ff",
-            "opacity" : 1,
         },
       ])
 fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
