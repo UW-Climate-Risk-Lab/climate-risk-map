@@ -1,0 +1,45 @@
+[webserver]
+port = ":8070"
+
+[[providers]]
+name = "postgis"
+type = "mvt_postgis"
+uri = "${DB_URI}"
+srid = 3857
+
+[[providers.layers]]
+name = "osm_line"
+tablename = "infrastructure_line"
+sql = "SELECT ST_AsMVTGeom(geom, !BBOX!) AS geom, osm_id FROM osm.infrastructure_line WHERE geom && !BBOX!"
+geometry_type="LineString"
+
+[[providers.layers]]
+name = "osm_polygon"
+tablename = "infrastructure_polygon"
+sql = "SELECT ST_AsMVTGeom(geom, !BBOX!) AS geom, osm_id FROM osm.infrastructure_polygon WHERE geom && !BBOX!"
+geometry_type="MultiPolygon"
+
+
+[[providers.layers]]
+name = "osm_point"
+tablename = "infrastructure_point"
+sql = "SELECT ST_AsMVTGeom(geom, !BBOX!) AS geom, osm_id FROM osm.infrastructure_point WHERE geom && !BBOX!"
+geometry_type="Point"
+
+[[maps]]
+name = "osm_map"
+
+[[maps.layers]]
+provider_layer = "postgis.osm_line"
+min_zoom = 0
+max_zoom = 14
+
+[[maps.layers]]
+provider_layer = "postgis.osm_polygon"
+min_zoom = 0
+max_zoom = 14
+
+[[maps.layers]]
+provider_layer = "postgis.osm_point"
+min_zoom = 0
+max_zoom = 14
