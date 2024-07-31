@@ -1,24 +1,31 @@
 name: 'climate-risk-app'
 services:
-  titiler:
+  raster-tiler:
     image: ghcr.io/developmentseed/titiler:latest
     ports:
       - "8000:80"
     platform: linux/amd64
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/healthz"]
-      interval: 10s
+      interval: 120m
       retries: 5
-      start_period: 60s
+      start_period: 30s
       timeout: 10s
 
-  fileserver:
+  raster-tiler-server:
     build:
       dockerfile: Dockerfile
-      context: server
+      context: raster_tiler/dynamic/server
     ports:
       - "8080:8080"
     volumes:
-      - ./data:/usr/src/app/data
+      - ./raster_tiler/dynamic/data:/usr/src/app/data
     environment:
       - DIRECTORY=/usr/src/app/data
+  
+  vector-tiler:
+    build:
+      dockerfile: Dockerfile
+      context: vector_tiler/tegola
+    ports:
+      - "8070:8070"
