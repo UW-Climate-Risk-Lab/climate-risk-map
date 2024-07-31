@@ -24,13 +24,15 @@ docker compose up --build
 
 This will begin running both the TiTiler application and the custom "file serving" script. The file serving script allows TiTiler to make partial GET requests to our output data file. In production, we would likely store the data on a cloud provider that allows partial GET requests directly to the object. The file serve script is simply for local testing.
 
+This will also run a vector tiler, currently [Tegola](https://tegola.io/). This can be configured in `vector_tiler/tegola` to serve tiles from a PostGIS database.
+
 ### 3. Run the Dash App
 
-Finally we will run the map application. Navigate to the `/app` directory and install the packages in `requirements.txt` (preferably in a virtual environment or conda environment!)
-
-Next, run the app in a new terminal tab.
+Finally we will run the map application. Navigate to the `climate-risk-map/experimentation/frontend/` directory and run one of the scripts from the various front ends. For example
+in the `climate-risk-map/experimentation/frontend/dash_leaflet/geojson/app`, which uses dash-leaflet, a geojson component, and raster tile component to create the mapping application.
 
 ```bash
+cd /climate-risk-map/experimentation/frontend/dash_leaflet/geojson/app
 python app.py
 ```
 
