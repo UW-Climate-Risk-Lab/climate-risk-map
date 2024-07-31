@@ -12,6 +12,8 @@ In the `/data` directory, there is a small Jupyter notebook that gives an exampl
 
 Use the notebook with your own input NetCDF (or any input of your choice), and output the COG from the Xarray dataset as `OutputCOG.tif` in the `/data` directory.
 
+Vector data will come from a PostGIS database.
+
 ### 2. Run the Tile Service Stack
 
 First, you will need to have Docker installed on your machine. Please follow [these instructions](https://docs.docker.com/engine/install/) to setup if needed.
