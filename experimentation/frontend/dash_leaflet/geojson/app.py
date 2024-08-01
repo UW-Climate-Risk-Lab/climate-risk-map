@@ -8,6 +8,7 @@ import app_sql
 import app_utils
 import constants
 
+icon_url = "/assets/icons.css"
 app = Dash()
   # Assumes you are running the docker-compose.yml in the directory
 
@@ -114,14 +115,39 @@ app.layout = html.Div(
                     unit="%",
                     position="bottomleft",
                 ),
+                dl.EasyButton(icon="icon", title="CSV", id="btn")
             ],
             center={"lat": 37.0902, "lng": -95.7129},
             zoom=5,
-            style={"height": "100vh"},
+            style={"height": "90vh"},
             id="map",
         ),
+        html.H1(id='output')
     ]
 )
+
+@app.callback([Output("output", "children")],[Input("btn", "n_clicks"), Input("drawn-shapes", "geojson")])
+def log(n_clicks, shapes):
+    string = ''
+    if (shapes is None):
+        return [None]
+    
+    if (len(shapes["features"])==0):
+        return [None]
+
+    if n_clicks is None:
+        return [None]
+
+    if n_clicks > 0:
+        for shape in shapes["features"]:
+            if shape is None:
+                n_clicks = 0
+                return string
+            string = string + str(shape["geometry"]["coordinates"]) + ', '
+            string = string + '\n'
+        n_clicks = 0
+        return [string]
+    return [None]
 
 if __name__ == "__main__":
     app.run_server(port=8050, host="127.0.0.1", debug=True)
