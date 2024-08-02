@@ -8,7 +8,7 @@ import app_sql
 import app_utils
 import constants
 
-icon_url = "/assets/icons.css"
+icon_url = "/assets/csv_icon.css"
 app = Dash()
   # Assumes you are running the docker-compose.yml in the directory
 
@@ -115,7 +115,7 @@ app.layout = html.Div(
                     unit="%",
                     position="bottomleft",
                 ),
-                dl.EasyButton(icon="icon", title="CSV", id="btn")
+                dl.EasyButton(icon="icon", title="CSV", id="csv-btn")
             ],
             center={"lat": 37.0902, "lng": -95.7129},
             zoom=5,
@@ -126,9 +126,10 @@ app.layout = html.Div(
     ]
 )
 
-@app.callback([Output("output", "children"), Output("btn", "n_clicks")],[Input("btn", "n_clicks"), Input("drawn-shapes", "geojson")])
-def log(n_clicks, shapes):
-    string = ''
+@app.callback([Output("output", "children"), Output("csv-btn", "n_clicks")],[Input("csv-btn", "n_clicks"), Input("drawn-shapes", "geojson")])
+def download_csv(n_clicks, shapes):
+    
+    # Need to check shapes value for different cases
     if (shapes is None):
         return [None], 0
     
