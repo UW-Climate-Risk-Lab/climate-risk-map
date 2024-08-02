@@ -77,25 +77,4 @@ def process_drawn_shape_geojson(geojson: dict):
             string = string + '\n'
     return [string], 0
 
-class PostGISQuery():
-    def __init__(self, dbname, user, password, host, port):
-        self.conn = psycopg2.connect(
-            dbname=dbname,
-            user=user,
-            password=password,
-            host=host,
-            port=port
-        )
 
-    def _execute_query_postgis(self, query: str):
-
-        cur = self.conn.cursor()
-        cur.execute(query)
-        result = cur.fetchone()[0]
-        cur.close()
-
-        return result
-    
-    def build_query
-
-    def get_geojson_data(table: str, ):
