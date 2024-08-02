@@ -157,17 +157,6 @@ FROM (
 AS t;
 """
 
-GET_GEOJSON = query = sql.SQL("select {fields} from {table}").format(
-    fields=sql.SQL(",").join(
-        [
-            sql.Identifier("field1"),
-            sql.Identifier("field2"),
-            sql.Identifier("field3"),
-        ]
-    ),
-    table=sql.Identifier("some_table"),
-)
-
 GET_INFRASTRUCTURE_POLYGON = """
 SELECT json_build_object(
     'type', 'FeatureCollection',
