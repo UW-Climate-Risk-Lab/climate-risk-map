@@ -126,17 +126,17 @@ app.layout = html.Div(
     ]
 )
 
-@app.callback([Output("output", "children")],[Input("btn", "n_clicks"), Input("drawn-shapes", "geojson")])
+@app.callback([Output("output", "children"), Output("btn", "n_clicks")],[Input("btn", "n_clicks"), Input("drawn-shapes", "geojson")])
 def log(n_clicks, shapes):
     string = ''
     if (shapes is None):
-        return [None]
+        return [None], 0
     
     if (len(shapes["features"])==0):
-        return [None]
+        return [None], 0
 
     if n_clicks is None:
-        return [None]
+        return [None], 0
 
     if n_clicks > 0:
         for shape in shapes["features"]:
@@ -145,9 +145,8 @@ def log(n_clicks, shapes):
                 return string
             string = string + str(shape["geometry"]["coordinates"]) + ', '
             string = string + '\n'
-        n_clicks = 0
-        return [string]
-    return [None]
+        return [string], 0
+    return [None], 0
 
 if __name__ == "__main__":
     app.run_server(port=8050, host="127.0.0.1", debug=True)
