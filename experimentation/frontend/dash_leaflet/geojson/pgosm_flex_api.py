@@ -2,8 +2,9 @@
 Interface with PostGIS Database for getting asset data
 """
 
+import re
 import psycopg2 as pg
-from psycopg2 import sql
+from psycopg2 import sql, OperationalError
 
 from typing import List, Dict, Tuple, Union, Optional
 
@@ -26,41 +27,75 @@ class OpenStreetMapDataAPI:
             host (str): Database host url
             port (str): Database port
         """
-        self.conn = pg.connect(
-            dbname=str(dbname),
-            user=str(user),
-            password=str(password),
-            host=str(host),
-            port=str(port),
-        )
+        try:
+            self.conn = pg.connect(
+                dbname=str(dbname),
+                user=str(user),
+                password=str(password),
+                host=str(host),
+                port=str(port),
+            )
+        except OperationalError as e:
+            print(f"Error connecting to database: {e}")
+            self.conn = None
+
         
         # schema where the feature data tables are
         self.schema = 'osm'
 
         # As of Aug-2024, set manually for time being.
         # Keys are categories, values are lists of available geometry types of that category
-        self.available_categories = {"infrastructure": ["line", "polygon", "point"]}
-
-    def _execute_query_postgis(self, query: str, params: Tuple[str] = None):
-
+        # Possible categories here: https://pgosm-flex.com/layersets.html
+        self.available_categories = ("infrastructure")
+    def __del__(self):
+        if self.conn:
+            self.conn.close()
+    
+    def _execute_postgis(self, query: str, params: Tuple[str] = None):
+        """Takes query (in PostgreSQL language) and params and executes
+        in the current instance connection"""
+        if not self.conn:
+            raise ConnectionError("Database connection is not established.")
+        
         with self.conn.cursor() as cur:
             cur.execute(query, params)
             result = cur.fetchall()
         return result
 
-    def _get_table_names(self, category: str) -> List[str]:
+    def _get_table_names(self, categories: List[str]) -> List[str]:
         """Creates table names from category
 
         Table names format in PG OSM Flex is {category}_{geom_type}
 
         """
-        tables = []
-        for category, geom_types in self.available_categories.items():
-            for geom_type in geom_types:
-                tables.append(f"{self.schema}.{category}_{geom_type}")
-        return tables
         
+        tables = []
 
+        query = """
+        SELECT tablename FROM pg_tables
+        WHERE schemaname='osm'
+        """
+        result = self._execute_postgis(query=query, params=None)
+
+        # Uses Regex to check whether to use the table 
+        # Tables always start with the category name
+        # Nested loop, not worried about performance
+        for table in result:
+            tablename = table[0]
+            for category in categories:
+                name_match = re.findall(category, tablename)
+                if name_match:
+                    tables.append(table[0])
+                else:
+                    pass
+        return tables
+
+
+
+
+        # For now, we will always include the tags table,
+        # as it holds tags across all categories.
+        tables.append("tags")
     def _get_table_columns(self, table_name):
         """
         Fetches the column names and types for the specified table.
@@ -87,30 +122,34 @@ class OpenStreetMapDataAPI:
     
 
 
-    def get_geojson_data(
+    def get_osm_data(
         self,
         categories: List[str],
         osm_types: Tuple[str],
         osm_subtypes: Tuple[str] = tuple(),
     ) -> Dict:
-        """Gets GEOJSON data from provided
+        """Gets OSM data from provided filters.
+
+        **Return value is in a dict that is GeoJSON format**
         
         Args:
             categories (List[str]): 1 or more categories to get data from
             osm_types (List[str]): OSM Type to Filter On
             osm_subtypes (List[str]): OSM Subtypes to filter on
         """
-        if type(categories) is str:
+        if isinstance(categories, str):
             categories = [categories]
 
 
         for category in categories:
-            if category not in self.available_categories.keys():
+            if category not in self.available_categories:
                 raise ValueError(f'{category} is not an available category to query!')
 
         if len(osm_types) < 1:
             raise ValueError('Must provide at least 1 type in osm_types arg!')
         
+        # This sets up every query to return a GeoJSON object
+        # using the PostGIS function "ST_AsGeoJSON"
         base_query = """ 
         SELECT json_build_object(
             'type', 'FeatureCollection',
@@ -118,9 +157,7 @@ class OpenStreetMapDataAPI:
             
             FROM (
         """
-        tables = []
-        for category in categories:
-            tables.extend(self._get_table_names(category=category))
+        tables = self._get_table_names(categories)
         union_queries = []
         params = []
         for table in tables:

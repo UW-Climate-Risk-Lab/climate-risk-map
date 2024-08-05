@@ -1,4 +1,4 @@
-import experimentation.frontend.dash_leaflet.geojson.pgosm_flex_api as pgosm_flex_api
+import pgosm_flex_api
 from dotenv import load_dotenv
 import os
 
@@ -16,5 +16,5 @@ if __name__=="__main__":
         user=PG_USER,
         password=PG_PASSWORD,
         port=PG_PORT)
-    api.get_geojson_data("infrastructure", "power")
+    api.get_osm_data("infrastructure", "power")
     print(api)
