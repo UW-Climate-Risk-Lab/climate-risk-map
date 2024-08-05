@@ -4,7 +4,7 @@ import dash_leaflet as dl
 from dash_extensions.javascript import arrow_function
 import dash_leaflet.express as dlx
 
-import experimentation.frontend.dash_leaflet.geojson.physical_asset_api as physical_asset_api
+import experimentation.frontend.dash_leaflet.geojson.pgosm_flex_api as pgosm_flex_api
 import app_utils
 import constants
 
@@ -42,7 +42,7 @@ app.layout = html.Div(
                             dl.LayerGroup(
                                 [
                                     dl.GeoJSON(
-                                        data=app_utils.query_postgis(physical_asset_api.GET_INFRASTRUCTURE_LINE),
+                                        data=app_utils.query_postgis(pgosm_flex_api.GET_INFRASTRUCTURE_LINE),
                                         id="infrastructure-line",
                                         hoverStyle=arrow_function(
                                             dict(weight=5, color="yellow", dashArray="")
@@ -64,7 +64,7 @@ app.layout = html.Div(
                                 [
                                     dl.GeoJSON(
                                         data=app_utils.query_postgis(
-                                            physical_asset_api.GET_INFRASTRUCTURE_POLYGON
+                                            pgosm_flex_api.GET_INFRASTRUCTURE_POLYGON
                                         ),
                                         id="infrastructure-polygon",
                                         hoverStyle=arrow_function(
@@ -85,7 +85,7 @@ app.layout = html.Div(
                         dl.Overlay(
                             dl.LayerGroup(
                                 children=dl.GeoJSON(
-                                    data=app_utils.query_postgis(physical_asset_api.GET_INFRASTRUCTURE_POINT),
+                                    data=app_utils.query_postgis(pgosm_flex_api.GET_INFRASTRUCTURE_POINT),
                                     id="infrastructure-point",
                                     hoverStyle=arrow_function(
                                         dict(weight=5, color="yellow", dashArray="")

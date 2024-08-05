@@ -1,4 +1,4 @@
-import physical_asset_api
+import experimentation.frontend.dash_leaflet.geojson.pgosm_flex_api as pgosm_flex_api
 from dotenv import load_dotenv
 import os
 
@@ -11,7 +11,7 @@ PG_PORT=os.environ["PG_PORT"]
 
 if __name__=="__main__":
 
-    api = physical_asset_api.OpenStreetMapDataAPI(dbname=PG_DBNAME,
+    api = pgosm_flex_api.OpenStreetMapDataAPI(dbname=PG_DBNAME,
         host=PG_HOST,
         user=PG_USER,
         password=PG_PASSWORD,
