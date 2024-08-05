@@ -212,13 +212,13 @@ class OpenStreetMapDataAPI:
             FROM (
         """
         tables = self._get_table_names(categories)
-        union_queries = [] #
+        union_queries = []
         params = []
         for table in tables:
             # Creates a query for each table in the given category
             columns = self._get_table_columns(table_name=table)
             sub_query = f"""
-            SELECT tags as tooltip, ST_Transform(geom, 4326) AS geometry 
+            SELECT tags, ST_Transform(geom, 4326) AS geometry 
             FROM {self.schema}.{table}
             JOIN {self.schema}.tags ON {self.schema}.{table}.osm_id = {self.schema}.tags.osm_id
             WHERE osm_type IN %s
