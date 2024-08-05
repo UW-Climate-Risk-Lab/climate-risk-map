@@ -16,5 +16,5 @@ if __name__=="__main__":
         user=PG_USER,
         password=PG_PASSWORD,
         port=PG_PORT)
-    api.get_osm_data("infrastructure", "power")
+    api.get_osm_data(["infrastructure"], ["power"], ["generator"])
     print(api)
