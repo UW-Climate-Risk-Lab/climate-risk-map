@@ -7,7 +7,9 @@ CREATE EXTENSION postgis;
 
 CREATE ROLE pgosm_flex WITH LOGIN PASSWORD 'mysecretpassword';
 
-CREATE SCHEMA osm AUTHORIZATION pgosm_flex;
+CREATE SCHEMA osm;
+
+ALTER SCHEMA osm OWNER TO pgosm_flex;
 
 GRANT CREATE ON DATABASE pgosm_flex_washington
     TO pgosm_flex;
