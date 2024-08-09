@@ -121,6 +121,7 @@ def download_csv(n_clicks, shapes):
         return [None], 0
     string = ''
     if n_clicks > 0:
+        data = api.get_osm_data(["infrastructure"], ["power"], None, shapes)
         for shape in shapes["features"]:
             if shape is None:
                 return string

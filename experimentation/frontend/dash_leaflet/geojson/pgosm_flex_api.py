@@ -3,6 +3,7 @@ Interface with PostGIS Database for getting asset data
 """
 
 import re
+import json
 import psycopg2 as pg
 from psycopg2 import sql, OperationalError
 
@@ -273,23 +274,33 @@ class OpenStreetMapDataAPI:
         for table in tables:
             # Creates a query for each table in the given category
             columns = self._get_table_columns(table_name=table)
+            # TODO: Make SRID an input param, not hardcoded as 4326
             sub_query = f"""
             SELECT tags, ST_Transform(geom, 4326) AS geometry 
             FROM {self.schema}.{table}
             JOIN {self.schema}.tags ON {self.schema}.{table}.osm_id = {self.schema}.tags.osm_id
             WHERE osm_type IN %s
             """
-            params.extend([tuple(osm_types)])
+            params.append(tuple(osm_types))
 
             # Add extra where clause for subtypes if they are specified
             if osm_subtypes:
                 if "osm_subtype" in columns:
-                    sub_query = sub_query + "AND osm_subtype = ANY(%s)"
-                    params.extend([osm_subtypes])
+                    sub_query = sub_query + "AND osm_subtype IN %s"
+                    params.append(tuple(osm_subtypes))
 
+            if bbox:
+                if not self._is_valid_geojson(geojson=bbox):
+                    raise TypeError("The bounding box used is not a valid GeoJSON!")
+                for feature in bbox["features"]:
+                    geojson_str = json.dumps(feature["geometry"])
+                    bbox_filter = 'AND ST_Intersects(ST_Transform(geom, 4326), ST_GeomFromGeoJSON(%s))'
+                    params.append(geojson_str)
+                    sub_query = sub_query + bbox_filter
+            
             union_queries.append(sub_query)
 
-        full_query = base_query + "UNION ALL".join(union_queries) + ") AS t;"
+        full_query = base_query + "\nUNION ALL".join(union_queries) + ") AS t;"
 
         result = self.__execute_postgis(query=full_query, params=tuple(params))
         geojson = result[0][0]
