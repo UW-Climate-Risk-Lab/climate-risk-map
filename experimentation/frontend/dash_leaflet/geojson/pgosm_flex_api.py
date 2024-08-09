@@ -51,7 +51,7 @@ class OpenStreetMapDataAPI:
         if self.conn:
             self.conn.close()
 
-    def _execute_postgis(self, query: str, params: Tuple[str] = None):
+    def __execute_postgis(self, query: str, params: Tuple[str] = None):
         """Takes query (in PostgreSQL language) and params and executes
         in the current instance connection"""
         if not self.conn:
@@ -75,7 +75,7 @@ class OpenStreetMapDataAPI:
         SELECT tablename FROM pg_tables
         WHERE schemaname='osm'
         """
-        result = self._execute_postgis(query=query, params=None)
+        result = self.__execute_postgis(query=query, params=None)
 
         # Uses Regex to check whether to use the table
         # Tables always start with the category name
@@ -109,7 +109,7 @@ class OpenStreetMapDataAPI:
         WHERE table_name = %s
         """
 
-        result = self._execute_postgis(query, (table_name,))
+        result = self.__execute_postgis(query, (table_name,))
         column_names = [row[0] for row in result]
 
         return column_names
@@ -289,7 +289,7 @@ class OpenStreetMapDataAPI:
 
         full_query = base_query + "UNION ALL".join(union_queries) + ") AS t;"
 
-        result = self._execute_postgis(query=full_query, params=tuple(params))
+        result = self.__execute_postgis(query=full_query, params=tuple(params))
         geojson = result[0][0]
         if not self._is_valid_geojson(geojson=geojson):
             raise ValueError("The returned data is not in proper geojson format")
