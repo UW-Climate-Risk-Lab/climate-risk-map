@@ -38,7 +38,7 @@ app.layout = html.Div(
                 dl.FeatureGroup(
                     [
                         dl.EditControl(
-                            draw={"rectangle": True}, edit=False, id="drawn-shapes"
+                            draw={"rectangle": True, "circle": False, "polygon": False, "circlemarker": False, "polyline": False, "marker": False}, edit=False, id="drawn-shapes"
                         )
                     ]
                 ),
@@ -119,11 +119,10 @@ def download_csv(n_clicks, shapes):
 
     if n_clicks is None:
         return [None], 0
-
+    string = ''
     if n_clicks > 0:
         for shape in shapes["features"]:
             if shape is None:
-                n_clicks = 0
                 return string
             string = string + str(shape["geometry"]["coordinates"]) + ", "
             string = string + "\n"

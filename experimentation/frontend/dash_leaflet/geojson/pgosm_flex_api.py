@@ -225,6 +225,7 @@ class OpenStreetMapDataAPI:
         categories: List[str],
         osm_types: List[str],
         osm_subtypes: List[str] = None,
+        bbox: Dict[str, List] = None,
     ) -> Dict:
         """Gets OSM data from provided filters.
 
@@ -237,6 +238,7 @@ class OpenStreetMapDataAPI:
             categories (List[str]): 1 or more categories to get data from
             osm_types (List[str]): OSM Type to Filter On
             osm_subtypes (List[str]): OSM Subtypes to filter on
+            bbox (Dict[str]): A Dict in the GeoJSON format. Used for filtering
         """
         # TODO: Eventually remove repeat type checks
         if not isinstance(categories, list):
