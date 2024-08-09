@@ -81,6 +81,57 @@ app.layout = html.Div(
                             name="Power Plants",
                             checked=True,
                         ),
+                        dl.Overlay(
+                            dl.LayerGroup(
+                                [
+                                    dl.GeoJSON(
+                                        data=api.get_osm_data(
+                                            categories=["infrastructure"],
+                                            osm_types=["power"],
+                                            osm_subtypes=["line"],
+                                        ),
+                                        id="Power Line",
+                                        hoverStyle=arrow_function(
+                                            dict(weight=5, color="yellow", dashArray="")
+                                        ),
+                                        style={
+                                            "color": "#008000",
+                                            "weight": 2,
+                                            "fillColor": "#008000",
+                                            "fillOpacity": 0.5,
+                                        },
+                                    )
+                                ]
+                            ),
+                            name="Power Lines",
+                            checked=True,
+                        ),
+                        dl.Overlay(
+                            dl.LayerGroup(
+                                [
+                                    dl.GeoJSON(
+                                        data=api.get_osm_data(
+                                            categories=["infrastructure"],
+                                            osm_types=["power"],
+                                            osm_subtypes=["generator"],
+                                        ),
+                                        id="Power Generator",
+                                        hoverStyle=arrow_function(
+                                            dict(weight=5, color="yellow", dashArray="")
+                                        ),
+                                        style={
+                                            "color": "#008000",
+                                            "weight": 2,
+                                            "fillColor": "#008000",
+                                            "fillOpacity": 0.5,
+                                        },
+                                        cluster=True
+                                    )
+                                ]
+                            ),
+                            name="Power Generator",
+                            checked=True,
+                        ),
                     ]
                 ),
                 dl.Colorbar(
