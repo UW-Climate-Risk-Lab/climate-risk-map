@@ -269,28 +269,24 @@ class OpenStreetMapDataAPI:
                 "name": "categories",
                 "required": True,
                 "type": list,
-                "required": True,
                 "value": categories,
             },
             {
                 "name": "osm_types",
                 "required": True,
                 "type": list,
-                "required": True,
                 "value": osm_types,
             },
             {
                 "name": "osm_subtypes",
                 "required": False,
                 "type": list,
-                "required": False,
                 "value": osm_subtypes,
             },
             {
                 "name": "bbox",
                 "required": False,
                 "type": dict,
-                "required": False,
                 "value": bbox,
             },
         ]
