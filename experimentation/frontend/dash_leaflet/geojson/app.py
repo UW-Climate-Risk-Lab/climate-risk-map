@@ -53,7 +53,8 @@ app.layout = html.Div(
                     ]
                 ),
                 dl.LayersControl(
-                    [
+                    id="layers-control",
+                    children=[
                         dl.BaseLayer(
                             [
                                 dl.TileLayer(
@@ -63,7 +64,8 @@ app.layout = html.Div(
                             ],
                             name="Climate",
                         ),
-                    ] + app_layers.get_infrastucture_overlays()
+                    ]
+                    + app_layers.get_infrastucture_overlays(),
                 ),
                 dl.Colorbar(
                     colorscale=app_config.COLORMAP,
@@ -80,7 +82,7 @@ app.layout = html.Div(
             zoom=5,
             style={"height": "90vh"},
             id="map",
-            preferCanvas=True
+            preferCanvas=True,
         ),
         html.H1(id="output"),
     ]
@@ -89,9 +91,13 @@ app.layout = html.Div(
 
 @app.callback(
     [Output("output", "children"), Output("csv-btn", "n_clicks")],
-    [Input("csv-btn", "n_clicks"), Input("drawn-shapes", "geojson")],
+    [
+        Input("csv-btn", "n_clicks"),
+        Input("drawn-shapes", "geojson"),
+        Input("layers-control", "overlays"),
+    ],
 )
-def download_csv(n_clicks, shapes):
+def download_csv(n_clicks, shapes, selected_overlays):
 
     # Need to check shapes value for different cases
     if shapes is None:
@@ -104,14 +110,30 @@ def download_csv(n_clicks, shapes):
         return [None], 0
     string = ""
     if n_clicks > 0:
-        # TODO: Only return layers selected
-        data = api.get_osm_data(["infrastructure"], ["power"], None, shapes)
-        for shape in shapes["features"]:
-            if shape is None:
-                return string
-            string = string + str(shape["geometry"]["coordinates"]) + ", "
-            string = string + "\n"
-        return [string], 0
+        categories = []
+        osm_types = []
+        osm_subtypes = []
+        # Use the selected overlays to get the proper types to return in the data
+        for overlay in selected_overlays:
+            categories = (
+                categories
+                + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["categories"]
+            )
+            osm_types = (
+                osm_types
+                + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["osm_types"]
+            )
+            osm_subtypes = (
+                osm_subtypes
+                + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["osm_subtypes"]
+            )
+        data = api.get_osm_data(
+            categories=categories,
+            osm_types=osm_types,
+            osm_subtypes=osm_subtypes,
+            bbox=shapes,
+        )
+        data
     return [None], 0
 
 

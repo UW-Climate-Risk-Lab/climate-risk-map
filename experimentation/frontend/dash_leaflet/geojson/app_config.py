@@ -4,8 +4,9 @@ COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
 SUPER_CLUSTER_RADIUS = 50
 
+# Main keys should be the same as [Overlay][name]
 INFRASTRUCTURE_LAYERS = {
-    "power_plant": {
+    "Power Plants": {
         "Overlay": {
             "name": "Power Plants",
             "id": "power-plant-overlay",
@@ -27,7 +28,7 @@ INFRASTRUCTURE_LAYERS = {
             "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
         },
     },
-    "power_substation": {
+    "Power Substations": {
         "Overlay": {
             "name": "Power Substations",
             "id": "power-substation-overlay",
@@ -49,7 +50,7 @@ INFRASTRUCTURE_LAYERS = {
             "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
         },
     },
-    "power_line": {
+    "Power Lines": {
         "Overlay": {
             "name": "Power Lines",
             "id": "power-line-overlay",
@@ -71,7 +72,7 @@ INFRASTRUCTURE_LAYERS = {
             "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
         },
     },
-    "power_cable": {
+    "Power Cables": {
         "Overlay": {
             "name": "Power Cables",
             "id": "power-cable-overlay",
@@ -93,7 +94,7 @@ INFRASTRUCTURE_LAYERS = {
             "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
         },
     },
-    "power_generator": {
+    "Power Generators": {
         "Overlay": {
             "name": "Power Generators",
             "id": "power-generator-overlay",
@@ -115,7 +116,7 @@ INFRASTRUCTURE_LAYERS = {
             "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
         },
     },
-    "power_transformer": {
+    "Power Transformers": {
         "Overlay": {
             "name": "Power Transformers",
             "id": "power-transformer-overlay",
