@@ -6,7 +6,8 @@ import dash_leaflet.express as dlx
 
 import pgosm_flex_api
 import app_utils
-import experimentation.frontend.dash_leaflet.geojson.config as config
+import app_layers
+import app_config
 from dotenv import load_dotenv
 import os
 
@@ -57,92 +58,15 @@ app.layout = html.Div(
                             [
                                 dl.TileLayer(
                                     url=app_utils.get_tilejson_url(),
-                                    opacity=config.CLIMATE_LAYER_OPACITY,
+                                    opacity=app_config.CLIMATE_LAYER_OPACITY,
                                 )
                             ],
-                            name = "Climate"
+                            name="Climate",
                         ),
-                        dl.Overlay(
-                            dl.LayerGroup(
-                                [
-                                    dl.GeoJSON(
-                                        data=api.get_osm_data(
-                                            categories=["infrastructure"],
-                                            osm_types=["power"],
-                                            osm_subtypes=["plant"],
-                                        ),
-                                        id="power-plant-geojson",
-                                        hoverStyle=arrow_function(
-                                            dict(weight=5, color="yellow", dashArray="")
-                                        ),
-                                        style={
-                                            "color": "#008000",
-                                            "weight": 2,
-                                            "fillColor": "#008000",
-                                            "fillOpacity": 0.5,
-                                        },
-                                    )
-                                ],
-                            ),
-                            id="power-plant-overlay",
-                            name="Power Plants",
-                            checked=True,
-                        ),
-                        dl.Overlay(
-                            dl.LayerGroup(
-                                [
-                                    dl.GeoJSON(
-                                        data=api.get_osm_data(
-                                            categories=["infrastructure"],
-                                            osm_types=["power"],
-                                            osm_subtypes=["line"],
-                                        ),
-                                        id="Power Line",
-                                        hoverStyle=arrow_function(
-                                            dict(weight=5, color="yellow", dashArray="")
-                                        ),
-                                        style={
-                                            "color": "#008000",
-                                            "weight": 2,
-                                            "fillColor": "#008000",
-                                            "fillOpacity": 0.5,
-                                        },
-                                    )
-                                ]
-                            ),
-                            name="Power Lines",
-                            checked=True,
-                        ),
-                        dl.Overlay(
-                            dl.LayerGroup(
-                                [
-                                    dl.GeoJSON(
-                                        data=api.get_osm_data(
-                                            categories=["infrastructure"],
-                                            osm_types=["power"],
-                                            osm_subtypes=["generator"],
-                                        ),
-                                        id="Power Generator",
-                                        hoverStyle=arrow_function(
-                                            dict(weight=5, color="yellow", dashArray="")
-                                        ),
-                                        style={
-                                            "color": "#008000",
-                                            "weight": 2,
-                                            "fillColor": "#008000",
-                                            "fillOpacity": 0.5,
-                                        },
-                                        cluster=True,
-                                    )
-                                ]
-                            ),
-                            name="Power Generator",
-                            checked=True,
-                        ),
-                    ]
+                    ] + app_layers.get_infrastucture_overlays()
                 ),
                 dl.Colorbar(
-                    colorscale=config.COLORMAP,
+                    colorscale=app_config.COLORMAP,
                     width=20,
                     height=150,
                     min=min_climate_value,
@@ -156,6 +80,7 @@ app.layout = html.Div(
             zoom=5,
             style={"height": "90vh"},
             id="map",
+            preferCanvas=True
         ),
         html.H1(id="output"),
     ]

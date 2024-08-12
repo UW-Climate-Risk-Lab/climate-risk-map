@@ -4,7 +4,7 @@ import os
 
 from dotenv import load_dotenv
 
-import experimentation.frontend.dash_leaflet.geojson.config as config
+import app_config
 
 load_dotenv()
 
@@ -63,7 +63,7 @@ def get_tilejson_url():
             "tileMatrixSetId": "WebMercatorQuad",
             "url": FILE_URL,
             "rescale": f"{min_climate_value},{max_climate_value}",
-            "colormap_name": config.COLORMAP,
+            "colormap_name": app_config.COLORMAP,
         },
     ).json()
     return r['tiles'][0]

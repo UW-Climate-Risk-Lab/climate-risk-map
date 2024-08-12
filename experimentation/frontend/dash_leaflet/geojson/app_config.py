@@ -2,7 +2,7 @@ from dash_extensions.javascript import arrow_function
 
 COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
-
+SUPER_CLUSTER_RADIUS = 50
 
 INFRASTRUCTURE_LAYERS = {
     "power_plant": {
@@ -24,6 +24,7 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": False,
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
         },
     },
     "power_substation": {
@@ -44,7 +45,8 @@ INFRASTRUCTURE_LAYERS = {
                 "fillColor": "#008000",
                 "fillOpacity": 0.5,
             },
-            "cluster": False,
+            "cluster": True,
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
         },
     },
     "power_line": {
@@ -66,6 +68,7 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": False,
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
         },
     },
     "power_cable": {
@@ -87,6 +90,7 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": False,
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
         },
     },
     "power_generator": {
@@ -107,7 +111,8 @@ INFRASTRUCTURE_LAYERS = {
                 "fillColor": "#008000",
                 "fillOpacity": 0.5,
             },
-            "cluster": False,
+            "cluster": True,
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
         },
     },
     "power_transformer": {
@@ -128,7 +133,8 @@ INFRASTRUCTURE_LAYERS = {
                 "fillColor": "#008000",
                 "fillOpacity": 0.5,
             },
-            "cluster": False,
+            "cluster": True,
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
         },
     },
 }
