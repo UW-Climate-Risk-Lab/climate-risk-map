@@ -220,6 +220,30 @@ class OpenStreetMapDataAPI:
         ]:
             return self._is_valid_geometry(geojson)
         return False
+    def _check_args_get_osm_data(self, list_args: List[str],
+                                 geojson_args: List[str]):
+        """Used to quality check the args in get_osm_data()
+
+        Args:
+            list_args (List[str]): Args that should be of type "list"
+            geojson_args (List[str]): Args that should be in GeoJSON format
+        """
+
+        for arg in list_args:
+            if not isinstance(arg, list):
+                raise TypeError(f"This input must be a list!: {arg}")
+        for arg in geojson_args:
+            if not isinstance(arg, dict):
+                raise TypeError(f"This input must be a dict!: {arg}")
+            if not self._is_valid_geojson(geojson=arg):
+                raise TypeError(f"This is not a valid GeoJSON: {arg}")
+            
+        return True
+            
+    def _build_query_get_osm_data(self):
+        # TODO: Refactor query building code from get_osm_data()
+        # Return query str
+        pass
 
     def get_osm_data(
         self,
@@ -241,23 +265,10 @@ class OpenStreetMapDataAPI:
             osm_subtypes (List[str]): OSM Subtypes to filter on
             bbox (Dict[str]): A Dict in the GeoJSON format. Used for filtering
         """
-        # TODO: Eventually remove repeat type checks
-        if not isinstance(categories, list):
-            raise TypeError("categories parameter must be a list!")
-        if not isinstance(osm_types, list):
-            raise TypeError("osm_types parameter must be a list!")
 
-        # Subtypes are optional
-        if osm_subtypes:
-            if not isinstance(osm_subtypes, list):
-                raise TypeError("osm_subtypes parameter must be a list!")
-
-        for category in categories:
-            if category not in self.available_categories:
-                raise ValueError(f"{category} is not an available category to query!")
-
-        if len(osm_types) < 1:
-            raise ValueError("Must provide at least 1 type in osm_types arg!")
+        list_args = [categories, osm_types, osm_subtypes]
+        geojson_args = [bbox]
+        self._check_args_get_osm_data(list_args=list_args, geojson_args=geojson_args)
 
         # This sets up every query to return a GeoJSON object
         # using the PostGIS function "ST_AsGeoJSON"
@@ -290,8 +301,6 @@ class OpenStreetMapDataAPI:
                     params.append(tuple(osm_subtypes))
 
             if bbox:
-                if not self._is_valid_geojson(geojson=bbox):
-                    raise TypeError("The bounding box used is not a valid GeoJSON!")
                 for feature in bbox["features"]:
                     geojson_str = json.dumps(feature["geometry"])
                     bbox_filter = 'AND ST_Intersects(ST_Transform(geom, 4326), ST_GeomFromGeoJSON(%s))'
