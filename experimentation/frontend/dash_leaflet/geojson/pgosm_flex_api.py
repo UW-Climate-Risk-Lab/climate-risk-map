@@ -48,6 +48,10 @@ class OpenStreetMapDataAPI:
         # Possible categories here: https://pgosm-flex.com/layersets.html
         self.available_categories = "infrastructure"
 
+        self.base_geojson_query = """
+
+        """
+
     def __del__(self):
         if self.conn:
             self.conn.close()
@@ -220,30 +224,24 @@ class OpenStreetMapDataAPI:
         ]:
             return self._is_valid_geometry(geojson)
         return False
-    def _check_args_get_osm_data(self, list_args: List[str],
-                                 geojson_args: List[str]):
+
+    def _check_args_get_osm_data(self, args: List[Dict]) -> None:
         """Used to quality check the args in get_osm_data()
 
+        Will raise error if check fails, else returns None
+
         Args:
-            list_args (List[str]): Args that should be of type "list"
-            geojson_args (List[str]): Args that should be in GeoJSON format
+            args: List of dicts that describe each arg
         """
 
-        for arg in list_args:
-            if not isinstance(arg, list):
-                raise TypeError(f"This input must be a list!: {arg}")
-        for arg in geojson_args:
-            if not isinstance(arg, dict):
-                raise TypeError(f"This input must be a dict!: {arg}")
-            if not self._is_valid_geojson(geojson=arg):
-                raise TypeError(f"This is not a valid GeoJSON: {arg}")
-            
-        return True
-            
-    def _build_query_get_osm_data(self):
-        # TODO: Refactor query building code from get_osm_data()
-        # Return query str
-        pass
+        for arg in args:
+            if arg["value"] is None:
+                if arg["required"]:
+                    raise TypeError(f"The input {arg["name"]} is required!")
+                continue
+            else:
+                if not isinstance(arg["value"], arg["type"]):
+                    raise TypeError(f"The input {arg["name"]} should be of type: {str(arg["type"])}")
 
     def get_osm_data(
         self,
@@ -266,12 +264,42 @@ class OpenStreetMapDataAPI:
             bbox (Dict[str]): A Dict in the GeoJSON format. Used for filtering
         """
 
-        list_args = [categories, osm_types, osm_subtypes]
-        geojson_args = [bbox]
-        self._check_args_get_osm_data(list_args=list_args, geojson_args=geojson_args)
+        args = [
+            {
+                "name": "categories",
+                "required": True,
+                "type": list,
+                "required": True,
+                "value": categories,
+            },
+            {
+                "name": "osm_types",
+                "required": True,
+                "type": list,
+                "required": True,
+                "value": osm_types,
+            },
+            {
+                "name": "osm_subtypes",
+                "required": False,
+                "type": list,
+                "required": False,
+                "value": osm_subtypes,
+            },
+            {
+                "name": "bbox",
+                "required": False,
+                "type": dict,
+                "required": False,
+                "value": bbox,
+            },
+        ]
 
-        # This sets up every query to return a GeoJSON object
-        # using the PostGIS function "ST_AsGeoJSON"
+        # Quality check of input args
+        self._check_args_get_osm_data(args=args)
+
+        # This builds a query to return a GeoJSON object
+        # Uses the PostGIS function "ST_AsGeoJSON" in every query
         base_query = """ 
         SELECT json_build_object(
             'type', 'FeatureCollection',
@@ -300,13 +328,14 @@ class OpenStreetMapDataAPI:
                     sub_query = sub_query + "AND osm_subtype IN %s"
                     params.append(tuple(osm_subtypes))
 
+            # If a bounding box GeoJSON is passed in, use as filter
             if bbox:
                 for feature in bbox["features"]:
                     geojson_str = json.dumps(feature["geometry"])
-                    bbox_filter = 'AND ST_Intersects(ST_Transform(geom, 4326), ST_GeomFromGeoJSON(%s))'
+                    bbox_filter = "AND ST_Intersects(ST_Transform(geom, 4326), ST_GeomFromGeoJSON(%s))"
                     params.append(geojson_str)
                     sub_query = sub_query + bbox_filter
-            
+
             union_queries.append(sub_query)
 
         full_query = base_query + "\nUNION ALL".join(union_queries) + ") AS t;"
@@ -316,45 +345,3 @@ class OpenStreetMapDataAPI:
         if not self._is_valid_geojson(geojson=geojson):
             raise ValueError("The returned data is not in proper geojson format")
         return geojson
-
-
-# TODO: Remove legacy queries below
-
-
-GET_INFRASTRUCTURE_LINE = """
-SELECT json_build_object(
-    'type', 'FeatureCollection',
-    'features', json_agg(ST_AsGeoJSON(t.*)::json)
-)
-FROM (
-    SELECT osm_id, osm_subtype AS tooltip, ST_Transform(geom, 4326) AS geometry FROM osm.infrastructure_line
-    WHERE osm_type='power'
-    )
-AS t;
-"""
-
-GET_INFRASTRUCTURE_POLYGON = """
-SELECT json_build_object(
-    'type', 'FeatureCollection',
-    'features', json_agg(ST_AsGeoJSON(t.*)::json)
-)
-FROM (
-    SELECT osm_id, osm_subtype AS tooltip, ST_Transform(geom, 4326) AS geometry FROM osm.infrastructure_polygon
-    WHERE osm_type='power'
-    )
-AS t;
-
-"""
-
-GET_INFRASTRUCTURE_POINT = """
-SELECT json_build_object(
-    'type', 'FeatureCollection',
-    'features', json_agg(ST_AsGeoJSON(t.*)::json)
-)
-FROM (
-    SELECT osm_id, osm_subtype AS tooltip, ST_Transform(geom, 4326) AS geometry FROM osm.infrastructure_point
-    WHERE osm_type='power'
-    )
-AS t;
-
-"""
