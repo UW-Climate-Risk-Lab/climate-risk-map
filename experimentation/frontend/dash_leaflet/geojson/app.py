@@ -6,7 +6,7 @@ import dash_leaflet.express as dlx
 
 import pgosm_flex_api
 import app_utils
-import constants
+import experimentation.frontend.dash_leaflet.geojson.config as config
 from dotenv import load_dotenv
 import os
 
@@ -38,23 +38,29 @@ app.layout = html.Div(
                 dl.FeatureGroup(
                     [
                         dl.EditControl(
-                            draw={"rectangle": True, "circle": False, "polygon": False, "circlemarker": False, "polyline": False, "marker": False}, edit=False, id="drawn-shapes"
+                            draw={
+                                "rectangle": True,
+                                "circle": False,
+                                "polygon": False,
+                                "circlemarker": False,
+                                "polyline": False,
+                                "marker": False,
+                            },
+                            edit=False,
+                            id="drawn-shapes",
                         )
                     ]
                 ),
                 dl.LayersControl(
                     [
-                        dl.Overlay(
-                            dl.LayerGroup(
-                                [
-                                    dl.TileLayer(
-                                        url=app_utils.get_tilejson_url(),
-                                        opacity=constants.CLIMATE_LAYER_OPACITY,
-                                    )
-                                ]
-                            ),
-                            name="Percentage of Entire Grid cell that is Covered by Burnt Vegetation",
-                            checked=True,
+                        dl.BaseLayer(
+                            [
+                                dl.TileLayer(
+                                    url=app_utils.get_tilejson_url(),
+                                    opacity=config.CLIMATE_LAYER_OPACITY,
+                                )
+                            ],
+                            name = "Climate"
                         ),
                         dl.Overlay(
                             dl.LayerGroup(
@@ -65,7 +71,7 @@ app.layout = html.Div(
                                             osm_types=["power"],
                                             osm_subtypes=["plant"],
                                         ),
-                                        id="Power Plants",
+                                        id="power-plant-geojson",
                                         hoverStyle=arrow_function(
                                             dict(weight=5, color="yellow", dashArray="")
                                         ),
@@ -76,8 +82,9 @@ app.layout = html.Div(
                                             "fillOpacity": 0.5,
                                         },
                                     )
-                                ]
+                                ],
                             ),
+                            id="power-plant-overlay",
                             name="Power Plants",
                             checked=True,
                         ),
@@ -125,7 +132,7 @@ app.layout = html.Div(
                                             "fillColor": "#008000",
                                             "fillOpacity": 0.5,
                                         },
-                                        cluster=True
+                                        cluster=True,
                                     )
                                 ]
                             ),
@@ -135,7 +142,7 @@ app.layout = html.Div(
                     ]
                 ),
                 dl.Colorbar(
-                    colorscale=constants.COLORMAP,
+                    colorscale=config.COLORMAP,
                     width=20,
                     height=150,
                     min=min_climate_value,
@@ -170,7 +177,7 @@ def download_csv(n_clicks, shapes):
 
     if n_clicks is None:
         return [None], 0
-    string = ''
+    string = ""
     if n_clicks > 0:
         # TODO: Only return layers selected
         data = api.get_osm_data(["infrastructure"], ["power"], None, shapes)

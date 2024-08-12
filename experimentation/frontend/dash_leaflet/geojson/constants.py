@@ -1,3 +1,0 @@
-
-COLORMAP = "reds"
-CLIMATE_LAYER_OPACITY = 0.6
