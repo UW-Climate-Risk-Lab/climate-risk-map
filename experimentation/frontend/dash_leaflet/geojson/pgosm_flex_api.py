@@ -61,7 +61,7 @@ class OpenStreetMapDataAPI:
         in the current instance connection"""
         if not self.conn:
             raise ConnectionError("Database connection is not established.")
-
+        
         with self.conn.cursor() as cur:
             cur.execute(query, params)
             result = cur.fetchall()
@@ -263,7 +263,7 @@ class OpenStreetMapDataAPI:
             osm_subtypes (List[str]): OSM Subtypes to filter on
             bbox (Dict[str]): A Dict in the GeoJSON format. Used for filtering
         """
-
+        # Used for checking quality of input args
         args = [
             {
                 "name": "categories",
@@ -325,16 +325,24 @@ class OpenStreetMapDataAPI:
             # Add extra where clause for subtypes if they are specified
             if osm_subtypes:
                 if "osm_subtype" in columns:
-                    sub_query = sub_query + "AND osm_subtype IN %s"
+                    sub_query = sub_query + " AND osm_subtype IN %s"
                     params.append(tuple(osm_subtypes))
 
             # If a bounding box GeoJSON is passed in, use as filter
             if bbox:
+                sub_query = sub_query + " AND ("
+                count = 0
                 for feature in bbox["features"]:
+                    if count > 0:
+                        conditional = " OR"
+                    else:
+                        conditional = ""
                     geojson_str = json.dumps(feature["geometry"])
-                    bbox_filter = "AND ST_Intersects(ST_Transform(geom, 4326), ST_GeomFromGeoJSON(%s))"
+                    bbox_filter = f"{conditional} ST_Intersects(ST_Transform(geom, 4326), ST_GeomFromGeoJSON(%s))"
                     params.append(geojson_str)
                     sub_query = sub_query + bbox_filter
+                    count += 1
+                sub_query = sub_query + ")"
 
             union_queries.append(sub_query)
 
