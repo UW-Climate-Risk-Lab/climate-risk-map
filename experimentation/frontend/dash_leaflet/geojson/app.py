@@ -38,7 +38,7 @@ app.layout = html.Div(
                 dl.FeatureGroup(
                     [
                         dl.EditControl(
-                            draw={"rectangle": True}, edit=False, id="drawn-shapes"
+                            draw={"rectangle": True, "circle": False, "polygon": False, "circlemarker": False, "polyline": False, "marker": False}, edit=False, id="drawn-shapes"
                         )
                     ]
                 ),
@@ -81,6 +81,57 @@ app.layout = html.Div(
                             name="Power Plants",
                             checked=True,
                         ),
+                        dl.Overlay(
+                            dl.LayerGroup(
+                                [
+                                    dl.GeoJSON(
+                                        data=api.get_osm_data(
+                                            categories=["infrastructure"],
+                                            osm_types=["power"],
+                                            osm_subtypes=["line"],
+                                        ),
+                                        id="Power Line",
+                                        hoverStyle=arrow_function(
+                                            dict(weight=5, color="yellow", dashArray="")
+                                        ),
+                                        style={
+                                            "color": "#008000",
+                                            "weight": 2,
+                                            "fillColor": "#008000",
+                                            "fillOpacity": 0.5,
+                                        },
+                                    )
+                                ]
+                            ),
+                            name="Power Lines",
+                            checked=True,
+                        ),
+                        dl.Overlay(
+                            dl.LayerGroup(
+                                [
+                                    dl.GeoJSON(
+                                        data=api.get_osm_data(
+                                            categories=["infrastructure"],
+                                            osm_types=["power"],
+                                            osm_subtypes=["generator"],
+                                        ),
+                                        id="Power Generator",
+                                        hoverStyle=arrow_function(
+                                            dict(weight=5, color="yellow", dashArray="")
+                                        ),
+                                        style={
+                                            "color": "#008000",
+                                            "weight": 2,
+                                            "fillColor": "#008000",
+                                            "fillOpacity": 0.5,
+                                        },
+                                        cluster=True
+                                    )
+                                ]
+                            ),
+                            name="Power Generator",
+                            checked=True,
+                        ),
                     ]
                 ),
                 dl.Colorbar(
@@ -119,11 +170,12 @@ def download_csv(n_clicks, shapes):
 
     if n_clicks is None:
         return [None], 0
-
+    string = ''
     if n_clicks > 0:
+        # TODO: Only return layers selected
+        data = api.get_osm_data(["infrastructure"], ["power"], None, shapes)
         for shape in shapes["features"]:
             if shape is None:
-                n_clicks = 0
                 return string
             string = string + str(shape["geometry"]["coordinates"]) + ", "
             string = string + "\n"
