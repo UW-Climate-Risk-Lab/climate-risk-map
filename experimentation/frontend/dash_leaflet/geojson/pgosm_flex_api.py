@@ -5,9 +5,9 @@ Interface with PostGIS Database for getting asset data
 import re
 import json
 import psycopg2 as pg
-from psycopg2 import sql, OperationalError
+from psycopg2 import OperationalError
 
-from typing import List, Dict, Tuple, Union, Optional
+from typing import List, Dict, Tuple
 
 
 class OpenStreetMapDataAPI:
@@ -317,7 +317,7 @@ class OpenStreetMapDataAPI:
 
             # TODO: Implement sql.SQL strings for building better sql queries 
             # https://www.psycopg.org/docs/sql.html
-            
+
             sub_query = f"""
             SELECT tags, ST_Transform(geom, 4326) AS geometry 
             FROM {self.schema}.{table}
