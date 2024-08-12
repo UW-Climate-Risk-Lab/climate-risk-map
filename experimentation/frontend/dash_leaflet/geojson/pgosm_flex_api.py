@@ -48,10 +48,6 @@ class OpenStreetMapDataAPI:
         # Possible categories here: https://pgosm-flex.com/layersets.html
         self.available_categories = "infrastructure"
 
-        self.base_geojson_query = """
-
-        """
-
     def __del__(self):
         if self.conn:
             self.conn.close()
@@ -201,7 +197,10 @@ class OpenStreetMapDataAPI:
         return True
 
     def _is_valid_geojson(self, geojson: Dict) -> bool:
-        """Checks if the dict is in valid GeoJSON format"""
+        """Checks if the dict is in valid GeoJSON format
+
+        TODO: Move the GeoJSON checking logic out of class
+        """
         if "type" not in geojson:
             return False
         geojson_type = geojson["type"]
@@ -293,6 +292,11 @@ class OpenStreetMapDataAPI:
 
         # Quality check of input args
         self._check_args_get_osm_data(args=args)
+
+        # Check that bbox is a geojson
+        if bbox:
+            if not self._is_valid_geojson(geojson=bbox):
+                raise TypeError("The bbox provide is not a valid GeoJSON!")
 
         # This builds a query to return a GeoJSON object
         # Uses the PostGIS function "ST_AsGeoJSON" in every query
