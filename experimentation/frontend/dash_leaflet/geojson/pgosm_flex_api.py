@@ -314,6 +314,10 @@ class OpenStreetMapDataAPI:
             # Creates a query for each table in the given category
             columns = self._get_table_columns(table_name=table)
             # TODO: Make SRID an input param, not hardcoded as 4326
+
+            # TODO: Implement sql.SQL strings for building better sql queries 
+            # https://www.psycopg.org/docs/sql.html
+            
             sub_query = f"""
             SELECT tags, ST_Transform(geom, 4326) AS geometry 
             FROM {self.schema}.{table}
