@@ -334,7 +334,7 @@ class OpenStreetMapDataAPI:
             # TODO: Implement sql.SQL strings for building better sql queries 
             # https://www.psycopg.org/docs/sql.html
 
-            select_statement = f"SELECT t.tags, ST_Transform(main.geom, {srid}) AS geometry"
+            select_statement = f"SELECT main.osm_id, t.tags, ST_Transform(main.geom, {srid}) AS geometry"
             from_statement = f"FROM {self.schema}.{table} main"
             join_statement = f"JOIN {self.schema}.tags t ON main.osm_id = t.osm_id"
             where_clause = "WHERE main.osm_type IN %s" # For now, always require OSM type be specified
