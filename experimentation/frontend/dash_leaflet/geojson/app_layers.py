@@ -5,6 +5,7 @@ from typing import List
 from dotenv import load_dotenv
 
 import app_config
+import app_utils
 import pgosm_flex_api
 
 
@@ -29,6 +30,7 @@ def get_infrastucture_overlays() -> List[dl.Overlay]:
             osm_types=value["GeoJSON"]["osm_types"],
             osm_subtypes=value["GeoJSON"]["osm_subtypes"],
         )
+        data = app_utils.create_feature_toolip(geojson=data)
         overlay = dl.Overlay(
             id=value["Overlay"]["id"],
             name=value["Overlay"]["name"],
