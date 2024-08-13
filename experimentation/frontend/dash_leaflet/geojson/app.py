@@ -1,14 +1,18 @@
-from dash import Dash, Input, Output
-from dash import html
+import json
 import dash_leaflet as dl
-from dash_extensions.javascript import arrow_function
 import dash_leaflet.express as dlx
+import pandas as pd
+
+from dash import Dash, Input, Output, html, dcc, no_update
+
 
 import pgosm_flex_api
 import app_utils
-import constants
+import app_layers
+import app_config
 from dotenv import load_dotenv
 import os
+
 
 load_dotenv()
 PG_DBNAME = os.environ["PG_DBNAME"]
@@ -38,104 +42,36 @@ app.layout = html.Div(
                 dl.FeatureGroup(
                     [
                         dl.EditControl(
-                            draw={"rectangle": True, "circle": False, "polygon": False, "circlemarker": False, "polyline": False, "marker": False}, edit=False, id="drawn-shapes"
+                            draw={
+                                "rectangle": True,
+                                "circle": False,
+                                "polygon": False,
+                                "circlemarker": False,
+                                "polyline": False,
+                                "marker": False,
+                            },
+                            edit=False,
+                            id="drawn-shapes",
                         )
                     ]
                 ),
                 dl.LayersControl(
-                    [
-                        dl.Overlay(
-                            dl.LayerGroup(
-                                [
-                                    dl.TileLayer(
-                                        url=app_utils.get_tilejson_url(),
-                                        opacity=constants.CLIMATE_LAYER_OPACITY,
-                                    )
-                                ]
-                            ),
-                            name="Percentage of Entire Grid cell that is Covered by Burnt Vegetation",
-                            checked=True,
-                        ),
-                        dl.Overlay(
-                            dl.LayerGroup(
-                                [
-                                    dl.GeoJSON(
-                                        data=api.get_osm_data(
-                                            categories=["infrastructure"],
-                                            osm_types=["power"],
-                                            osm_subtypes=["plant"],
-                                        ),
-                                        id="Power Plants",
-                                        hoverStyle=arrow_function(
-                                            dict(weight=5, color="yellow", dashArray="")
-                                        ),
-                                        style={
-                                            "color": "#008000",
-                                            "weight": 2,
-                                            "fillColor": "#008000",
-                                            "fillOpacity": 0.5,
-                                        },
-                                    )
-                                ]
-                            ),
-                            name="Power Plants",
-                            checked=True,
-                        ),
-                        dl.Overlay(
-                            dl.LayerGroup(
-                                [
-                                    dl.GeoJSON(
-                                        data=api.get_osm_data(
-                                            categories=["infrastructure"],
-                                            osm_types=["power"],
-                                            osm_subtypes=["line"],
-                                        ),
-                                        id="Power Line",
-                                        hoverStyle=arrow_function(
-                                            dict(weight=5, color="yellow", dashArray="")
-                                        ),
-                                        style={
-                                            "color": "#008000",
-                                            "weight": 2,
-                                            "fillColor": "#008000",
-                                            "fillOpacity": 0.5,
-                                        },
-                                    )
-                                ]
-                            ),
-                            name="Power Lines",
-                            checked=True,
-                        ),
-                        dl.Overlay(
-                            dl.LayerGroup(
-                                [
-                                    dl.GeoJSON(
-                                        data=api.get_osm_data(
-                                            categories=["infrastructure"],
-                                            osm_types=["power"],
-                                            osm_subtypes=["generator"],
-                                        ),
-                                        id="Power Generator",
-                                        hoverStyle=arrow_function(
-                                            dict(weight=5, color="yellow", dashArray="")
-                                        ),
-                                        style={
-                                            "color": "#008000",
-                                            "weight": 2,
-                                            "fillColor": "#008000",
-                                            "fillOpacity": 0.5,
-                                        },
-                                        cluster=True
-                                    )
-                                ]
-                            ),
-                            name="Power Generator",
-                            checked=True,
+                    id="layers-control",
+                    children=[
+                        dl.BaseLayer(
+                            [
+                                dl.TileLayer(
+                                    url=app_utils.get_tilejson_url(),
+                                    opacity=app_config.CLIMATE_LAYER_OPACITY,
+                                )
+                            ],
+                            name="Climate",
                         ),
                     ]
+                    + app_layers.get_infrastucture_overlays(),
                 ),
                 dl.Colorbar(
-                    colorscale=constants.COLORMAP,
+                    colorscale=app_config.COLORMAP,
                     width=20,
                     height=150,
                     min=min_climate_value,
@@ -144,43 +80,62 @@ app.layout = html.Div(
                     position="bottomleft",
                 ),
                 dl.EasyButton(icon="icon", title="CSV", id="csv-btn"),
+                dcc.Download(id="csv-download")
             ],
             center={"lat": 37.0902, "lng": -95.7129},
             zoom=5,
-            style={"height": "90vh"},
+            style={"height": "100vh"},
             id="map",
+            preferCanvas=True,
         ),
-        html.H1(id="output"),
     ]
 )
 
 
 @app.callback(
-    [Output("output", "children"), Output("csv-btn", "n_clicks")],
-    [Input("csv-btn", "n_clicks"), Input("drawn-shapes", "geojson")],
+    [Output("csv-download", "data"), Output("csv-btn", "n_clicks")],
+    [
+        Input("csv-btn", "n_clicks"),
+        Input("drawn-shapes", "geojson"),
+        Input("layers-control", "overlays"),
+    ],
 )
-def download_csv(n_clicks, shapes):
+def download_csv(n_clicks, shapes, selected_overlays):
 
     # Need to check shapes value for different cases
-    if shapes is None:
-        return [None], 0
-
-    if len(shapes["features"]) == 0:
-        return [None], 0
-
-    if n_clicks is None:
-        return [None], 0
-    string = ''
+    if (shapes is None) or (len(shapes["features"]) == 0) or (n_clicks is None):
+        return no_update, 0
+    
     if n_clicks > 0:
-        # TODO: Only return layers selected
-        data = api.get_osm_data(["infrastructure"], ["power"], None, shapes)
-        for shape in shapes["features"]:
-            if shape is None:
-                return string
-            string = string + str(shape["geometry"]["coordinates"]) + ", "
-            string = string + "\n"
-        return [string], 0
-    return [None], 0
+        categories = []
+        osm_types = []
+        osm_subtypes = []
+        # Use the selected overlays to get the proper types to return in the data
+        for overlay in selected_overlays:
+            categories = (
+                categories
+                + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["categories"]
+            )
+            osm_types = (
+                osm_types
+                + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["osm_types"]
+            )
+            osm_subtypes = (
+                osm_subtypes
+                + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["osm_subtypes"]
+            )
+        
+        # quick fix, use list(set()) to remove duplicates from input params
+        data = api.get_osm_data(
+            categories=list(set(categories)),
+            osm_types=list(set(osm_types)),
+            osm_subtypes=list(set(osm_subtypes)),
+            bbox=shapes,
+        )
+        gdf = app_utils.geojson_to_geopandas(geojson=data)
+        df = pd.DataFrame(gdf)
+        return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0
+    return no_update, 0
 
 
 if __name__ == "__main__":
