@@ -24,6 +24,11 @@ def get_infrastucture_overlays() -> List[dl.Overlay]:
     overlays = []
 
     for key, value in app_config.INFRASTRUCTURE_LAYERS.items():
+        data = api.get_osm_data(
+            categories=value["GeoJSON"]["categories"],
+            osm_types=value["GeoJSON"]["osm_types"],
+            osm_subtypes=value["GeoJSON"]["osm_subtypes"],
+        )
         overlay = dl.Overlay(
             id=value["Overlay"]["id"],
             name=value["Overlay"]["name"],
@@ -32,15 +37,11 @@ def get_infrastucture_overlays() -> List[dl.Overlay]:
                 dl.LayerGroup(
                     children=dl.GeoJSON(
                         id=value["GeoJSON"]["id"],
-                        data=api.get_osm_data(
-                            categories=value["GeoJSON"]["categories"],
-                            osm_types=value["GeoJSON"]["osm_types"],
-                            osm_subtypes=value["GeoJSON"]["osm_subtypes"],
-                        ),
+                        data=data,
                         hoverStyle=value["GeoJSON"]["hoverStyle"],
                         style=value["GeoJSON"]["style"],
                         cluster=value["GeoJSON"]["cluster"],
-                        superClusterOptions=value["GeoJSON"]["superClusterOptions"]
+                        superClusterOptions=value["GeoJSON"]["superClusterOptions"],
                     )
                 )
             ],

@@ -16,26 +16,6 @@ PG_USER=os.environ["PG_USER"]
 PG_HOST=os.environ["PG_HOST"]
 PG_PASSWORD=os.environ["PG_PASSWORD"]
 
-def query_postgis(query: str):
-    # Connect to your PostGIS database
-    conn = psycopg2.connect(
-        database=PG_DBNAME,
-        host=PG_HOST,
-        user=PG_USER,
-        password=PG_PASSWORD
-    )
-    cur = conn.cursor()
-
-    # Execute the query
-    cur.execute(query)
-    result = cur.fetchone()[0]
-
-    cur.close()
-    conn.close()
-
-    return result
-
-
 def query_titiler(endpoint: str, params):
     r = httpx.get(url=endpoint, params=params)
     r.raise_for_status()
@@ -88,3 +68,13 @@ def geojson_to_geopandas(geojson: dict) -> gpd.GeoDataFrame:
     # Create a GeoPandas DataFrame
     gdf = gpd.GeoDataFrame(properties, geometry=geometries)
     return gdf
+
+def create_feature_toolip(geojson: dict):
+    """Creates a property called "tooltip"
+
+    The tooltip property is automatically displayed
+    by dash leaflet as a popup when the mouse hover over the feature
+
+    Args:
+        geojson (dict): Dict in GeoJSON Format
+    """
