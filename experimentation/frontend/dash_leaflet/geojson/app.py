@@ -1,8 +1,10 @@
-from dash import Dash, Input, Output
-from dash import html
+import json
 import dash_leaflet as dl
-from dash_extensions.javascript import arrow_function
 import dash_leaflet.express as dlx
+import pandas as pd
+
+from dash import Dash, Input, Output, html, dcc, no_update
+
 
 import pgosm_flex_api
 import app_utils
@@ -10,6 +12,7 @@ import app_layers
 import app_config
 from dotenv import load_dotenv
 import os
+
 
 load_dotenv()
 PG_DBNAME = os.environ["PG_DBNAME"]
@@ -77,20 +80,20 @@ app.layout = html.Div(
                     position="bottomleft",
                 ),
                 dl.EasyButton(icon="icon", title="CSV", id="csv-btn"),
+                dcc.Download(id="csv-download")
             ],
             center={"lat": 37.0902, "lng": -95.7129},
             zoom=5,
-            style={"height": "90vh"},
+            style={"height": "100vh"},
             id="map",
             preferCanvas=True,
         ),
-        html.H1(id="output"),
     ]
 )
 
 
 @app.callback(
-    [Output("output", "children"), Output("csv-btn", "n_clicks")],
+    [Output("csv-download", "data"), Output("csv-btn", "n_clicks")],
     [
         Input("csv-btn", "n_clicks"),
         Input("drawn-shapes", "geojson"),
@@ -100,15 +103,9 @@ app.layout = html.Div(
 def download_csv(n_clicks, shapes, selected_overlays):
 
     # Need to check shapes value for different cases
-    if shapes is None:
-        return [None], 0
-
-    if len(shapes["features"]) == 0:
-        return [None], 0
-
-    if n_clicks is None:
-        return [None], 0
-    string = ""
+    if (shapes is None) or (len(shapes["features"]) == 0) or (n_clicks is None):
+        return no_update, 0
+    
     if n_clicks > 0:
         categories = []
         osm_types = []
@@ -133,8 +130,10 @@ def download_csv(n_clicks, shapes, selected_overlays):
             osm_subtypes=osm_subtypes,
             bbox=shapes,
         )
-        data
-    return [None], 0
+        gdf = app_utils.geojson_to_geopandas(geojson=data)
+        df = pd.DataFrame(gdf)
+        return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0
+    return no_update, 0
 
 
 if __name__ == "__main__":

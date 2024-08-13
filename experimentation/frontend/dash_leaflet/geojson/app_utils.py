@@ -1,8 +1,9 @@
 import psycopg2
 import httpx
 import os
-
+import geopandas as gpd
 from dotenv import load_dotenv
+from shapely.geometry import shape
 
 import app_config
 
@@ -68,13 +69,22 @@ def get_tilejson_url():
     ).json()
     return r['tiles'][0]
 
-def process_drawn_shape_geojson(geojson: dict):
-    string = ''
-    for shape in geojson["features"]:
-            if shape is None:
-                return string
-            string = string + str(shape["geometry"]["coordinates"]) + ', '
-            string = string + '\n'
-    return [string], 0
 
+def geojson_to_geopandas(geojson: dict) -> gpd.GeoDataFrame:
+    """
+    Convert a GeoJSON object to a GeoPandas DataFrame.
 
+    Args:
+        geojson (dict): GeoJSON object.
+
+    Returns:
+        gpd.GeoDataFrame: GeoPandas DataFrame.
+    """
+    # Convert GeoJSON features into a list of dictionaries with geometry and properties
+    features = geojson['features']
+    geometries = [shape(feature['geometry']) for feature in features]
+    properties = [feature['properties'] for feature in features]
+
+    # Create a GeoPandas DataFrame
+    gdf = gpd.GeoDataFrame(properties, geometry=geometries)
+    return gdf
