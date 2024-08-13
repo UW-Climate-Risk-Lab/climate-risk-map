@@ -124,10 +124,12 @@ def download_csv(n_clicks, shapes, selected_overlays):
                 osm_subtypes
                 + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["osm_subtypes"]
             )
+        
+        # quick fix, use list(set()) to remove duplicates from input params
         data = api.get_osm_data(
-            categories=categories,
-            osm_types=osm_types,
-            osm_subtypes=osm_subtypes,
+            categories=list(set(categories)),
+            osm_types=list(set(osm_types)),
+            osm_subtypes=list(set(osm_subtypes)),
             bbox=shapes,
         )
         gdf = app_utils.geojson_to_geopandas(geojson=data)
