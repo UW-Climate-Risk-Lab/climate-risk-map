@@ -248,6 +248,8 @@ class OpenStreetMapDataAPI:
         osm_types: List[str],
         osm_subtypes: List[str] = None,
         bbox: Dict[str, List] = None,
+        county: bool = False,
+        srid: str = "4326"
     ) -> Dict:
         """Gets OSM data from provided filters.
 
@@ -261,6 +263,8 @@ class OpenStreetMapDataAPI:
             osm_types (List[str]): OSM Type to Filter On
             osm_subtypes (List[str]): OSM Subtypes to filter on
             bbox (Dict[str]): A Dict in the GeoJSON format. Used for filtering
+            county (bool): If True, returns the county of the feature as a property
+            srid (str): Spatial reference ID, default is EPSG:4326
         """
         # Used for checking quality of input args
         args = [
@@ -288,6 +292,18 @@ class OpenStreetMapDataAPI:
                 "type": dict,
                 "value": bbox,
             },
+            {
+                "name": "county",
+                "required": True,
+                "type": bool,
+                "value": county
+            },
+            {
+                "name": "srid",
+                "required": True,
+                "type": str,
+                "value": srid
+            }
         ]
 
         # Quality check of input args
@@ -318,39 +334,44 @@ class OpenStreetMapDataAPI:
             # TODO: Implement sql.SQL strings for building better sql queries 
             # https://www.psycopg.org/docs/sql.html
 
-            sub_query = f"""
-            SELECT tags, ST_Transform(geom, 4326) AS geometry 
-            FROM {self.schema}.{table}
-            JOIN {self.schema}.tags ON {self.schema}.{table}.osm_id = {self.schema}.tags.osm_id
-            WHERE osm_type IN %s
-            """
+            select_statement = f"SELECT t.tags, ST_Transform(main.geom, {srid}) AS geometry"
+            from_statement = f"FROM {self.schema}.{table} main"
+            join_statement = f"JOIN {self.schema}.tags t ON main.osm_id = t.osm_id"
+            where_clause = "WHERE main.osm_type IN %s" # For now, always require OSM type be specified
             params.append(tuple(osm_types))
 
             # Add extra where clause for subtypes if they are specified
             if osm_subtypes:
                 if "osm_subtype" in columns:
-                    sub_query = sub_query + " AND osm_subtype IN %s"
+                    where_clause = where_clause + " " + "AND main.osm_subtype IN %s"
                     params.append(tuple(osm_subtypes))
+            
+            if county: 
+                join_statement = join_statement + " " + f"JOIN {self.schema}.place_polygon place ON ST_Intersects(main.geom, place.geom)"
+                select_statement = select_statement + ", place.name AS county_name" 
+                where_clause = where_clause + " " + "AND place.admin_level = 6" # Admin level 6 defines county in OSM schema
 
             # If a bounding box GeoJSON is passed in, use as filter
             if bbox:
-                sub_query = sub_query + " AND ("
+                where_clause = where_clause + " AND ("
                 count = 0
+                # Handles multiple bounding boxes drawn by user
                 for feature in bbox["features"]:
                     if count > 0:
                         conditional = " OR"
                     else:
                         conditional = ""
                     geojson_str = json.dumps(feature["geometry"])
-                    bbox_filter = f"{conditional} ST_Intersects(ST_Transform(geom, 4326), ST_GeomFromGeoJSON(%s))"
+                    bbox_filter = f"{conditional} ST_Intersects(ST_Transform(main.geom, 4326), ST_GeomFromGeoJSON(%s))"
                     params.append(geojson_str)
-                    sub_query = sub_query + bbox_filter
+                    where_clause = where_clause + bbox_filter
                     count += 1
-                sub_query = sub_query + ")"
+                where_clause = where_clause + ")"
 
-            union_queries.append(sub_query)
+            sub_table_query = select_statement + "\n" + from_statement + "\n" + join_statement + "\n" + where_clause
+            union_queries.append(sub_table_query)
 
-        full_query = base_query + "\nUNION ALL".join(union_queries) + ") AS t;"
+        full_query = base_query + " UNION ALL ".join(union_queries) + ") AS t;"
 
         result = self.__execute_postgis(query=full_query, params=tuple(params))
         geojson = result[0][0]

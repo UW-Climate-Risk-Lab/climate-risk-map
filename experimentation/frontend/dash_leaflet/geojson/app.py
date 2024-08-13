@@ -66,6 +66,7 @@ app.layout = html.Div(
                                 )
                             ],
                             name="Climate",
+                            checked=True
                         ),
                     ]
                     + app_layers.get_infrastucture_overlays(),
@@ -131,6 +132,7 @@ def download_csv(n_clicks, shapes, selected_overlays):
             osm_types=list(set(osm_types)),
             osm_subtypes=list(set(osm_subtypes)),
             bbox=shapes,
+            county=True
         )
         gdf = app_utils.geojson_to_geopandas(geojson=data)
         df = pd.DataFrame(gdf)
