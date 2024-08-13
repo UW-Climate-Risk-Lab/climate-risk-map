@@ -92,7 +92,7 @@ def create_feature_toolip(geojson: dict):
         tooltip_str = ""
 
         for key, value in feature["properties"]["tags"].items():
-            tooltip_str = tooltip_str + f"{key}: {value}\n"
+            tooltip_str = tooltip_str + f"<b>{key}<b>: {value}<br>"
         
         geojson["features"][i]["properties"]["tooltip"] = tooltip_str
     return geojson
