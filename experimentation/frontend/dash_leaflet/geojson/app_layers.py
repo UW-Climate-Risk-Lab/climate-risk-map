@@ -40,14 +40,14 @@ def get_state_overlay(state: str, z_index: int) -> dl.GeoJSON:
     return layer
 
 
-def get_infrastucture_overlays() -> List[dl.Overlay]:
+def get_power_grid_overlays() -> List[dl.Overlay]:
     api = pgosm_flex_api.OpenStreetMapDataAPI(
         dbname=PG_DBNAME, user=PG_USER, password=PG_PASSWORD, host=PG_HOST, port=PG_PORT
     )
 
     overlays = []
 
-    for key, value in app_config.INFRASTRUCTURE_LAYERS.items():
+    for key, value in app_config.POWER_GRID_LAYERS.items():
 
         layergroup_children = []
         for geom_type in value["GeoJSON"]["geom_types"]:

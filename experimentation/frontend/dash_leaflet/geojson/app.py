@@ -56,6 +56,7 @@ app.layout = html.Div(
                         )
                     ]
                 ),
+                # TODO: Move base layer generation into a function in app_layers
                 dl.LayersControl(
                     id="layers-control",
                     children=[
@@ -70,7 +71,7 @@ app.layout = html.Div(
                             checked=True,
                         ),
                     ]
-                    + app_layers.get_infrastucture_overlays(),
+                    + app_layers.get_power_grid_overlays(),
                 ),
                 app_layers.get_state_overlay(state="washington", z_index=300),
                 dl.Colorbar(
@@ -116,15 +117,15 @@ def download_csv(n_clicks, shapes, selected_overlays):
         for overlay in selected_overlays:
             categories = (
                 categories
-                + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["categories"]
+                + app_config.POWER_GRID_LAYERS[overlay]["GeoJSON"]["categories"]
             )
             osm_types = (
                 osm_types
-                + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["osm_types"]
+                + app_config.POWER_GRID_LAYERS[overlay]["GeoJSON"]["osm_types"]
             )
             osm_subtypes = (
                 osm_subtypes
-                + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["osm_subtypes"]
+                + app_config.POWER_GRID_LAYERS[overlay]["GeoJSON"]["osm_subtypes"]
             )
 
         # quick fix, use list(set()) to remove duplicates from input params
