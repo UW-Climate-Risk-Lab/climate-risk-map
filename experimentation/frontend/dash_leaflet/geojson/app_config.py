@@ -4,6 +4,9 @@ COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
 SUPER_CLUSTER_RADIUS = 50
 
+# Pull from open source repo for now
+WASHINGTON_STATE_BOUNDARY_GEOJSON_URL = "https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/washington.geojson"
+
 # Main keys should be the same as [Overlay][name]
 INFRASTRUCTURE_LAYERS = {
     "Power Plants": {
@@ -17,12 +20,12 @@ INFRASTRUCTURE_LAYERS = {
             "categories": ["infrastructure"],
             "osm_types": ["power"],
             "osm_subtypes": ["plant"],
-            "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
+            "hoverStyle": arrow_function(dict(weight=3, color="yellow", dashArray="")),
             "style": {
-                "color": "#008000",
+                "color": "#B0C4DE",
                 "weight": 2,
-                "fillColor": "#008000",
-                "fillOpacity": 0.5,
+                "fillColor": "#D3D3D3",
+                "fillOpacity": 0.8,
             },
             "cluster": False,
             "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
@@ -63,9 +66,9 @@ INFRASTRUCTURE_LAYERS = {
             "osm_subtypes": ["line"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
             "style": {
-                "color": "#008000",
-                "weight": 2,
-                "fillColor": "#008000",
+                "color": "#4682B4",
+                "weight": 1,
+                "fillColor": "#A9A9A9",
                 "fillOpacity": 0.5,
             },
             "cluster": False,
@@ -85,9 +88,9 @@ INFRASTRUCTURE_LAYERS = {
             "osm_subtypes": ["cable"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
             "style": {
-                "color": "#008000",
-                "weight": 2,
-                "fillColor": "#008000",
+                "color": "#483D8B",
+                "weight": 1,
+                "fillColor": "#C4C3D0",
                 "fillOpacity": 0.5,
             },
             "cluster": False,
@@ -139,3 +142,4 @@ INFRASTRUCTURE_LAYERS = {
         },
     },
 }
+
