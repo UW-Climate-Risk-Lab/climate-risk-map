@@ -60,8 +60,10 @@ def get_infrastucture_overlays() -> List[dl.Overlay]:
             data = app_utils.create_feature_toolip(geojson=data)
             if geom_type != "Point":
                 cluster = False
+                clusterToLayer = None
             else:
                 cluster = value["GeoJSON"]["cluster"]
+                clusterToLayer = app_config.CLUSTER_TO_LAYER
             layergroup_children.append(
                 dl.GeoJSON(
                     id=value["GeoJSON"]["id"] + f"-{geom_type}",
@@ -69,6 +71,7 @@ def get_infrastucture_overlays() -> List[dl.Overlay]:
                     hoverStyle=value["GeoJSON"]["hoverStyle"],
                     style=value["GeoJSON"]["style"],
                     cluster=cluster,
+                    clusterToLayer=clusterToLayer,
                     superClusterOptions=value["GeoJSON"]["superClusterOptions"],
                 )
             )

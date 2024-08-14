@@ -1,8 +1,26 @@
 from dash_extensions.javascript import arrow_function
+from dash_extensions.javascript import assign
 
 COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
-SUPER_CLUSTER_RADIUS = 9999
+SUPERCLUSTER = {"radius": 1000}
+
+CLUSTER_TO_LAYER = assign("""function(feature, latlng, index, context){
+    const scatterIcon = L.DivIcon.extend({
+        createIcon: function(oldIcon) {
+               let icon = L.DivIcon.prototype.createIcon.call(this, oldIcon);
+               icon.style.backgroundColor = this.options.color;
+               return icon;
+        }
+    })                      
+    // Render a circle with the number of leaves written in the center.
+    const icon = new scatterIcon({
+        html: '<div style="background-color:rgba(255, 255, 255, 0);"><span>' + '</span></div>',
+        className: "marker-cluster",
+        iconSize: L.point(40, 40),
+    });
+    return L.marker(latlng, {icon : icon})
+}""")
 
 # Pull from open source repo for now
 WASHINGTON_STATE_BOUNDARY_GEOJSON_URL = "https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/washington.geojson"
@@ -28,7 +46,7 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.8,
             },
             "cluster": False,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "superClusterOptions": SUPERCLUSTER,
             "geom_types": ["MultiPolygon"],
         },
     },
@@ -51,7 +69,7 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": True,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "superClusterOptions": SUPERCLUSTER,
             "geom_types": ["MultiPolygon", "Point"],
         },
     },
@@ -74,7 +92,7 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": False,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "superClusterOptions": SUPERCLUSTER,
             "geom_types": ["LineString"],
         },
     },
@@ -97,7 +115,7 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": False,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "superClusterOptions": SUPERCLUSTER,
             "geom_types": ["LineString"],
         },
     },
@@ -120,7 +138,7 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": True,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "superClusterOptions": SUPERCLUSTER,
             "geom_types": ["MultiPolygon", "Point"],
         },
     },
@@ -143,7 +161,7 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": True,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "superClusterOptions": SUPERCLUSTER,
             "geom_types": ["MultiPolygon", "Point"],
         },
     },
