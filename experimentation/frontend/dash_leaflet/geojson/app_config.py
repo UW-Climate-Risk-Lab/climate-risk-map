@@ -4,6 +4,9 @@ COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
 SUPER_CLUSTER_RADIUS = 50
 
+# Pull from open source repo for now
+WASHINGTON_STATE_BOUNDARY_GEOJSON_URL = "https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/washington.geojson"
+
 # Main keys should be the same as [Overlay][name]
 INFRASTRUCTURE_LAYERS = {
     "Power Plants": {
@@ -139,3 +142,4 @@ INFRASTRUCTURE_LAYERS = {
         },
     },
 }
+

@@ -3,7 +3,7 @@ import dash_leaflet as dl
 import dash_leaflet.express as dlx
 import pandas as pd
 
-from dash import Dash, Input, Output, html, dcc, no_update
+from dash import Dash, Input, Output, html, dcc, no_update, State
 
 
 import pgosm_flex_api
@@ -39,6 +39,7 @@ app.layout = html.Div(
                     url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
                     attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>',
                 ),
+                
                 dl.FeatureGroup(
                     [
                         dl.EditControl(
@@ -66,11 +67,12 @@ app.layout = html.Div(
                                 )
                             ],
                             name="Climate",
-                            checked=True
+                            checked=True,
                         ),
                     ]
                     + app_layers.get_infrastucture_overlays(),
                 ),
+                app_layers.get_state_overlay(state="washington", z_index=300),
                 dl.Colorbar(
                     colorscale=app_config.COLORMAP,
                     width=20,
@@ -81,7 +83,7 @@ app.layout = html.Div(
                     position="bottomleft",
                 ),
                 dl.EasyButton(icon="icon", title="CSV", id="csv-btn"),
-                dcc.Download(id="csv-download")
+                dcc.Download(id="csv-download"),
             ],
             center={"lat": 37.0902, "lng": -95.7129},
             zoom=5,
@@ -91,7 +93,6 @@ app.layout = html.Div(
         ),
     ]
 )
-
 
 @app.callback(
     [Output("csv-download", "data"), Output("csv-btn", "n_clicks")],
@@ -106,7 +107,7 @@ def download_csv(n_clicks, shapes, selected_overlays):
     # Need to check shapes value for different cases
     if (shapes is None) or (len(shapes["features"]) == 0) or (n_clicks is None):
         return no_update, 0
-    
+
     if n_clicks > 0:
         categories = []
         osm_types = []
@@ -125,14 +126,14 @@ def download_csv(n_clicks, shapes, selected_overlays):
                 osm_subtypes
                 + app_config.INFRASTRUCTURE_LAYERS[overlay]["GeoJSON"]["osm_subtypes"]
             )
-        
+
         # quick fix, use list(set()) to remove duplicates from input params
         data = api.get_osm_data(
             categories=list(set(categories)),
             osm_types=list(set(osm_types)),
             osm_subtypes=list(set(osm_subtypes)),
             bbox=shapes,
-            county=True
+            county=True,
         )
         gdf = app_utils.geojson_to_geopandas(geojson=data)
         df = pd.DataFrame(gdf)

@@ -8,6 +8,8 @@ import app_config
 import app_utils
 import pgosm_flex_api
 
+import time
+
 
 load_dotenv()
 PG_DBNAME = os.environ["PG_DBNAME"]
@@ -15,6 +17,27 @@ PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]
 PG_PASSWORD = os.environ["PG_PASSWORD"]
 PG_PORT = os.environ["PG_PORT"]
+
+
+def get_state_overlay(state: str, z_index: int) -> dl.GeoJSON:
+    url = f"https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/{state}.geojson"
+    layer = dl.Pane(
+        dl.GeoJSON(
+            url=url,
+            style={
+                "color": "#000080",
+                "weight": 2,
+                "fillOpacity": 0,
+            },
+            zoomToBoundsOnClick=True
+        ),
+        id=f"{state}-outline-pane",
+        name=f"{state}",
+        # pointer-events as none ensures there is not interactivtity, and it is just a state outline
+        #style={"pointer-events": "none"},
+        style=dict(zIndex=z_index)
+    )
+    return layer
 
 
 def get_infrastucture_overlays() -> List[dl.Overlay]:
@@ -49,4 +72,5 @@ def get_infrastucture_overlays() -> List[dl.Overlay]:
             ],
         )
         overlays.append(overlay)
+
     return overlays
