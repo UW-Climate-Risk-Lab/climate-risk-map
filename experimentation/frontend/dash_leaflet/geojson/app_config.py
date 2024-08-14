@@ -2,7 +2,7 @@ from dash_extensions.javascript import arrow_function
 
 COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
-SUPER_CLUSTER_RADIUS = 50
+SUPER_CLUSTER_RADIUS = 9999
 
 # Pull from open source repo for now
 WASHINGTON_STATE_BOUNDARY_GEOJSON_URL = "https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/washington.geojson"
@@ -45,9 +45,9 @@ INFRASTRUCTURE_LAYERS = {
             "osm_subtypes": ["substation"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
             "style": {
-                "color": "#008000",
+                "color": "#696969",
                 "weight": 2,
-                "fillColor": "#008000",
+                "fillColor": "#5F9EA0",
                 "fillOpacity": 0.5,
             },
             "cluster": True,
@@ -114,9 +114,9 @@ INFRASTRUCTURE_LAYERS = {
             "osm_subtypes": ["generator"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
             "style": {
-                "color": "#008000",
+                "color": "#000080",
                 "weight": 2,
-                "fillColor": "#008000",
+                "fillColor": "##000080",
                 "fillOpacity": 0.5,
             },
             "cluster": True,
@@ -137,9 +137,9 @@ INFRASTRUCTURE_LAYERS = {
             "osm_subtypes": ["transformer"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
             "style": {
-                "color": "#008000",
+                "color": "#708090",
                 "weight": 2,
-                "fillColor": "#008000",
+                "fillColor": "#B0C4DE",
                 "fillOpacity": 0.5,
             },
             "cluster": True,

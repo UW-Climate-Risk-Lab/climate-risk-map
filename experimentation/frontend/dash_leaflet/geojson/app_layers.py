@@ -8,7 +8,7 @@ import app_config
 import app_utils
 import pgosm_flex_api
 
-import time
+from dash_extensions.javascript import assign
 
 
 load_dotenv()
@@ -29,13 +29,13 @@ def get_state_overlay(state: str, z_index: int) -> dl.GeoJSON:
                 "weight": 2,
                 "fillOpacity": 0,
             },
-            zoomToBoundsOnClick=True
+            zoomToBoundsOnClick=True,
         ),
         id=f"{state}-outline-pane",
         name=f"{state}",
         # pointer-events as none ensures there is not interactivtity, and it is just a state outline
-        #style={"pointer-events": "none"},
-        style=dict(zIndex=z_index)
+        # style={"pointer-events": "none"},
+        style=dict(zIndex=z_index),
     )
     return layer
 
@@ -48,28 +48,37 @@ def get_infrastucture_overlays() -> List[dl.Overlay]:
     overlays = []
 
     for key, value in app_config.INFRASTRUCTURE_LAYERS.items():
-        data = api.get_osm_data(
-            categories=value["GeoJSON"]["categories"],
-            osm_types=value["GeoJSON"]["osm_types"],
-            osm_subtypes=value["GeoJSON"]["osm_subtypes"],
-        )
-        data = app_utils.create_feature_toolip(geojson=data)
+
+        layergroup_children = []
+        for geom_type in value["GeoJSON"]["geom_types"]:
+            data = api.get_osm_data(
+                categories=value["GeoJSON"]["categories"],
+                osm_types=value["GeoJSON"]["osm_types"],
+                osm_subtypes=value["GeoJSON"]["osm_subtypes"],
+                geom_type=geom_type,
+            )
+            data = app_utils.create_feature_toolip(geojson=data)
+            if geom_type != "Point":
+                cluster = False
+            else:
+                cluster = value["GeoJSON"]["cluster"]
+            layergroup_children.append(
+                dl.GeoJSON(
+                    id=value["GeoJSON"]["id"] + f"-{geom_type}",
+                    data=data,
+                    hoverStyle=value["GeoJSON"]["hoverStyle"],
+                    style=value["GeoJSON"]["style"],
+                    cluster=cluster,
+                    superClusterOptions=value["GeoJSON"]["superClusterOptions"],
+                )
+            )
+
+        
         overlay = dl.Overlay(
             id=value["Overlay"]["id"],
             name=value["Overlay"]["name"],
             checked=value["Overlay"]["checked"],
-            children=[
-                dl.LayerGroup(
-                    children=dl.GeoJSON(
-                        id=value["GeoJSON"]["id"],
-                        data=data,
-                        hoverStyle=value["GeoJSON"]["hoverStyle"],
-                        style=value["GeoJSON"]["style"],
-                        cluster=value["GeoJSON"]["cluster"],
-                        superClusterOptions=value["GeoJSON"]["superClusterOptions"],
-                    )
-                )
-            ],
+            children=[dl.LayerGroup(children=layergroup_children)],
         )
         overlays.append(overlay)
 
