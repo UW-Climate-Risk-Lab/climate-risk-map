@@ -28,7 +28,8 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.8,
             },
             "cluster": False,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "geom_types": ["MultiPolygon"],
         },
     },
     "Power Substations": {
@@ -50,7 +51,8 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": True,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "geom_types": ["MultiPolygon", "Point"],
         },
     },
     "Power Lines": {
@@ -72,7 +74,8 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": False,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "geom_types": ["LineString"],
         },
     },
     "Power Cables": {
@@ -94,7 +97,8 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": False,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "geom_types": ["LineString"],
         },
     },
     "Power Generators": {
@@ -117,6 +121,7 @@ INFRASTRUCTURE_LAYERS = {
             },
             "cluster": True,
             "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "geom_types": ["MultiPolygon", "Point"],
         },
     },
     "Power Transformers": {
@@ -138,8 +143,8 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": True,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
+            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "geom_types": ["MultiPolygon", "Point"],
         },
     },
 }
-
