@@ -2,6 +2,7 @@ import psycopg2
 import httpx
 import os
 import geopandas as gpd
+import pandas as pd
 from dotenv import load_dotenv
 from shapely.geometry import shape
 
@@ -18,7 +19,13 @@ PG_PASSWORD = os.environ["PG_PASSWORD"]
 
 
 def query_titiler(endpoint: str, params):
-    r = httpx.get(url=endpoint, params=params)
+    try:
+        r = httpx.get(url=endpoint, params=params)
+    except Exception as e:
+        #TODO: Add logging
+        print(str(e))
+        raise ConnectionError("Unable to connect to Titiler Endpoint!")
+
     r.raise_for_status()
     return r.json()
 
@@ -39,15 +46,14 @@ def get_tilejson_url():
 
     # Get min and max climate data variables to resecale
     min_climate_value, max_climate_value = get_climate_min_max()
-    r = httpx.get(
-        f"{TITILER_BASE_ENDPOINT}/cog/tilejson.json",
-        params={
+    endpoint = f"{TITILER_BASE_ENDPOINT}/cog/tilejson.json"
+    params={
             "tileMatrixSetId": "WebMercatorQuad",
             "url": FILE_URL,
             "rescale": f"{min_climate_value},{max_climate_value}",
             "colormap_name": app_config.COLORMAP,
-        },
-    ).json()
+        }
+    r = query_titiler(endpoint=endpoint, params=params)
     return r["tiles"][0]
 
 
@@ -96,3 +102,21 @@ def create_feature_toolip(geojson: dict):
         
         geojson["features"][i]["properties"]["tooltip"] = tooltip_str
     return geojson
+
+def process_output_csv(data: dict) -> pd.DataFrame:
+
+    if data["features"] is None:
+        return pd.DataFrame()
+
+    gdf = geojson_to_geopandas(geojson=data)
+
+    gdf['latitude'] = gdf.geometry.centroid.y
+    gdf['longitude'] = gdf.geometry.centroid.x
+
+    df = pd.DataFrame(gdf)
+
+
+    
+
+
+    return df

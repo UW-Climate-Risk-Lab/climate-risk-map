@@ -135,9 +135,10 @@ def download_csv(n_clicks, shapes, selected_overlays):
             osm_subtypes=list(set(osm_subtypes)),
             bbox=shapes,
             county=True,
+            city=True,
+            srid=4326
         )
-        gdf = app_utils.geojson_to_geopandas(geojson=data)
-        df = pd.DataFrame(gdf)
+        df = app_utils.process_output_csv(data=data)
         return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0
     return no_update, 0
 
