@@ -105,6 +105,9 @@ def create_feature_toolip(geojson: dict):
 
 def process_output_csv(data: dict) -> pd.DataFrame:
 
+    if data["features"] is None:
+        return pd.DataFrame()
+
     gdf = geojson_to_geopandas(geojson=data)
 
     gdf['latitude'] = gdf.geometry.centroid.y

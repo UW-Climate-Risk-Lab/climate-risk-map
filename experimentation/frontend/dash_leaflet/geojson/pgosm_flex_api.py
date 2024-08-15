@@ -205,6 +205,9 @@ class OpenStreetMapDataAPI:
             return False
         geojson_type = geojson["type"]
         if geojson_type == "FeatureCollection":
+            if geojson["features"] is None:
+                print("No data returned by GeoJSON query!")
+                return True
             if "features" not in geojson or not isinstance(geojson["features"], list):
                 return False
             return all(
@@ -249,7 +252,8 @@ class OpenStreetMapDataAPI:
         osm_subtypes: List[str] = None,
         bbox: Dict[str, List] = None,
         county: bool = False,
-        srid: str = "4326",
+        city: bool = False,
+        srid: int = 4326,
         geom_type: str = None
     ) -> Dict:
         """Gets OSM data from provided filters.
@@ -265,7 +269,8 @@ class OpenStreetMapDataAPI:
             osm_subtypes (List[str]): OSM Subtypes to filter on
             bbox (Dict[str]): A Dict in the GeoJSON format. Used for filtering
             county (bool): If True, returns the county of the feature as a property
-            srid (str): Spatial reference ID, default is EPSG:4326
+            city (bool): If True, returns the city of the feature as a property
+            srid (int): Spatial reference ID, default is EPSG:4326
             geom_type (str): If used, returns only features of the specified geom_type
         """
         # Used for checking quality of input args
@@ -301,9 +306,15 @@ class OpenStreetMapDataAPI:
                 "value": county
             },
             {
+                "name": "city",
+                "required": True,
+                "type": bool,
+                "value": city
+            },
+            {
                 "name": "srid",
                 "required": True,
-                "type": str,
+                "type": int,
                 "value": srid
             },
             {
@@ -311,7 +322,7 @@ class OpenStreetMapDataAPI:
                 "required": False,
                 "type": str,
                 "value": geom_type
-            }
+            },
         ]
 
         # Quality check of input args
@@ -342,7 +353,9 @@ class OpenStreetMapDataAPI:
             # TODO: Implement sql.SQL strings for building better sql queries 
             # https://www.psycopg.org/docs/sql.html
 
-            select_statement = f"SELECT main.osm_id, main.osm_type, main.osm_subtype, ST_Transform(main.geom, {srid}) AS geometry, t.tags"
+            select_statement = "SELECT main.osm_id, main.osm_type, main.osm_subtype, ST_Transform(main.geom, %s) AS geometry, t.tags"
+            params.append(srid)
+
             from_statement = f"FROM {self.schema}.{table} main"
             join_statement = f"JOIN {self.schema}.tags t ON main.osm_id = t.osm_id"
             where_clause = "WHERE main.osm_type IN %s" # For now, always require OSM type be specified
@@ -355,10 +368,12 @@ class OpenStreetMapDataAPI:
                     params.append(tuple(osm_subtypes))
             
             if county: 
-                join_statement = join_statement + " " + f"JOIN {self.schema}.place_polygon place ON ST_Intersects(main.geom, place.geom)"
-                select_statement = select_statement + ", place.name AS county_name" 
-                where_clause = where_clause + " " + "AND place.admin_level = 6" # Admin level 6 defines county in OSM schema
+                join_statement = join_statement + " " + f"LEFT JOIN {self.schema}.place_polygon county ON ST_Intersects(main.geom, county.geom) AND county.admin_level = 6"
+                select_statement = select_statement + ", county.name AS county_name"
 
+            if city:
+                join_statement = join_statement + " " + f"LEFT JOIN {self.schema}.place_polygon city ON ST_Intersects(main.geom, city.geom) AND city.admin_level = 8 AND city.osm_type = 'city'"
+                select_statement = select_statement + ", city.name AS city_name" 
 
             if geom_type:
                 where_clause = where_clause + " " + "AND ST_GeometryType(main.geom) = %s"
@@ -370,16 +385,21 @@ class OpenStreetMapDataAPI:
                 count = 0
                 # Handles multiple bounding boxes drawn by user
                 for feature in bbox["features"]:
-                    if count > 0:
-                        conditional = " OR"
+                    if count == 0:
+                        conditional = None
+                        bbox_filter = ""
                     else:
-                        conditional = ""
+                        conditional = " OR "
+                        bbox_filter = bbox_filter + conditional
+
                     geojson_str = json.dumps(feature["geometry"])
-                    bbox_filter = f"{conditional} ST_Intersects(ST_Transform(main.geom, 4326), ST_GeomFromGeoJSON(%s))"
+                    bbox_filter = bbox_filter + "ST_Intersects(ST_Transform(main.geom, %s), ST_GeomFromGeoJSON(%s))"
+                    params.append(srid)
                     params.append(geojson_str)
-                    where_clause = where_clause + bbox_filter
+
+                    
                     count += 1
-                where_clause = where_clause + ")"
+                where_clause = where_clause + bbox_filter + ")"
 
             sub_table_query = select_statement + "\n" + from_statement + "\n" + join_statement + "\n" + where_clause
             union_queries.append(sub_table_query)
