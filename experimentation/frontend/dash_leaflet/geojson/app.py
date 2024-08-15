@@ -21,7 +21,7 @@ PG_HOST = os.environ["PG_HOST"]
 PG_PASSWORD = os.environ["PG_PASSWORD"]
 PG_PORT = os.environ["PG_PORT"]
 
-icon_url = "/assets/csv_icon.css"
+icon_url = "/assets/icon.css"
 app = Dash()
 # Assumes you are running the docker-compose.yml in the directory
 
@@ -83,7 +83,7 @@ app.layout = html.Div(
                     unit="%",
                     position="bottomleft",
                 ),
-                dl.EasyButton(icon="icon", title="CSV", id="csv-btn"),
+                dl.EasyButton(icon="csv", title="CSV", id="csv-btn"),
                 dcc.Download(id="csv-download"),
             ],
             center={"lat": 37.0902, "lng": -95.7129},

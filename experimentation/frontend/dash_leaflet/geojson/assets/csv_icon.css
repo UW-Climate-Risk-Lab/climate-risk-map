@@ -1,9 +1,0 @@
-/* assets/styles.css */
-.icon {
-    background-image: url('csv.svg');
-    width: 24px;  /* Adjust the size as needed */
-    height: 24px;
-    display: block;
-    background-size: contain;
-    background-repeat: no-repeat;
-}
