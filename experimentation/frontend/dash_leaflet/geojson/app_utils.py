@@ -107,10 +107,12 @@ def process_output_csv(data: dict) -> pd.DataFrame:
 
     gdf = geojson_to_geopandas(geojson=data)
 
-    gdf['latitude'] = gdf.geometry.y
-    gdf['longitude'] = gdf.geometry.x
+    gdf['latitude'] = gdf.geometry.centroid.y
+    gdf['longitude'] = gdf.geometry.centroid.x
 
     df = pd.DataFrame(gdf)
+
+
     
 
 
