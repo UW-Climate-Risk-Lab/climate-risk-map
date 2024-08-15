@@ -5,7 +5,8 @@ COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
 SUPERCLUSTER = {"radius": 500}
 
-CLUSTER_TO_LAYER = assign("""function(feature, latlng, index, context){
+TRANSPARENT_MARKER_CLUSTER = assign(
+    """function(feature, latlng, index, context){
     const scatterIcon = L.DivIcon.extend({
         createIcon: function(oldIcon) {
                let icon = L.DivIcon.prototype.createIcon.call(this, oldIcon);
@@ -20,12 +21,13 @@ CLUSTER_TO_LAYER = assign("""function(feature, latlng, index, context){
         iconSize: L.point(40, 40),
     });
     return L.marker(latlng, {icon : icon})
-}""")
+}"""
+)
 
 # Pull from open source repo for now
 WASHINGTON_STATE_BOUNDARY_GEOJSON_URL = "https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/washington.geojson"
 
-# Main keys should be the same as [Overlay][name]
+# Main keys should be the same as [Overlay][name]!
 POWER_GRID_LAYERS = {
     "Power Plants": {
         "Overlay": {
@@ -47,8 +49,8 @@ POWER_GRID_LAYERS = {
             },
             "cluster": False,
             "superClusterOptions": SUPERCLUSTER,
-            "geom_types": ["MultiPolygon"],
         },
+        "geom_types": ["MultiPolygon"],
     },
     "Power Substations": {
         "Overlay": {
@@ -70,8 +72,8 @@ POWER_GRID_LAYERS = {
             },
             "cluster": True,
             "superClusterOptions": SUPERCLUSTER,
-            "geom_types": ["MultiPolygon", "Point"],
         },
+        "geom_types": ["MultiPolygon", "Point"],
     },
     "Power Lines": {
         "Overlay": {
@@ -93,8 +95,8 @@ POWER_GRID_LAYERS = {
             },
             "cluster": False,
             "superClusterOptions": SUPERCLUSTER,
-            "geom_types": ["LineString"],
         },
+        "geom_types": ["LineString"],
     },
     "Power Cables": {
         "Overlay": {
@@ -116,8 +118,8 @@ POWER_GRID_LAYERS = {
             },
             "cluster": False,
             "superClusterOptions": SUPERCLUSTER,
-            "geom_types": ["LineString"],
         },
+        "geom_types": ["LineString"],
     },
     "Power Generators": {
         "Overlay": {
@@ -139,8 +141,8 @@ POWER_GRID_LAYERS = {
             },
             "cluster": True,
             "superClusterOptions": SUPERCLUSTER,
-            "geom_types": ["MultiPolygon", "Point"],
         },
+        "geom_types": ["MultiPolygon", "Point"],
     },
     "Power Transformers": {
         "Overlay": {
@@ -162,7 +164,7 @@ POWER_GRID_LAYERS = {
             },
             "cluster": True,
             "superClusterOptions": SUPERCLUSTER,
-            "geom_types": ["MultiPolygon", "Point"],
         },
+        "geom_types": ["MultiPolygon", "Point"],
     },
 }
