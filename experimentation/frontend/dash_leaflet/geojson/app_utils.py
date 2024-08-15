@@ -2,6 +2,7 @@ import psycopg2
 import httpx
 import os
 import geopandas as gpd
+import pandas as pd
 from dotenv import load_dotenv
 from shapely.geometry import shape
 
@@ -96,3 +97,16 @@ def create_feature_toolip(geojson: dict):
         
         geojson["features"][i]["properties"]["tooltip"] = tooltip_str
     return geojson
+
+def process_output_csv(data: dict) -> pd.DataFrame:
+
+    gdf = geojson_to_geopandas(geojson=data)
+
+    gdf['latitude'] = gdf.geometry.y
+    gdf['longitude'] = gdf.geometry.x
+
+    df = pd.DataFrame(gdf)
+    
+
+    
+    return df
