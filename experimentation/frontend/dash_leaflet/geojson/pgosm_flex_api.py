@@ -241,7 +241,7 @@ class OpenStreetMapDataAPI:
             else:
                 if not isinstance(arg["value"], arg["type"]):
                     raise TypeError(f"The input {arg["name"]} should be of type: {str(arg["type"])}")
-
+        
     def get_osm_data(
         self,
         categories: List[str],
@@ -249,7 +249,8 @@ class OpenStreetMapDataAPI:
         osm_subtypes: List[str] = None,
         bbox: Dict[str, List] = None,
         county: bool = False,
-        srid: str = "4326"
+        srid: str = "4326",
+        geom_type: str = None
     ) -> Dict:
         """Gets OSM data from provided filters.
 
@@ -265,6 +266,7 @@ class OpenStreetMapDataAPI:
             bbox (Dict[str]): A Dict in the GeoJSON format. Used for filtering
             county (bool): If True, returns the county of the feature as a property
             srid (str): Spatial reference ID, default is EPSG:4326
+            geom_type (str): If used, returns only features of the specified geom_type
         """
         # Used for checking quality of input args
         args = [
@@ -303,6 +305,12 @@ class OpenStreetMapDataAPI:
                 "required": True,
                 "type": str,
                 "value": srid
+            },
+            {
+                "name": "geom_type",
+                "required": False,
+                "type": str,
+                "value": geom_type
             }
         ]
 
@@ -350,6 +358,11 @@ class OpenStreetMapDataAPI:
                 join_statement = join_statement + " " + f"JOIN {self.schema}.place_polygon place ON ST_Intersects(main.geom, place.geom)"
                 select_statement = select_statement + ", place.name AS county_name" 
                 where_clause = where_clause + " " + "AND place.admin_level = 6" # Admin level 6 defines county in OSM schema
+
+
+            if geom_type:
+                where_clause = where_clause + " " + "AND ST_GeometryType(main.geom) = %s"
+                params.append('ST_' + geom_type)
 
             # If a bounding box GeoJSON is passed in, use as filter
             if bbox:

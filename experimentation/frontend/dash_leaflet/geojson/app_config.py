@@ -1,14 +1,34 @@
 from dash_extensions.javascript import arrow_function
+from dash_extensions.javascript import assign
 
 COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
-SUPER_CLUSTER_RADIUS = 50
+SUPERCLUSTER = {"radius": 500}
+
+TRANSPARENT_MARKER_CLUSTER = assign(
+    """function(feature, latlng, index, context){
+    const scatterIcon = L.DivIcon.extend({
+        createIcon: function(oldIcon) {
+               let icon = L.DivIcon.prototype.createIcon.call(this, oldIcon);
+               icon.style.backgroundColor = this.options.color;
+               return icon;
+        }
+    })                      
+    // Render a circle with the number of leaves written in the center.
+    const icon = new scatterIcon({
+        html: '<div style="background-color:rgba(255, 255, 255, 0);"><span>' + '</span></div>',
+        className: "marker-cluster",
+        iconSize: L.point(40, 40),
+    });
+    return L.marker(latlng, {icon : icon})
+}"""
+)
 
 # Pull from open source repo for now
 WASHINGTON_STATE_BOUNDARY_GEOJSON_URL = "https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/washington.geojson"
 
-# Main keys should be the same as [Overlay][name]
-INFRASTRUCTURE_LAYERS = {
+# Main keys should be the same as [Overlay][name]!
+POWER_GRID_LAYERS = {
     "Power Plants": {
         "Overlay": {
             "name": "Power Plants",
@@ -28,8 +48,9 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.8,
             },
             "cluster": False,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
+            "superClusterOptions": SUPERCLUSTER,
         },
+        "geom_types": ["MultiPolygon"],
     },
     "Power Substations": {
         "Overlay": {
@@ -44,14 +65,15 @@ INFRASTRUCTURE_LAYERS = {
             "osm_subtypes": ["substation"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
             "style": {
-                "color": "#008000",
+                "color": "#696969",
                 "weight": 2,
-                "fillColor": "#008000",
+                "fillColor": "#5F9EA0",
                 "fillOpacity": 0.5,
             },
             "cluster": True,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
+            "superClusterOptions": SUPERCLUSTER,
         },
+        "geom_types": ["MultiPolygon", "Point"],
     },
     "Power Lines": {
         "Overlay": {
@@ -67,13 +89,14 @@ INFRASTRUCTURE_LAYERS = {
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
             "style": {
                 "color": "#4682B4",
-                "weight": 1,
+                "weight": 1.5,
                 "fillColor": "#A9A9A9",
                 "fillOpacity": 0.5,
             },
             "cluster": False,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
+            "superClusterOptions": SUPERCLUSTER,
         },
+        "geom_types": ["LineString"],
     },
     "Power Cables": {
         "Overlay": {
@@ -94,8 +117,9 @@ INFRASTRUCTURE_LAYERS = {
                 "fillOpacity": 0.5,
             },
             "cluster": False,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
+            "superClusterOptions": SUPERCLUSTER,
         },
+        "geom_types": ["LineString"],
     },
     "Power Generators": {
         "Overlay": {
@@ -110,14 +134,15 @@ INFRASTRUCTURE_LAYERS = {
             "osm_subtypes": ["generator"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
             "style": {
-                "color": "#008000",
+                "color": "#000080",
                 "weight": 2,
-                "fillColor": "#008000",
+                "fillColor": "##000080",
                 "fillOpacity": 0.5,
             },
             "cluster": True,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS},
+            "superClusterOptions": SUPERCLUSTER,
         },
+        "geom_types": ["MultiPolygon", "Point"],
     },
     "Power Transformers": {
         "Overlay": {
@@ -132,14 +157,14 @@ INFRASTRUCTURE_LAYERS = {
             "osm_subtypes": ["transformer"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
             "style": {
-                "color": "#008000",
+                "color": "#708090",
                 "weight": 2,
-                "fillColor": "#008000",
+                "fillColor": "#B0C4DE",
                 "fillOpacity": 0.5,
             },
             "cluster": True,
-            "superClusterOptions": {"radius": SUPER_CLUSTER_RADIUS}
+            "superClusterOptions": SUPERCLUSTER,
         },
+        "geom_types": ["MultiPolygon", "Point"],
     },
 }
-

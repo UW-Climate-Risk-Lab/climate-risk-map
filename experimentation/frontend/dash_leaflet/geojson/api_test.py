@@ -66,5 +66,5 @@ if __name__ == "__main__":
             },
         ],
     }
-    data = api.get_osm_data(["infrastructure"], ["power"], ["plant"], bbox)
+    data = api.get_osm_data(["infrastructure"], ["power"], ["line"])
     print(data)
