@@ -3,7 +3,7 @@ from dash_extensions.javascript import assign
 
 COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
-SUPERCLUSTER = {"radius": 1000}
+SUPERCLUSTER = {"radius": 500}
 
 CLUSTER_TO_LAYER = assign("""function(feature, latlng, index, context){
     const scatterIcon = L.DivIcon.extend({
@@ -87,7 +87,7 @@ POWER_GRID_LAYERS = {
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
             "style": {
                 "color": "#4682B4",
-                "weight": 1,
+                "weight": 1.5,
                 "fillColor": "#A9A9A9",
                 "fillOpacity": 0.5,
             },
