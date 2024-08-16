@@ -1,5 +1,6 @@
 import os
 import dash_leaflet as dl
+import psycopg2 as pg
 
 from typing import List
 from dotenv import load_dotenv
@@ -55,7 +56,7 @@ def get_state_overlay(state: str, z_index: int) -> dl.Pane:
     return layer
 
 
-def get_power_grid_overlays() -> List[dl.Overlay]:
+def get_power_grid_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
     """Generates overlays for power grid infrastructure
 
     An overlay in dash-leaflet is the layer that will be visible
@@ -75,9 +76,7 @@ def get_power_grid_overlays() -> List[dl.Overlay]:
         List[dl.Overlay]: Returns a final list of dl.Overlay components. These are added to the map's LayerControl
         component's children
     """
-    api = pgosm_flex_api.OpenStreetMapDataAPI(
-        dbname=PG_DBNAME, user=PG_USER, password=PG_PASSWORD, host=PG_HOST, port=PG_PORT
-    )
+    api = pgosm_flex_api.OpenStreetMapDataAPI(conn=conn)
 
     overlays = []
 
@@ -106,8 +105,10 @@ def get_power_grid_overlays() -> List[dl.Overlay]:
                 # Javascript code to create a transparent cluster icon
                 clusterToLayer = app_config.TRANSPARENT_MARKER_CLUSTER
 
-            if (subtype_config["icon"] is not None) & (geom_type=="Point"):
-                pointToLayer = app_utils.create_custom_icon(subtype_config["icon"]["url"])
+            if (subtype_config["icon"] is not None) & (geom_type == "Point"):
+                pointToLayer = app_utils.create_custom_icon(
+                    subtype_config["icon"]["url"]
+                )
             else:
                 pointToLayer = None
 
@@ -122,7 +123,7 @@ def get_power_grid_overlays() -> List[dl.Overlay]:
                     superClusterOptions=subtype_config["GeoJSON"][
                         "superClusterOptions"
                     ],
-                    pointToLayer=pointToLayer
+                    pointToLayer=pointToLayer,
                 )
             )
 
@@ -131,7 +132,7 @@ def get_power_grid_overlays() -> List[dl.Overlay]:
             # in the config, and provide a url to the icon. This will make a database call and return the centroid to use
             # as the icon location for the given features.
             # * NOTE, performance may be an issue if there are too manyt features returned
-            if (subtype_config["icon"] is not None):
+            if subtype_config["icon"] is not None:
                 if (subtype_config["icon"]["create_points"]) & (geom_type != "Point"):
                     data = api.get_osm_data(
                         categories=subtype_config["GeoJSON"]["categories"],
@@ -152,7 +153,9 @@ def get_power_grid_overlays() -> List[dl.Overlay]:
                             superClusterOptions=subtype_config["GeoJSON"][
                                 "superClusterOptions"
                             ],
-                            pointToLayer=app_utils.create_custom_icon(subtype_config["icon"]["url"])
+                            pointToLayer=app_utils.create_custom_icon(
+                                subtype_config["icon"]["url"]
+                            ),
                         )
                     )
 
