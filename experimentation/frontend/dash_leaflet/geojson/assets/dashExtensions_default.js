@@ -17,6 +17,33 @@ window.dashExtensions = Object.assign({}, window.dashExtensions, {
             return L.marker(latlng, {
                 icon: icon
             })
+        },
+        function1: function(feature, latlng) {
+            const custom_icon = L.icon({
+                iconUrl: `assets/power-plant.svg`,
+                iconSize: [15, 15]
+            });
+            return L.marker(latlng, {
+                icon: custom_icon
+            });
+        },
+        function2: function(feature, latlng) {
+            const custom_icon = L.icon({
+                iconUrl: `assets/electric.svg`,
+                iconSize: [15, 15]
+            });
+            return L.marker(latlng, {
+                icon: custom_icon
+            });
+        },
+        function3: function(feature, latlng) {
+            const custom_icon = L.icon({
+                iconUrl: `assets/black-dot.svg`,
+                iconSize: [15, 15]
+            });
+            return L.marker(latlng, {
+                icon: custom_icon
+            });
         }
     }
 });

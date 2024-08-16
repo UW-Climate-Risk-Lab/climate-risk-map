@@ -254,7 +254,8 @@ class OpenStreetMapDataAPI:
         county: bool = False,
         city: bool = False,
         srid: int = 4326,
-        geom_type: str = None
+        geom_type: str = None,
+        centroid: bool = False
     ) -> Dict:
         """Gets OSM data from provided filters.
 
@@ -272,6 +273,7 @@ class OpenStreetMapDataAPI:
             city (bool): If True, returns the city of the feature as a property
             srid (int): Spatial reference ID, default is EPSG:4326
             geom_type (str): If used, returns only features of the specified geom_type
+            centroid (bool): If True, returns the geometry as a Point, the centroid of the features geometry
         """
         # Used for checking quality of input args
         args = [
@@ -323,6 +325,12 @@ class OpenStreetMapDataAPI:
                 "type": str,
                 "value": geom_type
             },
+            {
+                "name": "centroid",
+                "required": True,
+                "type": bool,
+                "value": centroid
+            }
         ]
 
         # Quality check of input args
@@ -353,7 +361,15 @@ class OpenStreetMapDataAPI:
             # TODO: Implement sql.SQL strings for building better sql queries 
             # https://www.psycopg.org/docs/sql.html
 
-            select_statement = "SELECT main.osm_id, main.osm_type, main.osm_subtype, ST_Transform(main.geom, %s) AS geometry, t.tags"
+            select_statement = "SELECT main.osm_id, main.osm_type, main.osm_subtype, t.tags"
+            
+            if centroid:
+                geom_select = ", ST_Centroid(ST_Transform(main.geom, %s)) AS geometry"
+                
+            else:
+                geom_select = ", ST_Transform(main.geom, %s) AS geometry"
+            
+            select_statement = select_statement + geom_select
             params.append(srid)
 
             from_statement = f"FROM {self.schema}.{table} main"
