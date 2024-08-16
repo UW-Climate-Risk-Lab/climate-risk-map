@@ -11,8 +11,8 @@ from typing import List, Dict, Tuple
 
 
 class OpenStreetMapDataAPI:
-    def __init__(self, dbname: str, user: str, password: str, host: str, port: str):
-        """The following API implementation makes a direct connection
+    def __init__(self, conn: pg.extensions.connection):
+        """The following API implementation takes a direct connection
         to the database and performs SQL queries.
 
         It is based on data loaded using PG-OSM Flex (https://pgosm-flex.com).
@@ -22,23 +22,9 @@ class OpenStreetMapDataAPI:
         and calls.
 
         Args:
-            dbname (str): Database name. Database names should be in the format pgosm_flex_{region_name}
-            user (str): Database user to assume
-            password (str): Password for database user
-            host (str): Database host url
-            port (str): Database port
+            conn: connection to a PG OSM Flex loaded postgres database
         """
-        try:
-            self.conn = pg.connect(
-                dbname=str(dbname),
-                user=str(user),
-                password=str(password),
-                host=str(host),
-                port=str(port),
-            )
-        except OperationalError as e:
-            print(f"Error connecting to database: {e}")
-            self.conn = None
+        self.conn = conn
 
         # schema where the feature data tables are
         self.schema = "osm"
