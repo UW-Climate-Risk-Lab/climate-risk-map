@@ -26,6 +26,7 @@ COPY pgosm_flex_api.py .
 
 # Expose the port the app runs on
 EXPOSE 8050
+EXPOSE 80
 
 # Run the application
-CMD ["gunicorn", "-b", "0.0.0.0:8050", "app:server"]
+CMD ["gunicorn", "-b", "0.0.0.0:80", "app:server"]
