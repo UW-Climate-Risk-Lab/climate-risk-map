@@ -1,20 +1,16 @@
-import json
+import os
+
 import dash_leaflet as dl
+
 from psycopg2 import pool
-
 from dash import Dash, Input, Output, html, dcc, no_update, State
-
 from typing import List
 
 import pgosm_flex_api
 import app_utils
 import app_layers
 import app_config
-from dotenv import load_dotenv
-import os
 
-
-load_dotenv()
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]
@@ -49,7 +45,8 @@ def close_all_connections():
 
 
 icon_url = "/assets/icon.css"
-app = Dash()
+app = Dash(__name__)
+server = app.server
 # Assumes you are running the docker-compose.yml in the directory
 
 min_climate_value, max_climate_value = app_utils.get_climate_min_max()
@@ -191,4 +188,4 @@ def download_csv(n_clicks, shapes, selected_overlays):
 
 
 if __name__ == "__main__":
-    app.run_server(port=8050, host="127.0.0.1", debug=True)
+    app.run_server()

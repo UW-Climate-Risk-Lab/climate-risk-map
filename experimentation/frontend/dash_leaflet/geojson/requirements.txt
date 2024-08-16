@@ -1,0 +1,9 @@
+psycopg2-binary
+dash==2.17
+dash-leaflet==1.0.15
+dash-extensions==1.0.16
+geopandas==0.14.2
+httpx==0.27.0
+pandas==2.2.1
+python-dotenv
+gunicorn
