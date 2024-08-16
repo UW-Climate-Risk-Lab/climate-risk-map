@@ -106,6 +106,11 @@ def get_power_grid_overlays() -> List[dl.Overlay]:
                 # Javascript code to create a transparent cluster icon
                 clusterToLayer = app_config.TRANSPARENT_MARKER_CLUSTER
 
+            if (subtype_config["icon"] is not None) & (geom_type=="Point"):
+                pointToLayer = app_utils.create_custom_icon(subtype_config["icon"]["url"])
+            else:
+                pointToLayer = None
+
             layergroup_children.append(
                 dl.GeoJSON(
                     id=subtype_config["GeoJSON"]["id"] + f"-{geom_type}",
@@ -117,8 +122,39 @@ def get_power_grid_overlays() -> List[dl.Overlay]:
                     superClusterOptions=subtype_config["GeoJSON"][
                         "superClusterOptions"
                     ],
+                    pointToLayer=pointToLayer
                 )
             )
+
+            # This block creates icons for non-points. Above, we create icons for Point geometrys by default
+            # If we want to force a non-Point geometry to display an icon, we flag the "create_points" property
+            # in the config, and provide a url to the icon. This will make a database call and return the centroid to use
+            # as the icon location for the given features.
+            # * NOTE, performance may be an issue if there are too manyt features returned
+            if (subtype_config["icon"] is not None):
+                if (subtype_config["icon"]["create_points"]) & (geom_type != "Point"):
+                    data = api.get_osm_data(
+                        categories=subtype_config["GeoJSON"]["categories"],
+                        osm_types=subtype_config["GeoJSON"]["osm_types"],
+                        osm_subtypes=subtype_config["GeoJSON"]["osm_subtypes"],
+                        geom_type=geom_type,
+                        centroid=True,
+                    )
+                    data = app_utils.create_feature_toolip(geojson=data)
+                    layergroup_children.append(
+                        dl.GeoJSON(
+                            id=subtype_config["GeoJSON"]["id"] + f"-icon",
+                            data=data,
+                            hoverStyle=subtype_config["GeoJSON"]["hoverStyle"],
+                            style=subtype_config["GeoJSON"]["style"],
+                            cluster=cluster,
+                            clusterToLayer=clusterToLayer,
+                            superClusterOptions=subtype_config["GeoJSON"][
+                                "superClusterOptions"
+                            ],
+                            pointToLayer=app_utils.create_custom_icon(subtype_config["icon"]["url"])
+                        )
+                    )
 
         overlay = dl.Overlay(
             id=subtype_config["Overlay"]["id"],

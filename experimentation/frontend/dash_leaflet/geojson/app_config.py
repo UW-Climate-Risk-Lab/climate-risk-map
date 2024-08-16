@@ -4,6 +4,7 @@ from dash_extensions.javascript import assign
 COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
 SUPERCLUSTER = {"radius": 500}
+DEFAULT_POINT_ICON_URL = "assets/black-dot.svg"
 
 TRANSPARENT_MARKER_CLUSTER = assign(
     """function(feature, latlng, index, context){
@@ -21,6 +22,13 @@ TRANSPARENT_MARKER_CLUSTER = assign(
         iconSize: L.point(40, 40),
     });
     return L.marker(latlng, {icon : icon})
+}"""
+)
+
+CUSTOM_ICON_TEST = assign(
+    """function(feature, latlng){
+const custom_icon = L.icon({iconUrl: `assets/power-plant.svg`, iconSize: [15, 15]});
+return L.marker(latlng, {icon: custom_icon});
 }"""
 )
 
@@ -51,6 +59,7 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon"],
+        "icon": {"create_points": True, "url": "assets/electric.svg"},
     },
     "Power Substations": {
         "Overlay": {
@@ -74,6 +83,7 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon", "Point"],
+        "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL}
     },
     "Power Lines": {
         "Overlay": {
@@ -97,6 +107,7 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["LineString"],
+        "icon": None,
     },
     "Power Cables": {
         "Overlay": {
@@ -120,6 +131,7 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["LineString"],
+        "icon": None,
     },
     "Power Generators": {
         "Overlay": {
@@ -143,6 +155,7 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon", "Point"],
+        "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL}
     },
     "Power Transformers": {
         "Overlay": {
@@ -166,5 +179,6 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon", "Point"],
+        "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL},
     },
 }
