@@ -3,13 +3,10 @@ import httpx
 import os
 import geopandas as gpd
 import pandas as pd
-from dotenv import load_dotenv
 from shapely.geometry import shape
 from dash_extensions.javascript import assign
 
 import app_config
-
-load_dotenv()
 
 TITILER_BASE_ENDPOINT = os.environ["TITILER_BASE_ENDPOINT"]
 FILE_URL = os.environ["FILE_URL"]

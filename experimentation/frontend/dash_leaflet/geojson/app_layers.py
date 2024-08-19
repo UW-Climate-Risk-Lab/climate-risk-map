@@ -3,7 +3,6 @@ import dash_leaflet as dl
 import psycopg2 as pg
 
 from typing import List
-from dotenv import load_dotenv
 
 import app_config
 import app_utils
@@ -11,8 +10,6 @@ import pgosm_flex_api
 
 from dash_extensions.javascript import assign
 
-
-load_dotenv()
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]
