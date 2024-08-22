@@ -1,18 +1,21 @@
 import xarray as xr
-import boto3
-import s3fs
+import os
+from pathlib import Path
 
 
-def main(s3_uris: str, file_format: str, crs: str) -> xr.Dataset:
+def main(file_directory: str, xarray_engine: str, crs: str) -> xr.Dataset:
 
     data = []
-    for uri in s3_uris:
-        fs = s3fs.S3FileSystem()
-        with fs.open(uri) as file:
-            ds = xr.open_dataset(filename_or_obj=file, engine=file_format)
-            data.append(ds)
-            ds = xr.merge(data)
+    for file in os.listdir(file_directory):
+        path = Path(file_directory) / file
+        ds = xr.open_dataset(filename_or_obj=str(path), engine=xarray_engine)
+        data.append(ds)
+    ds = xr.merge(data)
     ds
+
+
+
+    return ds
 
 
 if __name__ == "__main__":
