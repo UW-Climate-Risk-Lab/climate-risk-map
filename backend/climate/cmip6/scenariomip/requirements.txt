@@ -1,0 +1,4 @@
+xarray
+netCDF4
+s3fs
+h5netcdf
