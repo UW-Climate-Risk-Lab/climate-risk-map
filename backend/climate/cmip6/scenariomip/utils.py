@@ -19,7 +19,7 @@ def download_files(
     client = boto3.client("s3")
     ssp = f"ssp{ssp}"
 
-    s3_prefix = Path(s3_base_prefix) / climate_variable / ssp 
+    s3_prefix = Path(s3_base_prefix) / climate_variable / ssp / "data"
     response = client.list_objects_v2(Bucket=s3_bucket, Prefix=str(s3_prefix))
     contents = response["Contents"][1:]
 
