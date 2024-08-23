@@ -5,7 +5,12 @@ from pathlib import Path
 
 
 def main(
-    file_directory: str, xarray_engine: str, crs: str, x_dim: str, y_dim: str
+    file_directory: str,
+    xarray_engine: str,
+    crs: str,
+    x_dim: str,
+    y_dim: str,
+    convert_360_lon: bool,
 ) -> xr.Dataset:
     """Processes climate data
 
@@ -15,6 +20,7 @@ def main(
         crs (str): Coordinate Refernce System of climate data
         x_dim (str): The X coordinate dimension name (typically lon or longitude)
         y_dim (str): The Y coordinate dimension name (typically lat or latitude)
+        convert_360_lon (bool): If True, converts 0-360 lon values to -180-180
 
     Returns:
         xr.Dataset: Xarray dataset of processed climate data
@@ -38,6 +44,10 @@ def main(
     # TODO: Better handle conflicting attribute values
     ds = xr.merge(data, combine_attrs="drop_conflicts")
 
+    if convert_360_lon:
+        ds = ds.assign_coords({x_dim: (((ds[x_dim] + 180) % 360) - 180)})
+        ds = ds.sortby(x_dim)
+
     # Sets the CRS based on the provided CRS
     ds.rio.write_crs(crs, inplace=True)
     ds.rio.set_spatial_dims(x_dim=x_dim, y_dim=y_dim, inplace=True)
@@ -45,7 +55,8 @@ def main(
 
     # TODO: Make aggreagtion more configurable
     # Current implementation (08/22/24) uses climatological mean
-    # for every decade. We create a derived dimension to represent this
+    # for every decade.
+    # We create time derived coordinates "decade_month" to represent this
     ds = ds.assign_coords(
         decade=(ds["time.year"] // 10) * 10, month=ds["time"].dt.month
     )

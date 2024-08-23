@@ -28,3 +28,18 @@ def download_files(
         download_file = (Path(dir) / prefix).name
         download_path = Path(dir) / download_file
         client.download_file(s3_bucket, prefix, str(download_path))
+
+
+def upload_file(s3_bucket: str, s3_prefix: str, file_path: str) -> None:
+    """Uploads a file to the specified S3 bucket and prefix
+
+    Args:
+        s3_bucket (str): AWS S3 Bucket
+        s3_prefix (str): AWS S3 Prefix to upload the file to
+        file_path (str): Path to the file to upload
+    """
+    client = boto3.client("s3")
+    file_name = Path(file_path).name
+    s3_key = str(Path(s3_prefix) / file_name)
+    
+    client.upload_file(file_path, s3_bucket, s3_key)
