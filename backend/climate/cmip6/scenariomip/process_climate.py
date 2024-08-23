@@ -28,6 +28,8 @@ def main(
         xr.Dataset: Xarray dataset of processed climate data
     """
 
+    # For the initial dataset (burntFractionAll CESM2), each SSP
+    # contained 2 files, with 2 chunks of years. These can be simply merged
     data = []
     for file in os.listdir(file_directory):
         path = Path(file_directory) / file
