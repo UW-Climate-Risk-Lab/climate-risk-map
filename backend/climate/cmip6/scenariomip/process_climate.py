@@ -11,6 +11,7 @@ def main(
     x_dim: str,
     y_dim: str,
     convert_360_lon: bool,
+    bbox: dict,
 ) -> xr.Dataset:
     """Processes climate data
 
@@ -21,6 +22,7 @@ def main(
         x_dim (str): The X coordinate dimension name (typically lon or longitude)
         y_dim (str): The Y coordinate dimension name (typically lat or latitude)
         convert_360_lon (bool): If True, converts 0-360 lon values to -180-180
+        bbox (dict): Dict with keys (min_lon, min_lat, max_lon, max_lat) to filter data
 
     Returns:
         xr.Dataset: Xarray dataset of processed climate data
@@ -47,6 +49,16 @@ def main(
     if convert_360_lon:
         ds = ds.assign_coords({x_dim: (((ds[x_dim] + 180) % 360) - 180)})
         ds = ds.sortby(x_dim)
+
+        # Bbox currently only in -180-180 lon
+        # TODO: Add better error and case handling
+        if bbox:
+            ds = ds.sel(
+                {
+                    y_dim: slice(bbox["min_lat"], bbox["max_lat"]),
+                    x_dim: slice(bbox["min_lon"], bbox["max_lon"]),
+                },
+            )
 
     # Sets the CRS based on the provided CRS
     ds.rio.write_crs(crs, inplace=True)
