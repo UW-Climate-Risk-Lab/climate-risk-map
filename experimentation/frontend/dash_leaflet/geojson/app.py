@@ -1,6 +1,7 @@
 import os
 
 import dash_leaflet as dl
+import dash_bootstrap_components as dbc
 
 from psycopg2 import pool
 from dash import Dash, Input, Output, html, dcc, no_update, State
@@ -10,6 +11,8 @@ import pgosm_flex_api
 import app_utils
 import app_layers
 import app_config
+
+
 
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
@@ -72,65 +75,89 @@ def get_feature_overlays() -> List[dl.Overlay]:
     return features
 
 
-app.layout = html.Div(
+app.layout = dbc.Container(
+    fluid=True,
+    class_name="dashboard-container",
     children=[
-        dl.Map(
-            [
-                dl.TileLayer(
-                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-                    attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>',
-                ),
-                dl.FeatureGroup(
-                    [
-                        dl.EditControl(
-                            draw={
-                                "rectangle": True,
-                                "circle": False,
-                                "polygon": False,
-                                "circlemarker": False,
-                                "polyline": False,
-                                "marker": False,
-                            },
-                            edit=False,
-                            id="drawn-shapes",
-                        )
-                    ]
-                ),
-                # TODO: Move base layer generation into a function in app_layers
-                dl.LayersControl(
-                    id="layers-control",
-                    children=[
-                        dl.BaseLayer(
-                            [
-                                dl.TileLayer(
-                                    url=app_utils.get_tilejson_url(),
-                                    opacity=app_config.CLIMATE_LAYER_OPACITY,
-                                )
-                            ],
-                            name="Climate",
-                            checked=True,
-                        ),
-                    ]
-                    + get_feature_overlays(),
-                ),
-                app_layers.get_state_overlay(state="washington", z_index=300),
-                dl.Colorbar(
-                    colorscale=app_config.COLORMAP,
-                    width=20,
-                    height=150,
-                    min=min_climate_value,
-                    max=max_climate_value,
-                    unit="%",
-                    position="bottomleft",
-                ),
-                dl.EasyButton(icon="csv", title="CSV", id="csv-btn"),
-                dcc.Download(id="csv-download"),
+        html.Div(
+            children=[
+                html.H2("Control Panel"),
+                html.Button("Button 1", id="button-1"),
+                html.Button("Button 2", id="button-2"),
+                # Add more controls as needed
             ],
-            center={"lat": 47.0902, "lng": -120.7129},
-            zoom=7,
-            style={"height": "100vh"},
-            id="map",
-            preferCanvas=True,
+            style={
+                "position": "absolute",
+                "top": "10px",
+                "left": "10px",
+                "width": "200px",
+                "padding": "10px",
+                "background-color": "white",
+                "z-index": "1000",
+                "box-shadow": "2px 2px 5px rgba(0,0,0,0.3)",
+            },
+        ),
+        html.Div(
+            children=[
+                dl.Map(
+                    [
+                        dl.TileLayer(
+                            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+                            attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>',
+                        ),
+                        dl.FeatureGroup(
+                            [
+                                dl.EditControl(
+                                    draw={
+                                        "rectangle": True,
+                                        "circle": False,
+                                        "polygon": False,
+                                        "circlemarker": False,
+                                        "polyline": False,
+                                        "marker": False,
+                                    },
+                                    edit=False,
+                                    id="drawn-shapes",
+                                )
+                            ]
+                        ),
+                        # TODO: Move base layer generation into a function in app_layers
+                        dl.LayersControl(
+                            id="layers-control",
+                            children=[
+                                dl.BaseLayer(
+                                    [
+                                        dl.TileLayer(
+                                            url=app_utils.get_tilejson_url(),
+                                            opacity=app_config.CLIMATE_LAYER_OPACITY,
+                                        )
+                                    ],
+                                    name="Climate",
+                                    checked=True,
+                                ),
+                            ]
+                            + get_feature_overlays(),
+                        ),
+                        app_layers.get_state_overlay(state="washington", z_index=300),
+                        dl.Colorbar(
+                            colorscale=app_config.COLORMAP,
+                            width=20,
+                            height=150,
+                            min=min_climate_value,
+                            max=max_climate_value,
+                            unit="%",
+                            position="bottomleft",
+                        ),
+                        dl.EasyButton(icon="csv", title="CSV", id="csv-btn"),
+                        dcc.Download(id="csv-download"),
+                    ],
+                    center={"lat": 47.0902, "lng": -120.7129},
+                    zoom=7,
+                    style={"height": "100vh"},
+                    id="map",
+                    preferCanvas=True,
+                ),
+            ]
         ),
     ]
 )
