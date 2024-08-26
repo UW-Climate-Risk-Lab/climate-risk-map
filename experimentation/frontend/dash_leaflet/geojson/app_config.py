@@ -32,6 +32,37 @@ return L.marker(latlng, {icon: custom_icon});
 }"""
 )
 
+MAP_COMPONENT = {
+    "id": "map",
+    "center": {"lat": 47.0902, "lng": -120.7129},
+    "zoom": 7,
+    "style": {"height": "100vh"},
+    "preferCanvas": True,
+    "base_map": {
+        "id": "base-map-layer",
+        "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        "attribution": '&copy; <a href="https://carto.com/attributions">CARTO</a>',
+    },
+    "drawn_shapes_component": {
+        "id": "drawn-shapes",
+        "draw": {
+            "rectangle": True,
+            "circle": False,
+            "polygon": False,
+            "circlemarker": False,
+            "polyline": False,
+            "marker": False,
+        },
+        "edit": False,
+    },
+    "color_bar": {
+        "id": "color-bar",
+        "width": 20,
+        "height": 150,
+        "position": "bottomleft",
+    },
+}
+
 # Pull from open source repo for now
 WASHINGTON_STATE_BOUNDARY_GEOJSON_URL = "https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/washington.geojson"
 
@@ -83,7 +114,7 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon", "Point"],
-        "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL}
+        "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL},
     },
     "Power Lines": {
         "Overlay": {
@@ -155,7 +186,7 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon", "Point"],
-        "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL}
+        "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL},
     },
     "Power Transformers": {
         "Overlay": {

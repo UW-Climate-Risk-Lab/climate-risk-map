@@ -9,7 +9,7 @@ from typing import List
 
 import pgosm_flex_api
 import app_utils
-import app_layers
+import app_map
 import app_config
 
 
@@ -46,33 +46,18 @@ def close_all_connections():
     CONNECTION_POOL.closeall()
 
 
+try:
+    map_conn = get_connection()
+    MAP = app_map.get_map(conn=map_conn)
+except Exception as e:
+    raise ValueError("Could not generate map component")
+finally:
+    release_connection(conn=map_conn)
+
+
 icon_url = "/assets/icon.css"
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
-# Assumes you are running the docker-compose.yml in the directory
-
-min_climate_value, max_climate_value = app_utils.get_climate_min_max()
-
-
-def get_feature_overlays() -> List[dl.Overlay]:
-    """Returns overlays of Geojson features
-
-    Returns:
-        List[dl.Overlay]: List of overlays for LayersControl
-    """
-    try:
-        conn = get_connection()
-        power_grid_features = app_layers.get_power_grid_overlays(conn=conn)
-    except Exception as e:
-        print(str(e))
-    finally:
-        release_connection(conn=conn)
-
-    # If more features needed in future, add on to this
-    features = power_grid_features
-
-    return features
-
 
 app.layout = dbc.Container(
     fluid=True,
@@ -94,78 +79,38 @@ app.layout = dbc.Container(
                 ),
                 dbc.Col(
                     children=[
-                        html.Div(
-                            [
-                                dl.Map(
-                                    [
-                                        dl.TileLayer(
-                                            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-                                            attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>',
-                                        ),
-                                        dl.FeatureGroup(
-                                            [
-                                                dl.EditControl(
-                                                    draw={
-                                                        "rectangle": True,
-                                                        "circle": False,
-                                                        "polygon": False,
-                                                        "circlemarker": False,
-                                                        "polyline": False,
-                                                        "marker": False,
-                                                    },
-                                                    edit=False,
-                                                    id="drawn-shapes",
-                                                )
-                                            ]
-                                        ),
-                                        # TODO: Move base layer generation into a function in app_layers
-                                        dl.LayersControl(
-                                            id="layers-control",
-                                            children=[
-                                                dl.BaseLayer(
-                                                    [
-                                                        dl.TileLayer(
-                                                            url=app_utils.get_tilejson_url(),
-                                                            opacity=app_config.CLIMATE_LAYER_OPACITY,
-                                                        )
-                                                    ],
-                                                    name="Climate",
-                                                    checked=True,
-                                                ),
-                                            ]
-                                            + get_feature_overlays(),
-                                        ),
-                                        app_layers.get_state_overlay(
-                                            state="washington", z_index=300
-                                        ),
-                                        dl.Colorbar(
-                                            colorscale=app_config.COLORMAP,
-                                            width=20,
-                                            height=150,
-                                            min=min_climate_value,
-                                            max=max_climate_value,
-                                            unit="%",
-                                            position="bottomleft",
-                                        ),
-                                        dl.EasyButton(
-                                            icon="csv", title="CSV", id="csv-btn"
-                                        ),
-                                        dcc.Download(id="csv-download"),
-                                    ],
-                                    center={"lat": 47.0902, "lng": -120.7129},
-                                    zoom=7,
-                                    style={"height": "100vh"},
-                                    id="map",
-                                    preferCanvas=True,
-                                )
-                            ]
-                        ),
+                        html.Div([MAP]),
                     ]
                 ),
-            ]
+            ],
         )
     ],
 )
+
+
+@app.callback(
+    [
+        Output("color-bar", "min"),
+        Output("color-bar", "max"),
+        Output("color-bar", "colorscale"),
+        Output("color-bar", "unit"),
+    ],
+    [Input("layers-control", "baseLayer")]
+
+)
+def update_colorbar(climate_layer: str):
+    """Takes name of baselayer, and using config, updates
+    color bar to reflect currentyl selected climate variable
+
+    Args:
+        climate_layer (str): Name of Climate Layer
+    """
+    min_climate_value, max_climate_value = app_utils.get_climate_min_max()
+
+    colorscale = "reds"
+    unit = "%"
+
+    return min_climate_value, max_climate_value, colorscale, unit
 
 
 @app.callback(

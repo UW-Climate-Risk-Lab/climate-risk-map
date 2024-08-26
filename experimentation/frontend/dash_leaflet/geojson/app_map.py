@@ -128,7 +128,7 @@ def get_power_grid_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
             # If we want to force a non-Point geometry to display an icon, we flag the "create_points" property
             # in the config, and provide a url to the icon. This will make a database call and return the centroid to use
             # as the icon location for the given features.
-            # * NOTE, performance may be an issue if there are too manyt features returned
+            # * NOTE, performance may be an issue if there are too many features are returned
             if subtype_config["icon"] is not None:
                 if (subtype_config["icon"]["create_points"]) & (geom_type != "Point"):
                     data = api.get_osm_data(
@@ -166,3 +166,88 @@ def get_power_grid_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
         overlays.append(overlay)
 
     return overlays
+
+
+def get_feature_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
+    """Returns overlays of Geojson features
+
+    Returns:
+        List[dl.Overlay]: List of overlays for LayersControl
+    """
+    try:
+        power_grid_features = get_power_grid_overlays(conn=conn)
+    except Exception as e:
+        print(str(e))
+
+    # If more features needed in future, add on to this
+    features = power_grid_features
+
+    return features
+
+
+def get_map(conn: pg.extensions.connection):
+
+    config = app_config.MAP_COMPONENT
+
+    base_map_layer = dl.TileLayer(
+        id=config["base_map"]["id"],
+        url=config["base_map"]["url"],
+        attribution=config["base_map"]["attribution"],
+    )
+
+    drawn_shapes_component = dl.FeatureGroup(
+        [
+            dl.EditControl(
+                draw=config["drawn_shapes_component"]["draw"],
+                edit=config["drawn_shapes_component"]["edit"],
+                id=config["drawn_shapes_component"]["id"],
+            )
+        ]
+    )
+
+    climate_layers = [
+        dl.BaseLayer(
+            [
+                dl.TileLayer(
+                    url=app_utils.get_tilejson_url(),
+                    opacity=app_config.CLIMATE_LAYER_OPACITY,
+                )
+            ],
+            name="Area % Burned",
+            checked=True,
+        )
+    ]
+
+    feature_layers = get_feature_overlays(conn=conn)
+
+    # TODO: Make state outline dynamic, hardcoded for washington as of 08/26/2024
+    state_outline_overlay = get_state_overlay(state="washington", z_index=300)
+
+    # Default colorscale transparent while callbacks load
+    color_bar = dl.Colorbar(
+        id=config["color_bar"]["id"],
+        width=config["color_bar"]["width"],
+        colorscale=["rgba(0, 0, 0, 0)", "rgba(0, 0, 0, 0)"],
+        height=config["color_bar"]["height"],
+        position=config["color_bar"]["position"],
+    )
+
+    map = dl.Map(
+        children=[
+            base_map_layer,
+            drawn_shapes_component,
+            dl.LayersControl(
+                id="layers-control",
+                children=climate_layers + feature_layers,
+            ),
+            state_outline_overlay,
+            color_bar,
+        ],
+        center=config["center"],
+        zoom=config["zoom"],
+        style=config["style"],
+        id=config["id"],
+        preferCanvas=config["preferCanvas"],
+    )
+
+    return map

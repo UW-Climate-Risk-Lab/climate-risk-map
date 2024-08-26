@@ -20,7 +20,7 @@ RUN pip install -r requirements.txt
 COPY assets/ ./assets
 COPY app.py .
 COPY app_utils.py .
-COPY app_layers.py .
+COPY app_map.py .
 COPY app_config.py .
 COPY pgosm_flex_api.py .
 
