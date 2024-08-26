@@ -54,5 +54,5 @@ docker build -t climate-data-pipeline .
 
 2. Run the Docker container:
 ```bash
-docker run --env-file .env -v /local/output/dir:/app/output climate-data-pipeline
+docker run --env-file .env -v ~/.aws/credentials:/root/.aws/credentials:ro climate-data-pipeline
 ```
