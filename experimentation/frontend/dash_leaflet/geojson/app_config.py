@@ -3,34 +3,24 @@ from dash_extensions.javascript import assign
 
 COLORMAP = "reds"
 CLIMATE_LAYER_OPACITY = 0.6
-SUPERCLUSTER = {"radius": 500}
-DEFAULT_POINT_ICON_URL = "assets/black-dot.svg"
 
-TRANSPARENT_MARKER_CLUSTER = assign(
-    """function(feature, latlng, index, context){
-    const scatterIcon = L.DivIcon.extend({
-        createIcon: function(oldIcon) {
-               let icon = L.DivIcon.prototype.createIcon.call(this, oldIcon);
-               icon.style.backgroundColor = this.options.color;
-               return icon;
-        }
-    })                      
-    // Render a circle with the number of leaves written in the center.
-    const icon = new scatterIcon({
-        html: '<div style="background-color:rgba(255, 255, 255, 0);"><span>' + '</span></div>',
-        className: "marker-cluster",
-        iconSize: L.point(40, 40),
-    });
-    return L.marker(latlng, {icon : icon})
-}"""
-)
+DEFAULT_CLIMATE_VARIABLE = "burntFractionAll" # Climate data to load on app start up
 
-CUSTOM_ICON_TEST = assign(
-    """function(feature, latlng){
-const custom_icon = L.icon({iconUrl: `assets/power-plant.svg`, iconSize: [15, 15]});
-return L.marker(latlng, {icon: custom_icon});
-}"""
-)
+CLIMATE_DATA = {
+    "burntFractionAll": {
+        "layer_name": r"% of Area that is Covered by Burnt Vegetation",
+        "geotiff": {
+            "format": "cogs",
+            "s3_bucket": "uw-climaterisklab",
+            "s3_base_prefix": "climate/CMIP6/ScenarioMIP/burntFractionAll",
+            "colormap": "reds",
+            "layer_opacity": 0.6
+        },
+        "available_ssp": ["ssp126", "ssp245", "ssp370", "ssp585"],
+        "timescale": "decade-month"
+    }
+
+}
 
 MAP_COMPONENT = {
     "id": "map",
@@ -65,6 +55,9 @@ MAP_COMPONENT = {
 
 # Pull from open source repo for now
 WASHINGTON_STATE_BOUNDARY_GEOJSON_URL = "https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/washington.geojson"
+
+SUPERCLUSTER = {"radius": 500}
+DEFAULT_POINT_ICON_URL = "assets/black-dot.svg"
 
 # Main keys should be the same as [Overlay][name]!
 POWER_GRID_LAYERS = {
@@ -213,3 +206,29 @@ POWER_GRID_LAYERS = {
         "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL},
     },
 }
+
+TRANSPARENT_MARKER_CLUSTER = assign(
+    """function(feature, latlng, index, context){
+    const scatterIcon = L.DivIcon.extend({
+        createIcon: function(oldIcon) {
+               let icon = L.DivIcon.prototype.createIcon.call(this, oldIcon);
+               icon.style.backgroundColor = this.options.color;
+               return icon;
+        }
+    })                      
+    // Render a circle with the number of leaves written in the center.
+    const icon = new scatterIcon({
+        html: '<div style="background-color:rgba(255, 255, 255, 0);"><span>' + '</span></div>',
+        className: "marker-cluster",
+        iconSize: L.point(40, 40),
+    });
+    return L.marker(latlng, {icon : icon})
+}"""
+)
+
+CUSTOM_ICON_TEST = assign(
+    """function(feature, latlng){
+const custom_icon = L.icon({iconUrl: `assets/power-plant.svg`, iconSize: [15, 15]});
+return L.marker(latlng, {icon: custom_icon});
+}"""
+)

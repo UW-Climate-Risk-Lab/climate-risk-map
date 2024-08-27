@@ -69,9 +69,15 @@ app.layout = dbc.Container(
             children=[
                 dbc.Col(
                     id="control-panel-col",
-                    children=[app_control_panel.TITLE_BAR],
-                    style={"backgroundColor": "#4B2E83"},
-                    width=3,
+                    children=[
+                        app_control_panel.TITLE_BAR,
+                        html.Br(),
+                        app_control_panel.CLIMATE_VARIABLE_SELECTOR,
+                        html.Br(),
+                        app_control_panel.CLIMATE_SCENARIO_SELECTOR
+                    ],
+                    style={"backgroundColor": "#39275B"},
+                    width=4,
                 ),
                 dbc.Col(
                     id="map-col",
@@ -84,6 +90,21 @@ app.layout = dbc.Container(
     ],
 )
 
+@app.callback([Output("ssp-dropdown", "options")], 
+              [Input("layers-control", "baseLayer")])
+def update_ssp_dropdown(climate_layer: str) -> List[str]:
+    """Updates the available SSPs based on the dropdown
+
+    Args:
+        climate_layer (str): Name of climate layer selected
+
+    Returns:
+        List[str]: List of ssp strings
+    """
+
+    for properties in app_config.CLIMATE_DATA.values():
+        if properties["layer_name"] == climate_layer:
+            return properties["available_ssp"]
 
 @app.callback(
     [
