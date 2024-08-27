@@ -10,6 +10,7 @@ from typing import List
 import pgosm_flex_api
 import app_utils
 import app_map
+import app_control_panel
 import app_config
 
 
@@ -61,26 +62,22 @@ server = app.server
 
 app.layout = dbc.Container(
     fluid=True,
-    class_name="dashboard-container",
+    class_name="g-0",
     children=[
         dbc.Row(
             class_name="g-0",
             children=[
                 dbc.Col(
-                    children=[
-                        html.Div(
-                            [
-                                html.H2("Control Panel"),
-                                html.Button("Button 1", id="button-1"),
-                            ]
-                        )
-                    ],
+                    id="control-panel-col",
+                    children=[app_control_panel.TITLE_BAR],
+                    style={"backgroundColor": "#4B2E83"},
                     width=3,
                 ),
                 dbc.Col(
+                    id="map-col",
                     children=[
                         html.Div([MAP]),
-                    ]
+                    ],
                 ),
             ],
         )
@@ -95,8 +92,7 @@ app.layout = dbc.Container(
         Output("color-bar", "colorscale"),
         Output("color-bar", "unit"),
     ],
-    [Input("layers-control", "baseLayer")]
-
+    [Input("layers-control", "baseLayer")],
 )
 def update_colorbar(climate_layer: str):
     """Takes name of baselayer, and using config, updates
