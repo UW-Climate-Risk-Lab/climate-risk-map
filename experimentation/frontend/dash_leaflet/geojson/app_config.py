@@ -1,14 +1,11 @@
 from dash_extensions.javascript import arrow_function
 from dash_extensions.javascript import assign
 
-COLORMAP = "reds"
-CLIMATE_LAYER_OPACITY = 0.6
-
 DEFAULT_CLIMATE_VARIABLE = "burntFractionAll" # Climate data to load on app start up
 
 CLIMATE_DATA = {
     "burntFractionAll": {
-        "layer_name": r"% of Area that is Covered by Burnt Vegetation",
+        "label": r"% of Area that is Covered by Burnt Vegetation",
         "geotiff": {
             "format": "cogs",
             "s3_bucket": "uw-climaterisklab",
@@ -17,7 +14,8 @@ CLIMATE_DATA = {
             "layer_opacity": 0.6
         },
         "available_ssp": ["ssp126", "ssp245", "ssp370", "ssp585"],
-        "timescale": "decade-month"
+        "timescale": "decade-month",
+        "unit": "%"
     }
 
 }

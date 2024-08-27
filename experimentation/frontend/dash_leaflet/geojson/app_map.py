@@ -205,18 +205,12 @@ def get_map(conn: pg.extensions.connection):
         ]
     )
 
-    climate_layers = [
-        dl.BaseLayer(
-            [
-                dl.TileLayer(
-                    url=app_utils.get_tilejson_url(),
-                    opacity=app_config.CLIMATE_LAYER_OPACITY,
+    climate_layer = dl.TileLayer(
+                    url=config["base_map"]["url"],
+                    opacity=1,
+                    id="climate-tile-layer"
                 )
-            ],
-            name="Area % Burned",
-            checked=True,
-        )
-    ]
+            
 
     feature_layers = get_feature_overlays(conn=conn)
 
@@ -230,15 +224,18 @@ def get_map(conn: pg.extensions.connection):
         colorscale=["rgba(0, 0, 0, 0)", "rgba(0, 0, 0, 0)"],
         height=config["color_bar"]["height"],
         position=config["color_bar"]["position"],
+        min=0,
+        max=1,
     )
 
     map = dl.Map(
         children=[
             base_map_layer,
             drawn_shapes_component,
+            climate_layer,
             dl.LayersControl(
                 id="layers-control",
-                children=climate_layers + feature_layers,
+                children=feature_layers,
             ),
             state_outline_overlay,
             color_bar,

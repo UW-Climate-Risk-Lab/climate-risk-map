@@ -50,25 +50,41 @@ TITLE_BAR = html.Div(
 
 # TODO: As we add more climate variables, need to make this update the map baseLayer selection
 CLIMATE_VARIABLE_SELECTOR = html.Div(
-    dbc.Row(
-        align="center",
-        class_name="g-0",
-        children=[
-            html.Div(
-                children=[
-                    html.H6("Select a Climate Variable...", style={"color": "white"}),
+    children=[
+        dbc.Row(
+            align="center",
+            class_name="g-0",
+            children=[
+                html.Div(
+                    children=[
+                        html.H6(
+                            "Select a Climate Risk Measure...", style={"color": "white"}
+                        ),
+                        dcc.Dropdown(
+                            [
+                                {"label": properties["label"], "value": climate_variable}
+                                for climate_variable, properties in app_config.CLIMATE_DATA.items()
+                            ],
+                            id="climate-variable-dropdown",
+                            placeholder="Select a Climate Variable...",
+                        ),
+                    ]
+                )
+            ],
+        ),
+        html.Br(),
+        dbc.Row(
+            align="center",
+            children=[
+                html.Div(
                     dcc.Dropdown(
-                        [
-                            values["layer_name"]
-                            for values in app_config.CLIMATE_DATA.values()
-                        ],
-                        app_config.CLIMATE_DATA[app_config.DEFAULT_CLIMATE_VARIABLE]["layer_name"],
-                        id="climate-variable-dropdown",
-                    ),
-                ]
-            )
-        ],
-    ),
+                        id="ssp-dropdown",
+                        placeholder="Select an emissions scenario...",
+                    )
+                )
+            ],
+        ),
+    ],
     style={"padding": "15px"},
 )
 
@@ -77,7 +93,7 @@ CLIMATE_SCENARIO_SELECTOR = html.Div(
         dbc.Row(
             align="center",
             children=[
-                html.H6("Select a Climate Scenario...", style={"color": "white"}),
+                html.H6("Select a Timescale...", style={"color": "white"}),
                 html.Div(
                     dcc.Slider(
                         1,
@@ -126,19 +142,6 @@ CLIMATE_SCENARIO_SELECTOR = html.Div(
                     value=2030,
                     id="decade-slider",
                     className="custom-slider",
-                )
-            ],
-        ),
-        html.Br(),
-        dbc.Row(
-            align="center",
-            children=[
-                dcc.Dropdown(
-                    options=app_config.CLIMATE_DATA[
-                        app_config.DEFAULT_CLIMATE_VARIABLE
-                    ]["available_ssp"],
-                    id="ssp-dropdown",
-                    placeholder="Select an emissions scenario...",
                 )
             ],
         ),
