@@ -10,8 +10,9 @@ TITLE_BAR = html.Div(
                     html.Img(
                         src="/assets/CRL-Logo.png",
                         style={
-                            "width": "50px",
-                            "height": "50px",
+                            "width": "10vw",  # Set the width relative to viewport width
+                            "max-width": "50px",  # Limit the max size of the image
+                            "height": "auto",  # Maintain aspect ratio
                             "object-fit": "contain",
                         },
                     ),
@@ -25,6 +26,7 @@ TITLE_BAR = html.Div(
                             "font-size": "2vw",  # Scale text size based on viewport width
                             "white-space": "nowrap",  # Prevent wrapping to a new line
                             "text-align": "center",
+                            "overflow": "hidden",
                             "padding": "5px",
                         },
                     ),
