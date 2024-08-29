@@ -1,15 +1,19 @@
 import os
 
 import dash_leaflet as dl
+import dash_bootstrap_components as dbc
 
 from psycopg2 import pool
-from dash import Dash, Input, Output, html, dcc, no_update, State
+from dash import Dash, Input, Output, html, dcc, no_update
+from dash.exceptions import PreventUpdate
 from typing import List
 
 import pgosm_flex_api
 import app_utils
-import app_layers
+import app_map
+import app_control_panel
 import app_config
+
 
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
@@ -44,96 +48,106 @@ def close_all_connections():
     CONNECTION_POOL.closeall()
 
 
+try:
+    map_conn = get_connection()
+    MAP = app_map.get_map(conn=map_conn)
+except Exception as e:
+    raise ValueError("Could not generate map component")
+finally:
+    release_connection(conn=map_conn)
+
+
 icon_url = "/assets/icon.css"
-app = Dash(__name__)
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
-# Assumes you are running the docker-compose.yml in the directory
 
-min_climate_value, max_climate_value = app_utils.get_climate_min_max()
+app.layout = dbc.Container(
+    fluid=True,
+    class_name="g-0",
+    children=[
+        dbc.Row(
+            class_name="g-0",
+            children=[
+                dbc.Col(
+                    id="control-panel-col",
+                    children=[
+                        app_control_panel.TITLE_BAR,
+                        html.Br(),
+                        app_control_panel.CLIMATE_VARIABLE_SELECTOR,
+                        html.Br(),
+                        app_control_panel.CLIMATE_SCENARIO_SELECTOR,
+                    ],
+                    style={"backgroundColor": "#39275B"},
+                    width=4,
+                ),
+                dbc.Col(
+                    id="map-col",
+                    children=[
+                        html.Div([MAP]),
+                    ],
+                ),
+            ],
+        )
+    ],
+)
+
+@app.callback(
+    [Output("climate-tile-layer", "url"),
+     Output("climate-tile-layer", "opacity"),
+     Output("color-bar", "min"),
+     Output("color-bar", "max"),
+     Output("color-bar", "colorscale"),
+     Output("color-bar", "unit")],
+    [
+        Input("climate-variable-dropdown", "value"),
+        Input("ssp-dropdown", "value"),
+        Input("decade-slider", "value"),
+        Input("month-slider", "value"),
+        
+    ],
+)
+def update_climate_file(climate_variable, ssp, decade, month):
+    # TODO: Make state selection dynamic
+    state = 'washington'
+    if (ssp is None) or (climate_variable is None) or (decade is None) or (month is None):
+        raise PreventUpdate
+    
+    properties = app_config.CLIMATE_DATA[climate_variable]
+    
+    file = f"{decade}-{month:02d}-{state}.tif"
+    file_url = f"s3://{properties["geotiff"]["s3_bucket"]}/{properties['geotiff']["s3_base_prefix"]}/{str(ssp)}/cogs/{file}"
+    min_climate_value, max_climate_value = app_utils.get_climate_min_max(file_url=file_url)
+    colormap = properties["geotiff"]["colormap"]
+    layer_opacity = properties["geotiff"]["layer_opacity"]
+    unit = properties["unit"]
+
+    url = app_utils.get_tilejson_url(file_url=file_url,
+                                        climate_variable=climate_variable,
+                                        min_climate_value=min_climate_value,
+                                        max_climate_value=max_climate_value,
+                                        colormap=colormap)
+            
+    return_values = (url, layer_opacity, min_climate_value, max_climate_value, colormap, unit)
+    return return_values
+    
 
 
-def get_feature_overlays() -> List[dl.Overlay]:
-    """Returns overlays of Geojson features
+@app.callback(
+    [Output("ssp-dropdown", "options")], [Input("climate-variable-dropdown", "value")]
+)
+def update_ssp_dropdown(climate_variable: str) -> List[str]:
+    """Updates the available SSPs based on the dropdown
+
+    Args:
+        climate_variable (str): Name of climate variable selected
 
     Returns:
-        List[dl.Overlay]: List of overlays for LayersControl
+        List[str]: List of ssp strings
     """
-    try:
-        conn = get_connection()
-        power_grid_features = app_layers.get_power_grid_overlays(conn=conn)
-    except Exception as e:
-        print(str(e))
-    finally:
-        release_connection(conn=conn)
-
-    # If more features needed in future, add on to this
-    features = power_grid_features
-
-    return features
-
-
-app.layout = html.Div(
-    children=[
-        dl.Map(
-            [
-                dl.TileLayer(
-                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-                    attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>',
-                ),
-                dl.FeatureGroup(
-                    [
-                        dl.EditControl(
-                            draw={
-                                "rectangle": True,
-                                "circle": False,
-                                "polygon": False,
-                                "circlemarker": False,
-                                "polyline": False,
-                                "marker": False,
-                            },
-                            edit=False,
-                            id="drawn-shapes",
-                        )
-                    ]
-                ),
-                # TODO: Move base layer generation into a function in app_layers
-                dl.LayersControl(
-                    id="layers-control",
-                    children=[
-                        dl.BaseLayer(
-                            [
-                                dl.TileLayer(
-                                    url=app_utils.get_tilejson_url(),
-                                    opacity=app_config.CLIMATE_LAYER_OPACITY,
-                                )
-                            ],
-                            name="Climate",
-                            checked=True,
-                        ),
-                    ]
-                    + get_feature_overlays(),
-                ),
-                app_layers.get_state_overlay(state="washington", z_index=300),
-                dl.Colorbar(
-                    colorscale=app_config.COLORMAP,
-                    width=20,
-                    height=150,
-                    min=min_climate_value,
-                    max=max_climate_value,
-                    unit="%",
-                    position="bottomleft",
-                ),
-                dl.EasyButton(icon="csv", title="CSV", id="csv-btn"),
-                dcc.Download(id="csv-download"),
-            ],
-            center={"lat": 47.0902, "lng": -120.7129},
-            zoom=7,
-            style={"height": "100vh"},
-            id="map",
-            preferCanvas=True,
-        ),
-    ]
-)
+    if climate_variable:
+        return [app_config.CLIMATE_DATA[climate_variable]["available_ssp"]]
+    else:
+        return no_update
 
 
 @app.callback(
@@ -188,4 +202,4 @@ def download_csv(n_clicks, shapes, selected_overlays):
 
 
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8050)
+    app.run_server(host="0.0.0.0", port=8050, debug=bool(os.environ["DEBUG"]))

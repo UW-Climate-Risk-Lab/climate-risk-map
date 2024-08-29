@@ -9,7 +9,6 @@ from dash_extensions.javascript import assign
 import app_config
 
 TITILER_BASE_ENDPOINT = os.environ["TITILER_BASE_ENDPOINT"]
-FILE_URL = os.environ["FILE_URL"]
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]
@@ -28,9 +27,9 @@ def query_titiler(endpoint: str, params):
     return r.json()
 
 
-def get_climate_min_max():
+def get_climate_min_max(file_url: str):
     endpoint = f"{TITILER_BASE_ENDPOINT}/cog/statistics"
-    params = {"url": FILE_URL, "bidx": [1]}
+    params = {"url": file_url, "bidx": [1]}
     r = query_titiler(endpoint, params)
 
     # b1 refers to "band 1". Currently the test data is a single band
@@ -40,16 +39,14 @@ def get_climate_min_max():
     return min_climate_value, max_climate_value
 
 
-def get_tilejson_url():
+def get_tilejson_url(file_url: str, climate_variable: str, min_climate_value: str, max_climate_value: str, colormap: str):
 
-    # Get min and max climate data variables to resecale
-    min_climate_value, max_climate_value = get_climate_min_max()
     endpoint = f"{TITILER_BASE_ENDPOINT}/cog/tilejson.json"
     params = {
         "tileMatrixSetId": "WebMercatorQuad",
-        "url": FILE_URL,
+        "url": file_url,
         "rescale": f"{min_climate_value},{max_climate_value}",
-        "colormap_name": app_config.COLORMAP,
+        "colormap_name": colormap,
     }
     r = query_titiler(endpoint=endpoint, params=params)
     return r["tiles"][0]
