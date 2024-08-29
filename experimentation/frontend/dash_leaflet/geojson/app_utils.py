@@ -9,7 +9,6 @@ from dash_extensions.javascript import assign
 import app_config
 
 TITILER_BASE_ENDPOINT = os.environ["TITILER_BASE_ENDPOINT"]
-FILE_URL = os.environ["FILE_URL"]
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]

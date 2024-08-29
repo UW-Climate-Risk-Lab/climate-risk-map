@@ -4,7 +4,7 @@ import dash_leaflet as dl
 import dash_bootstrap_components as dbc
 
 from psycopg2 import pool
-from dash import Dash, Input, Output, html, dcc, no_update, MATCH
+from dash import Dash, Input, Output, html, dcc, no_update
 from dash.exceptions import PreventUpdate
 from typing import List
 
@@ -120,7 +120,7 @@ def update_climate_file(climate_variable, ssp, decade, month):
     colormap = properties["geotiff"]["colormap"]
     layer_opacity = properties["geotiff"]["layer_opacity"]
     unit = properties["unit"]
-    
+
     url = app_utils.get_tilejson_url(file_url=file_url,
                                         climate_variable=climate_variable,
                                         min_climate_value=min_climate_value,

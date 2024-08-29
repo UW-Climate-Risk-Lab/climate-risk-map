@@ -21,6 +21,7 @@ COPY assets/ ./assets
 COPY app.py .
 COPY app_utils.py .
 COPY app_map.py .
+COPY app_control_panel.py .
 COPY app_config.py .
 COPY pgosm_flex_api.py .
 
