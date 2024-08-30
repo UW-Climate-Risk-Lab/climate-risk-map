@@ -3,6 +3,9 @@ import rioxarray
 import os
 from pathlib import Path
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def main(
     file_directory: str,
@@ -39,14 +42,16 @@ def main(
             decode_times=True,
             use_cftime=True,
             decode_coords="all",
+            mask_and_scale=True
         )
         data.append(_ds)
-
+    
     # Dropping conflicts because the creation_date between
     # datasets was slightly different (a few mintues apart).
     # All other attributes should be the same.
     # TODO: Better handle conflicting attribute values
     ds = xr.merge(data, combine_attrs="drop_conflicts")
+    logger.info("Xarray dataset created")
 
     if convert_360_lon:
         ds = ds.assign_coords({x_dim: (((ds[x_dim] + 180) % 360) - 180)})
