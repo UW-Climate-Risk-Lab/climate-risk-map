@@ -4,6 +4,7 @@ import tempfile
 import utils
 import process_climate
 import generate_geotiff
+import infra_intersection
 
 import logging
 logger = logging.getLogger(__name__)
@@ -20,6 +21,9 @@ X_DIM = os.environ["X_DIM"]
 Y_DIM = os.environ["Y_DIM"]
 CONVERT_360_LON = bool(os.environ["CONVERT_360_LON"])
 STATE_BBOX = os.environ.get("STATE_BBOX", None)
+OSM_CATEGORY = os.environ["OSM_CATEGORY"]
+OSM_TYPE=os.environ["OSM_TYPE"]
+INTERSECTION_DEBUG = os.environ["INTERSECTION_DEBUG"] #TODO: REMOVE THIS 
 
 
 def run():
@@ -49,22 +53,25 @@ def run():
         logger.info("Climate Data Processed")
 
     with tempfile.TemporaryDirectory() as geotiff_tmpdir:
-        generate_geotiff.main(
-            ds=ds,
-            output_dir=geotiff_tmpdir,
-            climate_variable=CLIMATE_VARIABLE,
-            state=STATE_BBOX,
-        )
-        logger.info("Geotiffs created")
-        utils.upload_files(
-            s3_bucket=S3_BUCKET,
-            s3_prefix=utils.create_s3_prefix(
-                S3_BASE_PREFIX, CLIMATE_VARIABLE, SSP, "cogs"
-            ),
-            dir=geotiff_tmpdir
-        )
-        logger.info("Geotiffs uploaded")
+        if not INTERSECTION_DEBUG:
+            generate_geotiff.main(
+                ds=ds,
+                output_dir=geotiff_tmpdir,
+                climate_variable=CLIMATE_VARIABLE,
+                state=STATE_BBOX,
+            )
+            logger.info("Geotiffs created")
+            utils.upload_files(
+                s3_bucket=S3_BUCKET,
+                s3_prefix=utils.create_s3_prefix(
+                    S3_BASE_PREFIX, CLIMATE_VARIABLE, SSP, "cogs"
+                ),
+                dir=geotiff_tmpdir
+            )
+            logger.info("Geotiffs uploaded")
         # TODO: Compute infra intersection
+        df = infra_intersection.main(ds=ds, osm_category=OSM_CATEGORY, osm_type=OSM_TYPE)
+
 
         # TODO: Load infra intersection into database
 
