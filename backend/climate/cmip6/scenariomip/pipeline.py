@@ -5,6 +5,10 @@ import utils
 import process_climate
 import generate_geotiff
 
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 
 S3_BUCKET = os.environ["S3_BUCKET"]
 S3_BASE_PREFIX = os.environ["S3_BASE_PREFIX"]
@@ -30,6 +34,7 @@ def run():
             ),
             dir=climate_tmpdir,
         )
+        logger.info("Cliimate File Downloaded")
 
         ds = process_climate.main(
             file_directory=climate_tmpdir,
@@ -40,6 +45,9 @@ def run():
             convert_360_lon=CONVERT_360_LON,
             bbox=utils.get_state_bbox(STATE_BBOX),
         )
+
+        logger.info("Climate Data Processed")
+
     with tempfile.TemporaryDirectory() as geotiff_tmpdir:
         generate_geotiff.main(
             ds=ds,
@@ -47,6 +55,7 @@ def run():
             climate_variable=CLIMATE_VARIABLE,
             state=STATE_BBOX,
         )
+        logger.info("Geotiffs created")
         utils.upload_files(
             s3_bucket=S3_BUCKET,
             s3_prefix=utils.create_s3_prefix(
@@ -54,7 +63,7 @@ def run():
             ),
             dir=geotiff_tmpdir
         )
-
+        logger.info("Geotiffs uploaded")
         # TODO: Compute infra intersection
 
         # TODO: Load infra intersection into database
