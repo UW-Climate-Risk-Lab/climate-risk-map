@@ -54,7 +54,7 @@ def main(
         _da = ds.sel(decade_month=decade_month)[climate_variable]
         file_name = f"{decade_month}-{state}.tif"
         output_path = Path(output_dir) / file_name
-        _da.rio.to_raster(str(output_path), driver="COG", compression="LZW")
+        _da.rio.to_raster(str(output_path), driver="COG")
     
     metadata = create_metadata(ds=ds, climate_variable=climate_variable)
     metadata_file = f"metadata-{state}.json"

@@ -7,6 +7,7 @@ import generate_geotiff
 
 import logging
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 S3_BUCKET = os.environ["S3_BUCKET"]
