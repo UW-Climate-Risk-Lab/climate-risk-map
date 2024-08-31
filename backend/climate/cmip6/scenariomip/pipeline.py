@@ -23,7 +23,7 @@ CONVERT_360_LON = bool(os.environ["CONVERT_360_LON"])
 STATE_BBOX = os.environ.get("STATE_BBOX", None)
 OSM_CATEGORY = os.environ["OSM_CATEGORY"]
 OSM_TYPE=os.environ["OSM_TYPE"]
-INTERSECTION_DEBUG = os.environ["INTERSECTION_DEBUG"] #TODO: REMOVE THIS 
+INTERSECTION_DEBUG = bool(os.environ["INTERSECTION_DEBUG"]) #TODO: REMOVE THIS 
 
 
 def run():
@@ -69,8 +69,9 @@ def run():
                 dir=geotiff_tmpdir
             )
             logger.info("Geotiffs uploaded")
+        
         # TODO: Compute infra intersection
-        df = infra_intersection.main(ds=ds, osm_category=OSM_CATEGORY, osm_type=OSM_TYPE)
+        df = infra_intersection.main(ds=ds, osm_category=OSM_CATEGORY, osm_type=OSM_TYPE, crs=CRS)
 
 
         # TODO: Load infra intersection into database
