@@ -44,17 +44,19 @@ def create_metadata(ds: xr.Dataset, climate_variable: str) -> Dict:
 
 
 def main(
-    ds: xr.Dataset, output_dir: str, climate_variable: str, state: str
+    ds: xr.Dataset, output_dir: str, climate_variable: str, state: str, time_agg_method: str
 ) -> None:
     # If a state isnt specified, assume global
     if not state:
         state = 'global'
     
-    for decade_month in ds["decade_month"].data:
-        _da = ds.sel(decade_month=decade_month)[climate_variable]
-        file_name = f"{decade_month}-{state}.tif"
-        output_path = Path(output_dir) / file_name
-        _da.rio.to_raster(str(output_path), driver="COG")
+    # TODO: Clean this up
+    if time_agg_method == "decade_month":
+        for decade_month in ds["decade_month"].data:
+            _da = ds.sel(decade_month=decade_month)[climate_variable]
+            file_name = f"{decade_month}-{state}.tif"
+            output_path = Path(output_dir) / file_name
+            _da.rio.to_raster(str(output_path), driver="COG")
     
     metadata = create_metadata(ds=ds, climate_variable=climate_variable)
     metadata_file = f"metadata-{state}.json"
