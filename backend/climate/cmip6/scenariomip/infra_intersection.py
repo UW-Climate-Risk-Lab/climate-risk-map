@@ -12,7 +12,7 @@ import psycopg2.sql as sql
 
 # Infrastructure return data should have two columns, id and geometry
 # 'id' column refers to a given feature's unique id. This is the OpenStreetMap ID for the PG OSM Flex 
-ID_COLUMN = 'id'
+ID_COLUMN = 'osm_id'
 GEOMETRY_COLUMN = 'geometry'
 
 def create_pgosm_flex_query(
@@ -92,4 +92,11 @@ def main(
         .reset_index(drop=True)[[ID_COLUMN, time_agg_method, climate_variable]]
     )
 
-    pass
+    if time_agg_method == "decade_month":
+        df["year"] = df["decade_month"].apply(lambda x: int(x[0:4]))
+        df["month"] = df["decade_month"].apply(lambda x: int(x[-2:]))
+        df.drop(columns=["decade_month"], inplace=True)
+
+    df.rename(columns={climate_variable: "value"}, inplace=True)
+
+    return df
