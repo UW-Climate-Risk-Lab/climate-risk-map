@@ -93,7 +93,7 @@ def main(
     )
 
     if time_agg_method == "decade_month":
-        df["year"] = df["decade_month"].apply(lambda x: int(x[0:4]))
+        df["decade"] = df["decade_month"].apply(lambda x: int(x[0:4]))
         df["month"] = df["decade_month"].apply(lambda x: int(x[-2:]))
         df.drop(columns=["decade_month"], inplace=True)
 
