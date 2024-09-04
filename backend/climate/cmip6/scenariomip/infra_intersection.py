@@ -10,6 +10,11 @@ from typing import Tuple, List
 import utils
 import psycopg2.sql as sql
 
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 # Infrastructure return data should have two columns, id and geometry
 # 'id' column refers to a given feature's unique id. This is the OpenStreetMap ID for the PG OSM Flex 
 ID_COLUMN = 'osm_id'
@@ -76,6 +81,7 @@ def main(
         osm_category=osm_category, osm_type=osm_type, crs=crs
     )
     infra_data = utils.query_db(query=query, params=params)
+    logger.info("Infrastructure data queried")
     
     infra_df = pd.DataFrame(infra_data, columns=[ID_COLUMN, GEOMETRY_COLUMN]).set_index(ID_COLUMN)
     infra_df[GEOMETRY_COLUMN] = infra_df[GEOMETRY_COLUMN].apply(wkt.loads)
@@ -91,7 +97,8 @@ def main(
         .to_dataframe()
         .reset_index(drop=True)[[ID_COLUMN, time_agg_method, climate_variable]]
     )
-
+    logger.info("Infrastrucutre Climate Intersection Computed")
+    
     if time_agg_method == "decade_month":
         df["decade"] = df["decade_month"].apply(lambda x: int(x[0:4]))
         df["month"] = df["decade_month"].apply(lambda x: int(x[-2:]))

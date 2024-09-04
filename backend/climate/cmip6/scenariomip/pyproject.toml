@@ -1,4 +1,5 @@
 [tool.poetry]
+name = "scenariomip-pipeline"
 description = "Used for running batch process of cmip6 data for climate variables and outputting geotiffs and loading data into database"
 authors = ["Eric Colllins <ecol07@uw.edu>"]
 readme = "README.md"
