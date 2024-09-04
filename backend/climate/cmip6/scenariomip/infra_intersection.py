@@ -87,7 +87,8 @@ def main(
     infra_df[GEOMETRY_COLUMN] = infra_df[GEOMETRY_COLUMN].apply(wkt.loads)
     infra_gdf = gpd.GeoDataFrame(infra_df, geometry=GEOMETRY_COLUMN, crs=crs)
 
-    ds = climate_ds.xvec.zonal_stats(infra_gdf.geometry, x_coords=x_dim, y_coords=y_dim)
+    # By setting stats=max, this returns the max climate value for features that intersect multiple grid cells
+    ds = climate_ds.xvec.zonal_stats(infra_gdf.geometry, x_coords=x_dim, y_coords=y_dim, stats='max')
 
     # For the initial use of this with 100km x 100km climate data and Washington State Power Grid (~120k features),
     # dataframe memory size is 270MB, 14million rows
@@ -98,7 +99,7 @@ def main(
         .reset_index(drop=True)[[ID_COLUMN, time_agg_method, climate_variable]]
     )
     logger.info("Infrastrucutre Climate Intersection Computed")
-    
+
     if time_agg_method == "decade_month":
         df["decade"] = df["decade_month"].apply(lambda x: int(x[0:4]))
         df["month"] = df["decade_month"].apply(lambda x: int(x[-2:]))
