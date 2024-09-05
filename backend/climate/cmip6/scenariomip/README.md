@@ -45,7 +45,8 @@ The following environment variables are required to run the pipeline:
 - `X_DIM`: The name of the X coordinate dimension (e.g., lon or longitude).
 - `Y_DIM`: The name of the Y coordinate dimension (e.g., lat or latitude).
 - `TIME_DIM`: The name of the time coordinate dimension (e.g., time)
-- `TIME_AGGREGATION_METHOD`: Method to aggregate time dimension. 
+- `CLIMATOLOGY_MEAN_METHOD`: Method to average climate variable over time. Currently, the code recoginzes "decade_month", which averages overs each decade, grouped by month. 
+- `ZONAL_AGG_METHOD`: Method when zonally aggregating climate variable values to vector geometry. Common are 'mean' or 'max'
 - `CONVERT_360_LON`: Whether to convert longitude values from 0-360 to -180-180.
 - `STATE_BBOX`: (Optional) The bounding box for a specific state.
 - `PG_DBNAME`: pgosm_flex_washington

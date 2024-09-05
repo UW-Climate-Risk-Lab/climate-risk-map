@@ -6,7 +6,7 @@ import psycopg2 as pg
 
 from shapely import wkt
 
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 
 import utils
 import psycopg2.sql as sql
@@ -17,16 +17,17 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 # Infrastructure return data should have two columns, id and geometry
-# 'id' column refers to a given feature's unique id. This is the OpenStreetMap ID for the PG OSM Flex 
-ID_COLUMN = 'osm_id'
-GEOMETRY_COLUMN = 'geometry'
+# 'id' column refers to a given feature's unique id. This is the OpenStreetMap ID for the PG OSM Flex
+ID_COLUMN = "osm_id"
+GEOMETRY_COLUMN = "geometry"
+
 
 def create_pgosm_flex_query(
     osm_tables: List[str], osm_type: str, crs: str
 ) -> Tuple[sql.SQL, Tuple[str]]:
     """Creates SQL query to get all features of a given type from PG OSM Flex Schema
 
-    
+
 
     Example:
 
@@ -57,7 +58,7 @@ def create_pgosm_flex_query(
             schema=sql.Identifier(schema),
             table=sql.Identifier(table),
             id=sql.Identifier(ID_COLUMN),
-            geometry=sql.Identifier(GEOMETRY_COLUMN)
+            geometry=sql.Identifier(GEOMETRY_COLUMN),
         )
         params += [int(crs), osm_type]
         union_queries.append(sub_query)
@@ -74,8 +75,9 @@ def main(
     crs: str,
     x_dim: str,
     y_dim: str,
-    time_agg_method: str,
-    conn: pg.extensions.connection
+    climatology_mean_method: str,
+    zonal_agg_method: List[str] | str,
+    conn: pg.extensions.connection,
 ) -> pd.DataFrame:
 
     osm_tables = utils.get_osm_category_tables(osm_category=osm_category, conn=conn)
@@ -85,25 +87,29 @@ def main(
     )
     infra_data = utils.query_db(query=query, params=params, conn=conn)
     logger.info("Infrastructure data queried")
-    
-    infra_df = pd.DataFrame(infra_data, columns=[ID_COLUMN, GEOMETRY_COLUMN]).set_index(ID_COLUMN)
+
+    infra_df = pd.DataFrame(infra_data, columns=[ID_COLUMN, GEOMETRY_COLUMN]).set_index(
+        ID_COLUMN
+    )
     infra_df[GEOMETRY_COLUMN] = infra_df[GEOMETRY_COLUMN].apply(wkt.loads)
     infra_gdf = gpd.GeoDataFrame(infra_df, geometry=GEOMETRY_COLUMN, crs=crs)
 
     # By setting stats=max, this returns the max climate value for features that intersect multiple grid cells
-    ds = climate_ds.xvec.zonal_stats(infra_gdf.geometry, x_coords=x_dim, y_coords=y_dim, stats='max')
+    ds = climate_ds.xvec.zonal_stats(
+        infra_gdf.geometry, x_coords=x_dim, y_coords=y_dim, stats=zonal_agg_method
+    )
 
     # For the initial use of this with 100km x 100km climate data and Washington State Power Grid (~120k features),
     # dataframe memory size is 270MB, 14million rows
     df = (
         ds[climate_variable]
-        .stack(id_dim=(GEOMETRY_COLUMN, time_agg_method))
+        .stack(id_dim=(GEOMETRY_COLUMN, climatology_mean_method))
         .to_dataframe()
-        .reset_index(drop=True)[[ID_COLUMN, time_agg_method, climate_variable]]
+        .reset_index(drop=True)[[ID_COLUMN, climatology_mean_method, climate_variable]]
     )
     logger.info("Infrastrucutre Climate Intersection Computed")
 
-    if time_agg_method == "decade_month":
+    if climatology_mean_method == "decade_month":
         df["decade"] = df["decade_month"].apply(lambda x: int(x[0:4]))
         df["month"] = df["decade_month"].apply(lambda x: int(x[-2:]))
         df.drop(columns=["decade_month"], inplace=True)

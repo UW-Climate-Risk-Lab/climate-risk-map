@@ -24,7 +24,8 @@ CRS = os.environ["CRS"]
 X_DIM = os.environ["X_DIM"]
 Y_DIM = os.environ["Y_DIM"]
 TIME_DIM = os.environ["TIME_DIM"]
-TIME_AGGREGATION_METHOD = os.environ["TIME_AGGREGATION_METHOD"]
+CLIMATOLOGY_MEAN_METHOD = os.environ["CLIMATOLOGY_MEAN_METHOD"]
+ZONAL_AGG_METHOD = os.environ["ZONAL_AGG_METHOD"]
 CONVERT_360_LON = bool(os.environ["CONVERT_360_LON"])
 STATE_BBOX = os.environ.get("STATE_BBOX", None)
 OSM_CATEGORY = os.environ["OSM_CATEGORY"]
@@ -37,6 +38,9 @@ PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]
 PG_PASSWORD = os.environ["PG_PASSWORD"]
 PG_PORT = os.environ["PG_PORT"]
+
+# Hardcode metadata key for metadata the lab derives
+METADATA_KEY = "UW_CRL_DERIVED"
 
 # Centrally manage database connections for the pipeline
 CONNECTION_POOL = pool.SimpleConnectionPool(
@@ -79,37 +83,44 @@ def run():
         )
         logger.info("Climate Files Downloaded")
 
-        ds = process_climate.main(
+        ds, metadata = process_climate.main(
             file_directory=climate_tmpdir,
             xarray_engine=XARRAY_ENGINE,
+            climate_variable=CLIMATE_VARIABLE,
             crs=CRS,
             x_dim=X_DIM,
             y_dim=Y_DIM,
             convert_360_lon=CONVERT_360_LON,
             bbox=utils.get_state_bbox(STATE_BBOX),
             time_dim=TIME_DIM,
-            time_agg_method=TIME_AGGREGATION_METHOD,
+            climatology_mean_method=CLIMATOLOGY_MEAN_METHOD,
+            derived_metadata_key=METADATA_KEY,
         )
 
         logger.info("Climate Data Processed")
 
+        metadata[METADATA_KEY]["climatology_mean_method"] = CLIMATOLOGY_MEAN_METHOD
+        metadata[METADATA_KEY]["zonal_agg_method"] = ZONAL_AGG_METHOD
+
     with tempfile.TemporaryDirectory() as geotiff_tmpdir:
+        generate_geotiff.main(
+            ds=ds,
+            output_dir=geotiff_tmpdir,
+            climate_variable=CLIMATE_VARIABLE,
+            state=STATE_BBOX,
+            climatology_mean_method=CLIMATOLOGY_MEAN_METHOD,
+            metadata=metadata,
+        )
+        logger.info("Geotiffs created")
+
         if not INTERSECTION_DEBUG:
-            generate_geotiff.main(
-                ds=ds,
-                output_dir=geotiff_tmpdir,
-                climate_variable=CLIMATE_VARIABLE,
-                state=STATE_BBOX,
-                time_agg_method=TIME_AGGREGATION_METHOD,
-            )
-            logger.info("Geotiffs created")
             utils.upload_files(
                 s3_bucket=S3_BUCKET,
                 s3_prefix=utils.create_s3_prefix(
                     S3_BASE_PREFIX,
                     CLIMATE_VARIABLE,
                     SSP,
-                    f"cogs/{TIME_AGGREGATION_METHOD}",
+                    f"cogs/{CLIMATOLOGY_MEAN_METHOD}",
                 ),
                 dir=geotiff_tmpdir,
             )
@@ -124,7 +135,8 @@ def run():
             crs=CRS,
             x_dim=X_DIM,
             y_dim=Y_DIM,
-            time_agg_method=TIME_AGGREGATION_METHOD,
+            climatology_mean_method=CLIMATOLOGY_MEAN_METHOD,
+            zonal_agg_method=ZONAL_AGG_METHOD,
             conn=infra_intersection_conn,
         )
         release_connection(infra_intersection_conn)
@@ -136,6 +148,7 @@ def run():
             ssp=int(SSP),
             climate_variable=CLIMATE_VARIABLE,
             conn=infra_intersection_load_conn,
+            metadata=metadata,
         )
 
 

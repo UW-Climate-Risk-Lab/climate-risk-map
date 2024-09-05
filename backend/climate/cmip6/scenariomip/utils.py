@@ -4,8 +4,10 @@ from pathlib import Path
 import psycopg2 as pg
 import psycopg2.sql as sql
 import re
+import xarray as xr
+import numpy as np
 
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Any
 
 
 PG_DBNAME = os.environ["PG_DBNAME"]
@@ -112,6 +114,7 @@ def upload_files(s3_bucket: str, s3_prefix: str, dir: str) -> None:
             s3_key = str(Path(s3_prefix) / file_name)
             client.upload_file(str(file_path), s3_bucket, s3_key)
 
+
 def query_db(query: sql.SQL, conn: pg.extensions.connection, params: Tuple[str] = None):
     """Executs database query"""
     with conn.cursor() as cur:
@@ -119,15 +122,18 @@ def query_db(query: sql.SQL, conn: pg.extensions.connection, params: Tuple[str] 
         result = cur.fetchall()
     return result
 
-def get_osm_category_tables(osm_category: str, conn: pg.extensions.connection) -> List[str]:
+
+def get_osm_category_tables(
+    osm_category: str, conn: pg.extensions.connection
+) -> List[str]:
     """
     Returns DB tables
 
     This assumes you are querying a database set up with PG OSM Flex
     """
-    
+
     query = sql.SQL("SELECT tablename FROM pg_tables WHERE schemaname='osm'")
-    
+
     all_tables = query_db(query=query, conn=conn, params=None)
 
     # Table name always starts with category
@@ -139,3 +145,36 @@ def get_osm_category_tables(osm_category: str, conn: pg.extensions.connection) -
             tables.append(tablename)
 
     return tables
+
+
+def convert_to_serializable(value: Any) -> Any:
+    """Converts a value to a JSON serializable type."""
+    if isinstance(value, (np.integer)):
+        return int(value)
+    elif isinstance(value, (np.floating)):
+        return float(value)
+    elif isinstance(value, np.ndarray):
+        return value.tolist()
+    elif isinstance(value, bytes):
+        return value.decode("utf-8")
+    else:
+        return value
+
+
+def create_metadata(ds: xr.Dataset, derived_metadata_key: str) -> Dict:
+    """Creates json metadata and summary metrics for
+    frontend
+
+    Args:
+        ds (xr.Dataset): Processed Climate Dataset
+        climat
+
+    Returns:
+        Dict: Dict with metadata
+    """
+    metadata = {key: convert_to_serializable(value) for key, value in ds.attrs.items()}
+
+    # Add any additional useful metadeta to the key UW_CRL_DERIVED
+    metadata[derived_metadata_key] = {}
+
+    return metadata
