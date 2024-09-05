@@ -2,6 +2,7 @@ import xarray as xr
 import pandas as pd
 import geopandas as gpd
 import xvec
+import psycopg2 as pg
 
 from shapely import wkt
 
@@ -21,8 +22,8 @@ ID_COLUMN = 'osm_id'
 GEOMETRY_COLUMN = 'geometry'
 
 def create_pgosm_flex_query(
-    osm_category: str, osm_type: str, crs: str
-) -> Tuple[sql.SQL, Tuple[str], List[str]]:
+    osm_tables: List[str], osm_type: str, crs: str
+) -> Tuple[sql.SQL, Tuple[str]]:
     """Creates SQL query to get all features of a given type from PG OSM Flex Schema
 
     
@@ -48,9 +49,8 @@ def create_pgosm_flex_query(
     schema = "osm"  # Always schema name in PG OSM Flex
     params = []
     union_queries = []
-    tables = utils.get_osm_category_tables(osm_category=osm_category)
 
-    for table in tables:
+    for table in osm_tables:
         sub_query = sql.SQL(
             "SELECT main.osm_id AS {id}, ST_AsText(ST_Transform(main.geom, %s)) AS {geometry} FROM {schema}.{table} main WHERE osm_type = %s"
         ).format(
@@ -74,13 +74,16 @@ def main(
     crs: str,
     x_dim: str,
     y_dim: str,
-    time_agg_method: str
+    time_agg_method: str,
+    conn: pg.extensions.connection
 ) -> pd.DataFrame:
 
+    osm_tables = utils.get_osm_category_tables(osm_category=osm_category, conn=conn)
+
     query, params = create_pgosm_flex_query(
-        osm_category=osm_category, osm_type=osm_type, crs=crs
+        osm_tables=osm_tables, osm_type=osm_type, crs=crs
     )
-    infra_data = utils.query_db(query=query, params=params)
+    infra_data = utils.query_db(query=query, params=params, conn=conn)
     logger.info("Infrastructure data queried")
     
     infra_df = pd.DataFrame(infra_data, columns=[ID_COLUMN, GEOMETRY_COLUMN]).set_index(ID_COLUMN)

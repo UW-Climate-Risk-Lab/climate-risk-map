@@ -1,7 +1,7 @@
 import boto3
 import os
 from pathlib import Path
-import psycopg2
+import psycopg2 as pg
 import psycopg2.sql as sql
 import re
 
@@ -112,22 +112,14 @@ def upload_files(s3_bucket: str, s3_prefix: str, dir: str) -> None:
             s3_key = str(Path(s3_prefix) / file_name)
             client.upload_file(str(file_path), s3_bucket, s3_key)
 
-def query_db(query: sql.SQL, params: Tuple[str] = None):
-    conn = psycopg2.connect(
-        host=PG_HOST,
-        port=PG_PORT,
-        database=PG_DBNAME,
-        user=PG_USER,
-        password=PG_PASSWORD
-    )
-
+def query_db(query: sql.SQL, conn: pg.extensions.connection, params: Tuple[str] = None):
+    """Executs database query"""
     with conn.cursor() as cur:
         cur.execute(query, params)
         result = cur.fetchall()
-    conn.close()
     return result
 
-def get_osm_category_tables(osm_category: str) -> List[str]:
+def get_osm_category_tables(osm_category: str, conn: pg.extensions.connection) -> List[str]:
     """
     Returns DB tables
 
@@ -136,7 +128,7 @@ def get_osm_category_tables(osm_category: str) -> List[str]:
     
     query = sql.SQL("SELECT tablename FROM pg_tables WHERE schemaname='osm'")
     
-    all_tables = query_db(query=query, params=None)
+    all_tables = query_db(query=query, conn=conn, params=None)
 
     # Table name always starts with category
     tables = []
