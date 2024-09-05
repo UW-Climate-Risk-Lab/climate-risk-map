@@ -22,6 +22,9 @@ CREATE TABLE climate.scenariomip_variables (
     ssp INT NOT NULL,
     metadata JSONB
 );
+CREATE UNIQUE INDEX idx_unique_scenariomip_variable
+    ON climate.scenariomip_variables (variable, ssp);
+CREATE INDEX idx_scenariomip_vairable_on_ssp ON climate.scenariomip_variables (ssp);
 
 -- Create a table to hold scenariomip results
 CREATE TABLE climate.scenariomip (
