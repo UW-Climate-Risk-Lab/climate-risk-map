@@ -1,7 +1,18 @@
 import boto3
-
-from typing import List, Dict
+import os
 from pathlib import Path
+import psycopg2
+import psycopg2.sql as sql
+import re
+
+from typing import Tuple, Dict, List
+
+
+PG_DBNAME = os.environ["PG_DBNAME"]
+PG_USER = os.environ["PG_USER"]
+PG_HOST = os.environ["PG_HOST"]
+PG_PASSWORD = os.environ["PG_PASSWORD"]
+PG_PORT = os.environ["PG_PORT"]
 
 
 def get_state_bbox(state: str) -> Dict[str, float]:
@@ -100,3 +111,39 @@ def upload_files(s3_bucket: str, s3_prefix: str, dir: str) -> None:
             file_name = file_path.name
             s3_key = str(Path(s3_prefix) / file_name)
             client.upload_file(str(file_path), s3_bucket, s3_key)
+
+def query_db(query: sql.SQL, params: Tuple[str] = None):
+    conn = psycopg2.connect(
+        host=PG_HOST,
+        port=PG_PORT,
+        database=PG_DBNAME,
+        user=PG_USER,
+        password=PG_PASSWORD
+    )
+
+    with conn.cursor() as cur:
+        cur.execute(query, params)
+        result = cur.fetchall()
+    conn.close()
+    return result
+
+def get_osm_category_tables(osm_category: str) -> List[str]:
+    """
+    Returns DB tables
+
+    This assumes you are querying a database set up with PG OSM Flex
+    """
+    
+    query = sql.SQL("SELECT tablename FROM pg_tables WHERE schemaname='osm'")
+    
+    all_tables = query_db(query=query, params=None)
+
+    # Table name always starts with category
+    tables = []
+    for table in all_tables:
+        tablename = table[0]
+        name_match = re.findall(osm_category, tablename)
+        if name_match:
+            tables.append(tablename)
+
+    return tables
