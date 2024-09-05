@@ -4,7 +4,58 @@ import os
 from pathlib import Path
 
 import logging
+
 logger = logging.getLogger(__name__)
+
+TIME_AGG_METHODS = ["decade_month"]
+
+
+def decade_month_calc(ds: xr.Dataset, time_dim: str) -> xr.Dataset:
+    """Calculates the climatological mean by decade and month.
+
+    This function computes the decade-by-decade average for each month in the provided dataset.
+    The process involves averaging values across each decade for each month separately. 
+    For instance, for the 2050s, the function calculates the average values for January, February, 
+    March, and so on, resulting in 12 averaged values corresponding to each month of the 2050s. 
+    This approach preserves seasonal variability while smoothing out interannual variability 
+    within each decade.
+
+    The function performs the following steps:
+    1. Assigns new coordinates to the dataset:
+       - `decade`: Represents the decade (e.g., 2050 for the 2050s).
+       - `month`: Represents the month (1 for January, 2 for February, etc.).
+    2. Creates a combined `decade_month` coordinate, formatted as "YYYY-MM", 
+       where "YYYY" is the starting year of the decade, and "MM" is the month.
+    3. Groups the dataset by the `decade_mon 
+    """
+    ds = ds.assign_coords(
+        decade=(ds["time.year"] // 10) * 10, month=ds["time"].dt.month
+    )
+
+    ds = ds.assign_coords(
+        decade_month=(
+            time_dim,
+            [
+                f"{decade}-{month:02d}"
+                for decade, month in zip(ds["decade"].values, ds["month"].values)
+            ],
+        )
+    )
+
+    ds = ds.groupby("decade_month").mean()
+
+    return ds
+
+
+def climate_calc(ds: xr.Dataset, time_dim: str, time_agg_method: str) -> xr.Dataset:
+    """Runs climate calculations on xarray dataset. Modifys dataset in place"""
+    if time_agg_method not in TIME_AGG_METHODS:
+        raise ValueError(f"{time_agg_method} time aggregation method not implemented")
+
+    if time_agg_method == "decade_month":
+        ds = decade_month_calc(ds=ds, time_dim=time_dim)
+
+    return ds
 
 
 def main(
@@ -15,6 +66,8 @@ def main(
     y_dim: str,
     convert_360_lon: bool,
     bbox: dict,
+    time_dim: str,
+    time_agg_method: str,
 ) -> xr.Dataset:
     """Processes climate data
 
@@ -26,6 +79,8 @@ def main(
         y_dim (str): The Y coordinate dimension name (typically lat or latitude)
         convert_360_lon (bool): If True, converts 0-360 lon values to -180-180
         bbox (dict): Dict with keys (min_lon, min_lat, max_lon, max_lat) to filter data
+        time_dim (str): The name of the time dimension in the dataset
+        time_agg_method (str): The method by which to average over time.
 
     Returns:
         xr.Dataset: Xarray dataset of processed climate data
@@ -42,10 +97,10 @@ def main(
             decode_times=True,
             use_cftime=True,
             decode_coords="all",
-            mask_and_scale=True
+            mask_and_scale=True,
         )
         data.append(_ds)
-    
+
     # Dropping conflicts because the creation_date between
     # datasets was slightly different (a few mintues apart).
     # All other attributes should be the same.
@@ -72,25 +127,7 @@ def main(
     ds.rio.set_spatial_dims(x_dim=x_dim, y_dim=y_dim, inplace=True)
     ds.rio.write_coordinate_system(inplace=True)
 
-    # TODO: Make aggreagtion more configurable
-    # Current implementation (08/22/24) uses climatological mean
-    # for every decade.
-    # We create time derived coordinates "decade_month" to represent this
-    ds = ds.assign_coords(
-        decade=(ds["time.year"] // 10) * 10, month=ds["time"].dt.month
-    )
-
-    ds = ds.assign_coords(
-        decade_month=(
-            "time",
-            [
-                f"{decade}-{month:02d}"
-                for decade, month in zip(ds["decade"].values, ds["month"].values)
-            ],
-        )
-    )
-
-    ds = ds.groupby("decade_month").mean()
+    ds = climate_calc(ds=ds, time_dim=time_dim, time_agg_method=time_agg_method)
 
     return ds
 

@@ -27,6 +27,10 @@ This script processes the climate data. It reads NetCDF files, processes the dat
 
 This script generates GeoTIFF files from the processed climate data. It uses the rioxarray library to convert Xarray datasets to GeoTIFF format.
 
+**infra_intersection.py**
+
+This script queries the database (assumes PG OSM Flex Schema) and joins the features with the processed climate data using xarray and the xvec package. This will return a tabular dataframe containing each feature at different timestamps with it's associated climate value and identifier.
+
 ## Environment Variables
 Environment variables can be set locally, in deployment, or in a .env file.
 
@@ -40,8 +44,16 @@ The following environment variables are required to run the pipeline:
 - `CRS`: The Coordinate Reference System (CRS) for the data.
 - `X_DIM`: The name of the X coordinate dimension (e.g., lon or longitude).
 - `Y_DIM`: The name of the Y coordinate dimension (e.g., lat or latitude).
+- `TIME_DIM`: The name of the time coordinate dimension (e.g., time)
+- `TIME_AGGREGATION_METHOD`: Method to aggregate time dimension. 
 - `CONVERT_360_LON`: Whether to convert longitude values from 0-360 to -180-180.
 - `STATE_BBOX`: (Optional) The bounding box for a specific state.
+- `PG_DBNAME`: pgosm_flex_washington
+- `PG_USER`: osm_ro_user
+- `PG_HOST`: host.docker.internal
+- `PG_PASSWORD`: mysecretpassword
+- `OSM_CATEGORY`: OpenStreetMap feature category to query for intersection
+- `OSM_TYPE`: OpenStreetMap feature type to query for intersection
 
 ## Build
 
