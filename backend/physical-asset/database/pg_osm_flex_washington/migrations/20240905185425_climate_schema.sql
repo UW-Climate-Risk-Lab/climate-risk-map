@@ -10,6 +10,9 @@ GRANT CONNECT ON DATABASE pgosm_flex_washington TO climate_user;
 ALTER SCHEMA climate OWNER TO climate_user;
 
 GRANT ALL PRIVILEGES ON SCHEMA climate TO climate_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA climate GRANT ALL ON TABLES TO climate_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA climate GRANT ALL ON SEQUENCES TO climate_user;
+
 
 -- Grant read-only access to osm_ro_user
 GRANT USAGE ON SCHEMA climate TO osm_ro_user;
