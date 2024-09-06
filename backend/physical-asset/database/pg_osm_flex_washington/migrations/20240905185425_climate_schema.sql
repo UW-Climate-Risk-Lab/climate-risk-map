@@ -41,6 +41,7 @@ CREATE INDEX idx_scenariomip_on_variable_id ON climate.scenariomip (variable_id)
 CREATE ROLE climate_user WITH LOGIN PASSWORD 'mysecretpassword';
 
 GRANT CONNECT ON DATABASE pgosm_flex_washington TO climate_user;
+GRANT USAGE ON SCHEMA climate to climate_user;
 
 -- Grant read and write privileges (SELECT, INSERT, UPDATE, DELETE) on all tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA climate TO climate_user;
@@ -50,12 +51,13 @@ GRANT USAGE, UPDATE ON ALL SEQUENCES IN SCHEMA climate TO climate_user;
 
 -- Grant read-only access to osm_ro_user
 GRANT USAGE ON SCHEMA climate TO osm_ro_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA climate TO osm_ro_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA climate GRANT SELECT ON TABLES TO osm_ro_user;
 
 -- Set default privileges for future tables
 ALTER DEFAULT PRIVILEGES IN SCHEMA climate
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO climate_user;
-
+    
 -- Set default privileges for future sequences
 ALTER DEFAULT PRIVILEGES IN SCHEMA climate
     GRANT USAGE, UPDATE ON SEQUENCES TO climate_user;
