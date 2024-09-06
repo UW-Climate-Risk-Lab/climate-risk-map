@@ -42,6 +42,7 @@ CREATE ROLE climate_user WITH LOGIN PASSWORD 'mysecretpassword';
 
 GRANT CONNECT ON DATABASE pgosm_flex_washington TO climate_user;
 GRANT USAGE ON SCHEMA climate to climate_user;
+GRANT CREATE ON SCHEMA climate to climate_user;
 
 -- Grant read and write privileges (SELECT, INSERT, UPDATE, DELETE) on all tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA climate TO climate_user;
