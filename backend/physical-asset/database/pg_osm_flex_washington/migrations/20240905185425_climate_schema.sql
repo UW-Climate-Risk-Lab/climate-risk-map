@@ -3,21 +3,6 @@
 
 CREATE SCHEMA climate;
 
-CREATE ROLE climate_user WITH LOGIN PASSWORD 'mysecretpassword';
-
-GRANT CONNECT ON DATABASE pgosm_flex_washington TO climate_user;
-
-ALTER SCHEMA climate OWNER TO climate_user;
-
-GRANT ALL PRIVILEGES ON SCHEMA climate TO climate_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA climate GRANT ALL ON TABLES TO climate_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA climate GRANT ALL ON SEQUENCES TO climate_user;
-
-
--- Grant read-only access to osm_ro_user
-GRANT USAGE ON SCHEMA climate TO osm_ro_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA climate GRANT SELECT ON TABLES TO osm_ro_user;
-
 -- create dimension table to hold scenario map variable information
 CREATE TABLE climate.scenariomip_variables (
     id SERIAL PRIMARY KEY,
@@ -27,6 +12,7 @@ CREATE TABLE climate.scenariomip_variables (
 );
 CREATE UNIQUE INDEX idx_unique_scenariomip_variable
     ON climate.scenariomip_variables (variable, ssp);
+
 CREATE INDEX idx_scenariomip_vairable_on_ssp ON climate.scenariomip_variables (ssp);
 
 -- Create a table to hold scenariomip results
@@ -51,3 +37,25 @@ CREATE INDEX idx_scenariomip_on_osm_id ON climate.scenariomip (osm_id);
 CREATE INDEX idx_scenariomip_on_month ON climate.scenariomip (month);
 CREATE INDEX idx_scenariomip_on_decade ON climate.scenariomip (decade);
 CREATE INDEX idx_scenariomip_on_variable_id ON climate.scenariomip (variable_id);
+
+CREATE ROLE climate_user WITH LOGIN PASSWORD 'mysecretpassword';
+
+GRANT CONNECT ON DATABASE pgosm_flex_washington TO climate_user;
+
+-- Grant read and write privileges (SELECT, INSERT, UPDATE, DELETE) on all tables
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA climate TO climate_user;
+
+-- Grant read and write privileges (USAGE, UPDATE) on sequences (for SERIAL columns)
+GRANT USAGE, UPDATE ON ALL SEQUENCES IN SCHEMA climate TO climate_user;
+
+-- Grant read-only access to osm_ro_user
+GRANT USAGE ON SCHEMA climate TO osm_ro_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA climate GRANT SELECT ON TABLES TO osm_ro_user;
+
+-- Set default privileges for future tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA climate
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO climate_user;
+
+-- Set default privileges for future sequences
+ALTER DEFAULT PRIVILEGES IN SCHEMA climate
+    GRANT USAGE, UPDATE ON SEQUENCES TO climate_user;
