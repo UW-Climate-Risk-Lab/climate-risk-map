@@ -11,14 +11,6 @@ import pandas as pd
 
 from typing import Tuple, Dict, List, Any
 
-
-PG_DBNAME = os.environ["PG_DBNAME"]
-PG_USER = os.environ["PG_USER"]
-PG_HOST = os.environ["PG_HOST"]
-PG_PASSWORD = os.environ["PG_PASSWORD"]
-PG_PORT = os.environ["PG_PORT"]
-
-
 def get_state_bbox(state: str) -> Dict[str, float]:
     """Returns bbox of state
 
