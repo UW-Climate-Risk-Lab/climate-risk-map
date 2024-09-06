@@ -34,40 +34,36 @@ INTERSECTION_DEBUG = (
     False if os.environ["INTERSECTION_DEBUG"].lower() == "false" else True
 )  # TODO: REMOVE THIS
 PG_DBNAME = os.environ["PG_DBNAME"]
-PG_USER = os.environ["PG_USER"]
+PG_READ_USER = os.environ["PG_READ_USER"]
+PG_CLIMATE_USER = os.environ["PG_CLIMATE_USER"]
 PG_HOST = os.environ["PG_HOST"]
-PG_PASSWORD = os.environ["PG_PASSWORD"]
+PG_READ_USER_PASSWORD = os.environ["PG_READ_USER_PASSWORD"]
+PG_CLIMATE_USER_PASSWORD = os.environ["PG_CLIMATE_USER_PASSWORD"]
 PG_PORT = os.environ["PG_PORT"]
 
 # Hardcode metadata key for metadata the lab derives
 METADATA_KEY = "UW_CRL_DERIVED"
 
 # Centrally manage database connections for the pipeline
-CONNECTION_POOL = pool.SimpleConnectionPool(
+READ_CONNECTION_POOL = pool.SimpleConnectionPool(
     minconn=1,
     maxconn=3,
     dbname=PG_DBNAME,
-    user=PG_USER,
-    password=PG_PASSWORD,
+    user=PG_READ_USER,
+    password=PG_READ_USER_PASSWORD,
     host=PG_HOST,
     port=PG_PORT,
 )
 
-
-def get_connection():
-    """Get a connection from the pool."""
-    return CONNECTION_POOL.getconn()
-
-
-def release_connection(conn):
-    """Return a connection to the pool."""
-    CONNECTION_POOL.putconn(conn)
-
-
-def close_all_connections():
-    """Close all connections in the pool."""
-    CONNECTION_POOL.closeall()
-
+CLIMATE_CONNECTION_POOL = pool.SimpleConnectionPool(
+    minconn=1,
+    maxconn=3,
+    dbname=PG_DBNAME,
+    user=PG_CLIMATE_USER,
+    password=PG_CLIMATE_USER_PASSWORD,
+    host=PG_HOST,
+    port=PG_PORT,
+)
 
 def run():
     """Runs a processing pipeline for a given climate variable
@@ -126,7 +122,7 @@ def run():
             )
             logger.info("Geotiffs uploaded")
 
-        infra_intersection_conn = get_connection()
+        infra_intersection_conn = READ_CONNECTION_POOL.getconn()
         df = infra_intersection.main(
             climate_ds=ds,
             climate_variable=CLIMATE_VARIABLE,
@@ -139,18 +135,18 @@ def run():
             zonal_agg_method=ZONAL_AGG_METHOD,
             conn=infra_intersection_conn,
         )
-        release_connection(infra_intersection_conn)
+        READ_CONNECTION_POOL.putconn(infra_intersection_conn)
         logger.info("Infrastructure Intersection Complete")
 
-        infra_intersection_load_conn = get_connection()
+        infra_intersection_load_conn = CLIMATE_CONNECTION_POOL.getconn()
         infra_intersection_load.main(
-            df=df,
+            df_scenariomip=df,
             ssp=int(SSP),
             climate_variable=CLIMATE_VARIABLE,
             conn=infra_intersection_load_conn,
             metadata=metadata,
         )
-
+        CLIMATE_CONNECTION_POOL.putconn(infra_intersection_load_conn)
 
 if __name__ == "__main__":
     run()

@@ -1,11 +1,13 @@
 import boto3
 import os
+import io
 from pathlib import Path
 import psycopg2 as pg
 import psycopg2.sql as sql
 import re
 import xarray as xr
 import numpy as np
+import pandas as pd
 
 from typing import Tuple, Dict, List, Any
 
@@ -122,6 +124,15 @@ def query_db(query: sql.SQL, conn: pg.extensions.connection, params: Tuple[str] 
         result = cur.fetchall()
     return result
 
+def copy_df_db(query:sql.SQL, df: pd.DataFrame, conn: pg.extensions.connection):
+    """Reads pandas dataframe and copies directly to table in query"""
+
+    sio = io.StringIO()
+    sio.write(df.to_csv(index=False, header=False))
+    sio.seek(0)
+
+    with conn.cursor() as cur:
+        cur.copy_expert(query, sio)
 
 def get_osm_category_tables(
     osm_category: str, conn: pg.extensions.connection
