@@ -1,12 +1,15 @@
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
+import numpy as np
 import xvec
 import psycopg2 as pg
+import os
 
 from shapely import wkt
 
 from typing import Tuple, List, Dict
+import concurrent.futures as cf
 
 import utils
 import psycopg2.sql as sql
@@ -25,9 +28,7 @@ GEOMETRY_COLUMN = "geometry"
 VALUE_COLUMN = "value"
 
 
-def convert_da_to_df(
-    da: xr.DataArray, climate_variable: str, climatology_mean_method: str
-) -> pd.DataFrame:
+def convert_da_to_df(da: xr.DataArray, climatology_mean_method: str) -> pd.DataFrame:
     """Converts a DataArray to a Dataframe.
 
     Used since we ultimately want the data in tabular form for PostGIS.
@@ -57,27 +58,62 @@ def convert_da_to_df(
     return df
 
 
+def task_xvec_zonal_stats(
+    climate: xr.DataArray,
+    geometry,
+    x_dim,
+    y_dim,
+    zonal_agg_method,
+    method,
+    index,
+    climatology_mean_method,
+) -> pd.DataFrame:
+    """Used for running xvec.zonal_stats in parallel process pool. Param types are the same
+    as xvec.zonal_stats().
+
+    Returns:
+        pd.DataFrame: DataFrame in format of convert_da_to_df()
+    """
+
+    da = climate.xvec.zonal_stats(
+        geometry,
+        x_coords=x_dim,
+        y_coords=y_dim,
+        stats=zonal_agg_method,
+        method=method,
+        index=index,
+    )
+
+    df = convert_da_to_df(da=da, climatology_mean_method=climatology_mean_method)
+
+    return df
+
+
 def zonal_aggregation(
     climate: xr.DataArray,
     infra: gpd.GeoDataFrame,
     zonal_agg_method: str,
     climatology_mean_method: str,
-    climate_variable: str,
     x_dim: str,
     y_dim: str,
 ) -> pd.DataFrame:
     """Performs zonal aggregation on climate data and infrastructure data.
 
+    Data needs to be split up into point and non point geometries, as xvec
+    uses 2 different methods to deal with the different geometries.
+
     NOTE, xvec_zonal_stats can be slow. This uses a method called exactextract,
-    which is based on the package exactextract, which is a C++ zonal aggregation implementation.
-    This loops through each feature sequentially to calculate the value. 
+    which is based on the package exactextract, which is a C++ zonal aggregation
+    implementation. This loops through each feature sequentially to calculate the value.
+
+    Because of this, we use a ProcessPoolExecutor and split up the infrastructure data
+    into "chunks" and process each one in parallel.
 
     Args:
         climate (xr.DataArray): Climate data
         infra (gpd.GeoDataFrame): Infrastructure data
         zonal_agg_method (str): Zonal aggregation method
         climatology_mean_method (str): Climatology mean method
-        climate_variable (str): Climate variable of interest
         x_dim (str): X dimension name
         y_dim (str): Y dimension name
 
@@ -94,14 +130,35 @@ def zonal_aggregation(
         point_infra.geometry, x_coords=x_dim, y_coords=y_dim, index=True
     )
 
-    da_non_point = climate.xvec.zonal_stats(
-        non_point_infra.geometry,
-        x_coords=x_dim,
-        y_coords=y_dim,
-        stats=zonal_agg_method,
-        method="exactextract",
-        index=True,
-    )
+    # The following parallelizes the zonal aggregation of non-point geometry features
+    # The 
+    workers = os.cpu_count()
+    futures = []
+    results = []
+    geometry_chunks = np.array_split(non_point_infra.geometry, workers)
+    with cf.ProcessPoolExecutor(max_workers=workers) as executor:
+        for i in range(workers):
+            futures.append(
+                executor.submit(
+                    task_xvec_zonal_stats,
+                    climate,
+                    geometry_chunks[i],
+                    x_dim,
+                    y_dim,
+                    zonal_agg_method,
+                    'exactextract',
+                    True,
+                    climatology_mean_method,
+                )
+            )
+        cf.as_completed(futures)
+        for future in futures:
+            try:
+                results.append(future.result())
+            except:
+                logger.info('Future result in zonal agg process pool could not be appended')
+
+    df_non_point = pd.concat(results)
 
     # Applies the same method for converting from DataArray to DataFrame, and
     # combines the data back together.
@@ -109,14 +166,9 @@ def zonal_aggregation(
         [
             convert_da_to_df(
                 da=da_point,
-                climate_variable=climate_variable,
                 climatology_mean_method=climatology_mean_method,
             ),
-            convert_da_to_df(
-                da=da_non_point,
-                climate_variable=climate_variable,
-                climatology_mean_method=climatology_mean_method,
-            ),
+            df_non_point,
         ],
         ignore_index=True,
     )
@@ -200,11 +252,12 @@ def main(
         climate=climate_ds[climate_variable],
         infra=infra_gdf,
         zonal_agg_method=zonal_agg_method,
-        climate_variable=climate_variable,
         climatology_mean_method=climatology_mean_method,
         x_dim=x_dim,
         y_dim=y_dim,
     )
     logger.info("Zonal Aggregation Computed")
 
+    failed_aggregations = df.loc[df["value"].isna(), ID_COLUMN].nunique()
+    logger.warning(f"{str(failed_aggregations)} osm_ids were unable to be zonally aggregated")
     return df
