@@ -260,4 +260,5 @@ def main(
 
     failed_aggregations = df.loc[df["value"].isna(), ID_COLUMN].nunique()
     logger.warning(f"{str(failed_aggregations)} osm_ids were unable to be zonally aggregated")
+    df = df.dropna()
     return df

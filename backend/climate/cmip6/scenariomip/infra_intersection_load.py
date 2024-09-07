@@ -82,7 +82,7 @@ def main(
     sio = io.StringIO()
     sio.write(df_scenariomip[TEMP_TABLE_COLUMNS].to_csv(index=False, header=False))
     sio.seek(0)
-
+    
     # Executes database commands
     with conn.cursor() as cur:
         cur.execute(
@@ -96,4 +96,5 @@ def main(
 
         cur.execute(INSERT_SCENARIOMIP)
         logger.info("ScenarioMIP Table Loaded")
-    pass
+    conn.commit()
+
