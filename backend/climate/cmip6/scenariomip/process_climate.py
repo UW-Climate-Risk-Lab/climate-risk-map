@@ -101,7 +101,7 @@ def main(
             engine=xarray_engine,
             decode_times=True,
             use_cftime=True,
-            decode_coords="all",
+            decode_coords=True,
             mask_and_scale=True,
         )
         data.append(_ds)

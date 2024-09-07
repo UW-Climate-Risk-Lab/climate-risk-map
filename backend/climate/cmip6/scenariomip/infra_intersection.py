@@ -21,6 +21,108 @@ logging.basicConfig(level=logging.INFO)
 ID_COLUMN = "osm_id"
 GEOMETRY_COLUMN = "geometry"
 
+# Column name of final output that holds the climate variable's value
+VALUE_COLUMN = "value"
+
+
+def convert_da_to_df(
+    da: xr.DataArray, climate_variable: str, climatology_mean_method: str
+) -> pd.DataFrame:
+    """Converts a DataArray to a Dataframe.
+
+    Used since we ultimately want the data in tabular form for PostGIS.
+
+    Args:
+        da (xr.DataArray): Datarray
+        climate_variable (str): Climate Variable of interest
+        climatology_mean_method (str): Mean aggregation method
+    """
+
+    # The DataArray name is needed, and will ultimately be the climate variable value column in the output
+    da.name = VALUE_COLUMN
+
+    df = (
+        da.stack(id_dim=(GEOMETRY_COLUMN, climatology_mean_method))
+        .to_dataframe()
+        .reset_index(drop=True)[[ID_COLUMN, climatology_mean_method, VALUE_COLUMN]]
+    )
+
+    if climatology_mean_method == "decade_month":
+        df["decade"] = df["decade_month"].apply(lambda x: int(x[0:4]))
+        df["month"] = df["decade_month"].apply(lambda x: int(x[-2:]))
+        df.drop(columns=["decade_month"], inplace=True)
+    else:
+        raise ValueError(f"{climatology_mean_method} climatology method not supported")
+
+    return df
+
+
+def zonal_aggregation(
+    climate: xr.DataArray,
+    infra: gpd.GeoDataFrame,
+    zonal_agg_method: str,
+    climatology_mean_method: str,
+    climate_variable: str,
+    x_dim: str,
+    y_dim: str,
+) -> pd.DataFrame:
+    """Performs zonal aggregation on climate data and infrastructure data.
+
+    NOTE, xvec_zonal_stats can be slow. This uses a method called exactextract,
+    which is based on the package exactextract, which is a C++ zonal aggregation implementation.
+    This loops through each feature sequentially to calculate the value. 
+
+    Args:
+        climate (xr.DataArray): Climate data
+        infra (gpd.GeoDataFrame): Infrastructure data
+        zonal_agg_method (str): Zonal aggregation method
+        climatology_mean_method (str): Climatology mean method
+        climate_variable (str): Climate variable of interest
+        x_dim (str): X dimension name
+        y_dim (str): Y dimension name
+
+    Returns:
+        pd.DataFrame: Aggregated data
+    """
+
+    point_geom_types = ["Point", "MultiPoint"]
+
+    non_point_infra = infra.loc[~infra.geom_type.isin(point_geom_types)]
+    point_infra = infra.loc[infra.geom_type.isin(point_geom_types)]
+
+    da_point = climate.xvec.extract_points(
+        point_infra.geometry, x_coords=x_dim, y_coords=y_dim, index=True
+    )
+
+    da_non_point = climate.xvec.zonal_stats(
+        non_point_infra.geometry,
+        x_coords=x_dim,
+        y_coords=y_dim,
+        stats=zonal_agg_method,
+        method="exactextract",
+        index=True,
+    )
+
+    # Applies the same method for converting from DataArray to DataFrame, and
+    # combines the data back together.
+    df = pd.concat(
+        [
+            convert_da_to_df(
+                da=da_point,
+                climate_variable=climate_variable,
+                climatology_mean_method=climatology_mean_method,
+            ),
+            convert_da_to_df(
+                da=da_non_point,
+                climate_variable=climate_variable,
+                climatology_mean_method=climatology_mean_method,
+            ),
+        ],
+        ignore_index=True,
+    )
+
+    return df
+
 
 def create_pgosm_flex_query(
     osm_tables: List[str], osm_type: str, crs: str
@@ -86,7 +188,6 @@ def main(
         osm_tables=osm_tables, osm_type=osm_type, crs=crs
     )
     infra_data = utils.query_db(query=query, params=params, conn=conn)
-    logger.info("Infrastructure data queried")
 
     infra_df = pd.DataFrame(infra_data, columns=[ID_COLUMN, GEOMETRY_COLUMN]).set_index(
         ID_COLUMN
@@ -94,26 +195,16 @@ def main(
     infra_df[GEOMETRY_COLUMN] = infra_df[GEOMETRY_COLUMN].apply(wkt.loads)
     infra_gdf = gpd.GeoDataFrame(infra_df, geometry=GEOMETRY_COLUMN, crs=crs)
 
-    # By setting stats=max, this returns the max climate value for features that intersect multiple grid cells
-    ds = climate_ds.xvec.zonal_stats(
-        infra_gdf.geometry, x_coords=x_dim, y_coords=y_dim, stats=zonal_agg_method
+    logger.info("Starting Zonal Aggregation...")
+    df = zonal_aggregation(
+        climate=climate_ds[climate_variable],
+        infra=infra_gdf,
+        zonal_agg_method=zonal_agg_method,
+        climate_variable=climate_variable,
+        climatology_mean_method=climatology_mean_method,
+        x_dim=x_dim,
+        y_dim=y_dim,
     )
-
-    # For the initial use of this with 100km x 100km climate data and Washington State Power Grid (~120k features),
-    # dataframe memory size is 270MB, 14million rows
-    df = (
-        ds[climate_variable]
-        .stack(id_dim=(GEOMETRY_COLUMN, climatology_mean_method))
-        .to_dataframe()
-        .reset_index(drop=True)[[ID_COLUMN, climatology_mean_method, climate_variable]]
-    )
-    logger.info("Infrastrucutre Climate Intersection Computed")
-
-    if climatology_mean_method == "decade_month":
-        df["decade"] = df["decade_month"].apply(lambda x: int(x[0:4]))
-        df["month"] = df["decade_month"].apply(lambda x: int(x[-2:]))
-        df.drop(columns=["decade_month"], inplace=True)
-
-    df.rename(columns={climate_variable: "value"}, inplace=True)
+    logger.info("Zonal Aggregation Computed")
 
     return df

@@ -7,8 +7,6 @@ from psycopg2 import sql
 
 from typing import Dict
 
-import utils
-
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,7 +30,7 @@ ON CONFLICT DO NOTHING
 
 CREATE_SCENARIOMIP_TEMP_TABLE = sql.SQL(
     """
-CREATE TEMP TABLE {climate_schema}.scenariomip_temp (
+CREATE TEMP TABLE scenariomip_temp (
     osm_id BIGINT,
     month INT,
     decade INT,
@@ -41,22 +39,22 @@ CREATE TEMP TABLE {climate_schema}.scenariomip_temp (
     value FLOAT
 );
 """
-).format(climate_schema=sql.Identifier(CLIMATE_SCHEMA))
+)
 
 TEMP_TABLE_COLUMNS = ["osm_id", "month", "decade", "variable_name", "ssp", "value"]
 
 COPY_SCENARIOMIP_TEMP = sql.SQL(
     """
-COPY {climate_schema}.scenariomip_temp
+COPY scenariomip_temp
 FROM STDIN WITH (FORMAT csv, HEADER false, DELIMITER ',')
 """
-).format(climate_schema=sql.Identifier(CLIMATE_SCHEMA))
+)
 
 INSERT_SCENARIOMIP = sql.SQL(
     """
 INSERT INTO {climate_schema}.{scenariomip} (osm_id, month, decade, variable_id, value)
-        SELECT temp.osm_id, temp.month, temp.decade, v.variable_id, temp.value
-        FROM {climate_schema}.scenariomip_temp temp
+        SELECT temp.osm_id, temp.month, temp.decade, v.id, temp.value
+        FROM scenariomip_temp temp
         INNER JOIN {climate_schema}.{scenariomip_variables} v 
         ON temp.variable_name = v.variable AND temp.ssp = v.ssp
 ON CONFLICT DO NOTHING
