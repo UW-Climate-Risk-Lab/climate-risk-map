@@ -1,11 +1,9 @@
-import xarray as xr
-import pandas as pd
-import numpy as np
-import rioxarray
 import json
 from pathlib import Path
+from typing import Dict
 
-from typing import Dict, Any
+import rioxarray
+import xarray as xr
 
 
 def main(

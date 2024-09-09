@@ -1,20 +1,18 @@
-import xarray as xr
-import pandas as pd
+import concurrent.futures as cf
+import logging
+import os
+from typing import Dict, List, Tuple
+
 import geopandas as gpd
 import numpy as np
-import xvec
+import pandas as pd
 import psycopg2 as pg
-import os
-
+import psycopg2.sql as sql
+import xarray as xr
+import xvec
 from shapely import wkt
 
-from typing import Tuple, List, Dict
-import concurrent.futures as cf
-
 import utils
-import psycopg2.sql as sql
-
-import logging
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

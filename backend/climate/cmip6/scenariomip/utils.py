@@ -1,15 +1,15 @@
-import boto3
-import os
 import io
-from pathlib import Path
-import psycopg2 as pg
-import psycopg2.sql as sql
+import os
 import re
-import xarray as xr
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
+import boto3
 import numpy as np
 import pandas as pd
-
-from typing import Tuple, Dict, List, Any
+import psycopg2 as pg
+import psycopg2.sql as sql
+import xarray as xr
 
 
 def get_state_bbox(state: str) -> Dict[str, float]:

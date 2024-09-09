@@ -1,19 +1,17 @@
+import logging
 import os
 import tempfile
 
 from psycopg2 import pool
 
-import utils
-import process_climate
 import generate_geotiff
 import infra_intersection
 import infra_intersection_load
-
-import logging
+import process_climate
+import utils
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
 
 S3_BUCKET = os.environ["S3_BUCKET"]
 S3_BASE_PREFIX = os.environ["S3_BASE_PREFIX"]
@@ -132,7 +130,7 @@ def main(ssp: int):
             metadata=metadata,
         )
         CONNECTION_POOL.putconn(infra_intersection_load_conn)
-        
+
 
 if __name__ == "__main__":
     # Used to test single run

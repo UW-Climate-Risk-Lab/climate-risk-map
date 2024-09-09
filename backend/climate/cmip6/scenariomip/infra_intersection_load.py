@@ -1,13 +1,11 @@
-import psycopg2 as pg
-import pandas as pd
-import json
 import io
-
-from psycopg2 import sql
-
+import json
+import logging
 from typing import Dict
 
-import logging
+import pandas as pd
+import psycopg2 as pg
+from psycopg2 import sql
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
