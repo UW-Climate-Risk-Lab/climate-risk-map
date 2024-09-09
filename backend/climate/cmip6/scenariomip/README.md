@@ -64,7 +64,7 @@ A Dockerfile is provided to containerize the application. To build and run the D
 
 1. Build the Docker image:
 ```bash
-docker build -t climate-data-pipeline .
+docker build --platform linux/amd64 -t climate-data-pipeline .
 ```
 
 2. Run the Docker container:

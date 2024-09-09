@@ -71,6 +71,16 @@ def task_xvec_zonal_stats(
     """Used for running xvec.zonal_stats in parallel process pool. Param types are the same
     as xvec.zonal_stats().
 
+    Note, there may be a warning that spatial references systems between 
+    input features do not match. Under the hood, xvec uses exeactextract,
+    which does a simple check on the CRS attribute of each dataset.
+    If the attributes are not identical, it gives an error.
+
+    In this pipeline, we set the CRS as an ENV variable and make sure all
+    imported data is loaded/transformed in this CRS. From manual debugging and
+    checking attributes, it seems the CRS attribute strings showed the same CRS,
+    but the string values were not identical. So ignoring the warning was okay.
+
     Returns:
         pd.DataFrame: DataFrame in format of convert_da_to_df()
     """

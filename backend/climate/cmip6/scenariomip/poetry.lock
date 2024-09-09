@@ -140,7 +140,7 @@ files = [
 ]
 
 [package.dependencies]
-numpy = {version = ">=1.26.0b1", markers = "python_version >= \"3.12.0.rc1\""}
+numpy = {version = ">1.13.3", markers = "python_version < \"3.12.0.rc1\""}
 
 [[package]]
 name = "click"
@@ -472,7 +472,7 @@ files = [
 ]
 
 [package.dependencies]
-numpy = {version = ">=1.26.0", markers = "python_version >= \"3.12\""}
+numpy = {version = ">=1.23.2", markers = "python_version == \"3.11\""}
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
 tzdata = ">=2022.7"
@@ -989,5 +989,5 @@ xarray = ">=2022.12.0"
 
 [metadata]
 lock-version = "2.0"
-python-versions = "3.12.5"
-content-hash = "125f0017030ad6ceac7e20bdd02bc4398bd9fea125cee286c132688bd068028f"
+python-versions = "3.11.2"
+content-hash = "07ad94eaf52ba72e5e5e75e7addd6a9ade0caf0862a38394fd9dfc917ae328a9"
