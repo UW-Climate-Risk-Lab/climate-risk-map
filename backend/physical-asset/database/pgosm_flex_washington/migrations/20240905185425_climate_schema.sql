@@ -7,8 +7,11 @@ CREATE SCHEMA climate;
 
 ALTER SCHEMA climate OWNER TO climate_user;
 
--- Grant necessary permissions before setting the role
 GRANT CONNECT ON DATABASE pgosm_flex_washington TO climate_user;
+
+SET ROLE climate_user;
+
+-- Grant necessary permissions
 GRANT USAGE ON SCHEMA climate TO climate_user;
 GRANT CREATE ON SCHEMA climate TO climate_user;
 
@@ -30,6 +33,12 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA climate
 -- Set default privileges for future sequences
 ALTER DEFAULT PRIVILEGES IN SCHEMA climate
     GRANT USAGE, UPDATE ON SEQUENCES TO climate_user;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA climate
+    GRANT SELECT ON TABLES TO osm_ro_user;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA climate
+    GRANT USAGE ON SEQUENCES TO osm_ro_user;
 
 -- Us pgosm_flex role to grant table read permission on osm schema to climate user
 -- Needed to allow climate_user to query infrastructure data for intersection computation
