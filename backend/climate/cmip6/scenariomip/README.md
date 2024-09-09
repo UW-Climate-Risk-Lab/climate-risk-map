@@ -39,7 +39,7 @@ The following environment variables are required to run the pipeline:
 - `S3_BUCKET`: The name of the S3 bucket.
 - `S3_BASE_PREFIX`: The base prefix for S3 paths.
 - `CLIMATE_VARIABLE`: The climate variable to process.
-- `SSP`: The Shared Socioeconomic Pathway (SSP) scenario.
+- `SSP`: The Shared Socioeconomic Pathway (SSP) scenarios as a comma delimited list.
 - `XARRAY_ENGINE`: The engine to use for reading NetCDF files with Xarray.
 - `CRS`: The Coordinate Reference System (CRS) for the data.
 - `X_DIM`: The name of the X coordinate dimension (e.g., lon or longitude).
