@@ -58,7 +58,14 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA climate GRANT SELECT ON TABLES TO osm_ro_user
 -- Set default privileges for future tables
 ALTER DEFAULT PRIVILEGES IN SCHEMA climate
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO climate_user;
-    
+
 -- Set default privileges for future sequences
 ALTER DEFAULT PRIVILEGES IN SCHEMA climate
     GRANT USAGE, UPDATE ON SEQUENCES TO climate_user;
+
+-- Us pgosm_flex role to grant table read permission on osm schema to climate user
+-- Needed to allow climate_user to query infrastructure data for intersection computation
+SET ROLE pgosm_flex;
+GRANT USAGE ON SCHEMA osm TO climate_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA osm TO climate_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA osm GRANT SELECT ON TABLES TO climate_user;
