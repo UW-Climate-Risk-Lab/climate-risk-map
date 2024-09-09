@@ -18,7 +18,6 @@ logging.basicConfig(level=logging.INFO)
 S3_BUCKET = os.environ["S3_BUCKET"]
 S3_BASE_PREFIX = os.environ["S3_BASE_PREFIX"]
 CLIMATE_VARIABLE = os.environ["CLIMATE_VARIABLE"]
-SSP = os.environ["SSP"]
 XARRAY_ENGINE = os.environ["XARRAY_ENGINE"]
 CRS = os.environ["CRS"]
 X_DIM = os.environ["X_DIM"]
@@ -50,15 +49,17 @@ CONNECTION_POOL = pool.SimpleConnectionPool(
     port=PG_PORT,
 )
 
-def run():
+def main(ssp: int):
     """Runs a processing pipeline for a given climate variable
     and SSP
+
+    ssp: Scenario Pathway to process
     """
     with tempfile.TemporaryDirectory() as climate_tmpdir:
         utils.download_files(
             s3_bucket=S3_BUCKET,
             s3_prefix=utils.create_s3_prefix(
-                S3_BASE_PREFIX, CLIMATE_VARIABLE, SSP, "data"
+                S3_BASE_PREFIX, CLIMATE_VARIABLE, ssp, "data"
             ),
             dir=climate_tmpdir,
         )
@@ -99,7 +100,7 @@ def run():
             s3_prefix=utils.create_s3_prefix(
                 S3_BASE_PREFIX,
                 CLIMATE_VARIABLE,
-                SSP,
+                ssp,
                 f"cogs/{CLIMATOLOGY_MEAN_METHOD}",
             ),
             dir=geotiff_tmpdir,
@@ -125,7 +126,7 @@ def run():
         infra_intersection_load_conn = CONNECTION_POOL.getconn()
         infra_intersection_load.main(
             df_scenariomip=df,
-            ssp=int(SSP),
+            ssp=int(ssp),
             climate_variable=CLIMATE_VARIABLE,
             conn=infra_intersection_load_conn,
             metadata=metadata,
@@ -134,4 +135,5 @@ def run():
         
 
 if __name__ == "__main__":
-    run()
+    # Used to test single run
+    main(ssp=126)

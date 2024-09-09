@@ -56,11 +56,12 @@ ENV CPLUS_INCLUDE_PATH=/usr/include/gdal \
 # Set working directory
 WORKDIR /app
 
-COPY pipeline.py \
+COPY run.py \
+    pipeline.py \
     process_climate.py \ 
     generate_geotiff.py \
     utils.py \
     infra_intersection.py \
     infra_intersection_load.py ./
 
-CMD ["/bin/bash", "-c", "source /app/.venv/bin/activate && python pipeline.py"]
+CMD ["/bin/bash", "-c", "source /app/.venv/bin/activate && python run.py"]
