@@ -30,37 +30,22 @@ CONVERT_360_LON = bool(os.environ["CONVERT_360_LON"])
 STATE_BBOX = os.environ.get("STATE_BBOX", None)
 OSM_CATEGORY = os.environ["OSM_CATEGORY"]
 OSM_TYPE = os.environ["OSM_TYPE"]
-INTERSECTION_DEBUG = (
-    False if os.environ["INTERSECTION_DEBUG"].lower() == "false" else True
-)  # TODO: REMOVE THIS
 PG_DBNAME = os.environ["PG_DBNAME"]
-PG_READ_USER = os.environ["PG_READ_USER"]
-PG_CLIMATE_USER = os.environ["PG_CLIMATE_USER"]
+PG_USER = os.environ["PG_USER"]
+PG_PASSWORD = os.environ["PG_PASSWORD"]
 PG_HOST = os.environ["PG_HOST"]
-PG_READ_USER_PASSWORD = os.environ["PG_READ_USER_PASSWORD"]
-PG_CLIMATE_USER_PASSWORD = os.environ["PG_CLIMATE_USER_PASSWORD"]
 PG_PORT = os.environ["PG_PORT"]
 
 # Hardcode metadata key for metadata the lab derives
 METADATA_KEY = "UW_CRL_DERIVED"
 
 # Centrally manage database connections for the pipeline
-READ_CONNECTION_POOL = pool.SimpleConnectionPool(
+CONNECTION_POOL = pool.SimpleConnectionPool(
     minconn=1,
     maxconn=3,
     dbname=PG_DBNAME,
-    user=PG_READ_USER,
-    password=PG_READ_USER_PASSWORD,
-    host=PG_HOST,
-    port=PG_PORT,
-)
-
-CLIMATE_CONNECTION_POOL = pool.SimpleConnectionPool(
-    minconn=1,
-    maxconn=3,
-    dbname=PG_DBNAME,
-    user=PG_CLIMATE_USER,
-    password=PG_CLIMATE_USER_PASSWORD,
+    user=PG_USER,
+    password=PG_PASSWORD,
     host=PG_HOST,
     port=PG_PORT,
 )
@@ -109,20 +94,19 @@ def run():
         )
         logger.info("Geotiffs created")
 
-        if not INTERSECTION_DEBUG:
-            utils.upload_files(
-                s3_bucket=S3_BUCKET,
-                s3_prefix=utils.create_s3_prefix(
-                    S3_BASE_PREFIX,
-                    CLIMATE_VARIABLE,
-                    SSP,
-                    f"cogs/{CLIMATOLOGY_MEAN_METHOD}",
-                ),
-                dir=geotiff_tmpdir,
-            )
-            logger.info("Geotiffs uploaded")
+        utils.upload_files(
+            s3_bucket=S3_BUCKET,
+            s3_prefix=utils.create_s3_prefix(
+                S3_BASE_PREFIX,
+                CLIMATE_VARIABLE,
+                SSP,
+                f"cogs/{CLIMATOLOGY_MEAN_METHOD}",
+            ),
+            dir=geotiff_tmpdir,
+        )
+        logger.info("Geotiffs uploaded")
 
-        infra_intersection_conn = READ_CONNECTION_POOL.getconn()
+        infra_intersection_conn = CONNECTION_POOL.getconn()
         df = infra_intersection.main(
             climate_ds=ds,
             climate_variable=CLIMATE_VARIABLE,
@@ -135,10 +119,10 @@ def run():
             zonal_agg_method=ZONAL_AGG_METHOD,
             conn=infra_intersection_conn,
         )
-        READ_CONNECTION_POOL.putconn(infra_intersection_conn)
+        CONNECTION_POOL.putconn(infra_intersection_conn)
         logger.info("Infrastructure Intersection Complete")
 
-        infra_intersection_load_conn = CLIMATE_CONNECTION_POOL.getconn()
+        infra_intersection_load_conn = CONNECTION_POOL.getconn()
         infra_intersection_load.main(
             df_scenariomip=df,
             ssp=int(SSP),
@@ -146,7 +130,8 @@ def run():
             conn=infra_intersection_load_conn,
             metadata=metadata,
         )
-        CLIMATE_CONNECTION_POOL.putconn(infra_intersection_load_conn)
+        CONNECTION_POOL.putconn(infra_intersection_load_conn)
+        
 
 if __name__ == "__main__":
     run()

@@ -134,7 +134,11 @@ def main(
 
     ds = climate_calc(ds=ds, time_dim=time_dim, time_agg_method=climatology_mean_method)
 
-    metadata = utils.create_metadata(ds=ds, derived_metadata_key=derived_metadata_key)
+    metadata = utils.create_metadata(
+        ds=ds,
+        derived_metadata_key=derived_metadata_key,
+        climate_variable=climate_variable,
+    )
 
     metadata[derived_metadata_key]["max_climate_variable_value"] = float(
         ds[climate_variable].max()

@@ -11,6 +11,7 @@ import pandas as pd
 
 from typing import Tuple, Dict, List, Any
 
+
 def get_state_bbox(state: str) -> Dict[str, float]:
     """Returns bbox of state
 
@@ -116,7 +117,8 @@ def query_db(query: sql.SQL, conn: pg.extensions.connection, params: Tuple[str] 
         result = cur.fetchall()
     return result
 
-def copy_df_db(query:sql.SQL, df: pd.DataFrame, conn: pg.extensions.connection):
+
+def copy_df_db(query: sql.SQL, df: pd.DataFrame, conn: pg.extensions.connection):
     """Reads pandas dataframe and copies directly to table in query"""
 
     sio = io.StringIO()
@@ -125,6 +127,7 @@ def copy_df_db(query:sql.SQL, df: pd.DataFrame, conn: pg.extensions.connection):
 
     with conn.cursor() as cur:
         cur.copy_expert(query, sio)
+
 
 def get_osm_category_tables(
     osm_category: str, conn: pg.extensions.connection
@@ -164,18 +167,26 @@ def convert_to_serializable(value: Any) -> Any:
         return value
 
 
-def create_metadata(ds: xr.Dataset, derived_metadata_key: str) -> Dict:
+def create_metadata(
+    ds: xr.Dataset, derived_metadata_key: str, climate_variable: str
+) -> Dict:
     """Creates json metadata and summary metrics for
     frontend
 
     Args:
         ds (xr.Dataset): Processed Climate Dataset
-        climat
+        derived_metadata_key (str): Metadata key for any metadata derived during the process
+        climate_variable (str): Specific variable being processed in pipeline
 
     Returns:
         Dict: Dict with metadata
     """
     metadata = {key: convert_to_serializable(value) for key, value in ds.attrs.items()}
+
+    metadata[climate_variable] = {
+        key: convert_to_serializable(value)
+        for key, value in ds[climate_variable].attrs.items()
+    }
 
     # Add any additional useful metadeta to the key UW_CRL_DERIVED
     metadata[derived_metadata_key] = {}

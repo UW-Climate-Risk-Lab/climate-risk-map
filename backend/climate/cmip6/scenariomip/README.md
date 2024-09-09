@@ -50,17 +50,15 @@ The following environment variables are required to run the pipeline:
 - `CONVERT_360_LON`: Whether to convert longitude values from 0-360 to -180-180.
 - `STATE_BBOX`: (Optional) The bounding box for a specific state.
 - `PG_DBNAME`: pgosm_flex_washington
-- `PG_READ_USER`: Postgres user with read access of the osm schema
-- `PG_CLIMATE_USER`: Postgres user with read and write access to climate schema
+- `PG_USER`: Postgres user with read access of the osm schema, and read-write access to climate schema
 - `PG_HOST`: Postgres host
-- `PG_READ_USER_PASSWORD`: PG_READ_USER password
-- `PG_CLIMATE_USER_PASSWORD`: PG_CLIMATE_USER password
+- `PG_PASSWORD`: PG_USER password
 - `OSM_CATEGORY`: OpenStreetMap feature category to query for intersection
 - `OSM_TYPE`: OpenStreetMap feature type to query for intersection
 
 ## Build
 
-A Dockerfile is provided to containerize the application. To build and run the Docker container:
+A Dockerfile is provided to containerize the application. We build with platform linux/amd64 due to geospatial library dependancies. To build and run the Docker container:
 
 1. Build the Docker image:
 ```bash
