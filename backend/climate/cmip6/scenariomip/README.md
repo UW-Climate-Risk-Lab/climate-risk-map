@@ -2,7 +2,7 @@
 
 This code provides a pipeline for processing climate data, generating GeoTIFF files, and uploading them to an S3 bucket. The pipeline consists of several scripts that handle different stages of the processing.
 
-A single code run will process a given climate variable for a given SSP.
+A single code run will process a given climate variable for all available SSP, and intersect the results with a given OSM feature type.
 
 ## Table of Contents
 
@@ -30,6 +30,10 @@ This script generates GeoTIFF files from the processed climate data. It uses the
 **infra_intersection.py**
 
 This script queries the database (assumes PG OSM Flex Schema) and joins the features with the processed climate data using xarray and the xvec package. This will return a tabular dataframe containing each feature at different timestamps with it's associated climate value and identifier.
+
+**infra_intersection_load.py**
+
+This script takes the output of infra_intersection.py and loads into the PostGIS database using a series fo SQL scripts. This currently utilizes the schema found in `climate-risk-map/backend/physical-asset/database/pgosm_flex_washington/`.
 
 ## Environment Variables
 Environment variables can be set locally, in deployment, or in a .env file.
