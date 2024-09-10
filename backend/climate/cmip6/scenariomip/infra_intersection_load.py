@@ -48,6 +48,12 @@ FROM STDIN WITH (FORMAT csv, HEADER false, DELIMITER ',')
 """
 )
 
+DROP_SCENARIOMIP_TEMP = sql.SQL(
+    """
+    DROP TABLE scenariomip_temp;
+    """
+)
+
 INSERT_SCENARIOMIP = sql.SQL(
     """
 INSERT INTO {climate_schema}.{scenariomip} (osm_id, month, decade, variable_id, value)
@@ -80,7 +86,7 @@ def main(
     sio = io.StringIO()
     sio.write(df_scenariomip[TEMP_TABLE_COLUMNS].to_csv(index=False, header=False))
     sio.seek(0)
-    
+
     # Executes database commands
     with conn.cursor() as cur:
         cur.execute(
@@ -94,5 +100,7 @@ def main(
 
         cur.execute(INSERT_SCENARIOMIP)
         logger.info("ScenarioMIP Table Loaded")
-    conn.commit()
 
+        # Cleanup for next pipeline run
+        cur.execute(DROP_SCENARIOMIP_TEMP)
+    conn.commit()

@@ -11,12 +11,10 @@ if __name__ == "__main__":
     ssps = os.getenv("SSP")
 
     # Split the string into a list and converts to ints
-    if ssps:
+    try:
         ssp_list = list(map(int, ssps.split(",")))
-    else:
-        raise ValueError(
-            "No SSPs provided in ENV variable"
-        )  # Default to an empty list if the variable is not set
+    except Exception as e:
+        logger.error(f"Failed to parse SSP ENV var list: {str(e)}")
 
     for ssp in ssp_list:
         try:
