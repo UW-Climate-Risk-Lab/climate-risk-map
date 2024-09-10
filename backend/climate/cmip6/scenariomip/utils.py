@@ -1,18 +1,14 @@
-import boto3
-import os
-from pathlib import Path
-import psycopg2
-import psycopg2.sql as sql
+import io
 import re
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
-from typing import Tuple, Dict, List
-
-
-PG_DBNAME = os.environ["PG_DBNAME"]
-PG_USER = os.environ["PG_USER"]
-PG_HOST = os.environ["PG_HOST"]
-PG_PASSWORD = os.environ["PG_PASSWORD"]
-PG_PORT = os.environ["PG_PORT"]
+import boto3
+import numpy as np
+import pandas as pd
+import psycopg2 as pg
+import psycopg2.sql as sql
+import xarray as xr
 
 
 def get_state_bbox(state: str) -> Dict[str, float]:
@@ -112,31 +108,38 @@ def upload_files(s3_bucket: str, s3_prefix: str, dir: str) -> None:
             s3_key = str(Path(s3_prefix) / file_name)
             client.upload_file(str(file_path), s3_bucket, s3_key)
 
-def query_db(query: sql.SQL, params: Tuple[str] = None):
-    conn = psycopg2.connect(
-        host=PG_HOST,
-        port=PG_PORT,
-        database=PG_DBNAME,
-        user=PG_USER,
-        password=PG_PASSWORD
-    )
 
+def query_db(query: sql.SQL, conn: pg.extensions.connection, params: Tuple[str] = None):
+    """Executs database query"""
     with conn.cursor() as cur:
         cur.execute(query, params)
         result = cur.fetchall()
-    conn.close()
     return result
 
-def get_osm_category_tables(osm_category: str) -> List[str]:
+
+def copy_df_db(query: sql.SQL, df: pd.DataFrame, conn: pg.extensions.connection):
+    """Reads pandas dataframe and copies directly to table in query"""
+
+    sio = io.StringIO()
+    sio.write(df.to_csv(index=False, header=False))
+    sio.seek(0)
+
+    with conn.cursor() as cur:
+        cur.copy_expert(query, sio)
+
+
+def get_osm_category_tables(
+    osm_category: str, conn: pg.extensions.connection
+) -> List[str]:
     """
     Returns DB tables
 
     This assumes you are querying a database set up with PG OSM Flex
     """
-    
+
     query = sql.SQL("SELECT tablename FROM pg_tables WHERE schemaname='osm'")
-    
-    all_tables = query_db(query=query, params=None)
+
+    all_tables = query_db(query=query, conn=conn, params=None)
 
     # Table name always starts with category
     tables = []
@@ -147,3 +150,44 @@ def get_osm_category_tables(osm_category: str) -> List[str]:
             tables.append(tablename)
 
     return tables
+
+
+def convert_to_serializable(value: Any) -> Any:
+    """Converts a value to a JSON serializable type."""
+    if isinstance(value, (np.integer)):
+        return int(value)
+    elif isinstance(value, (np.floating)):
+        return float(value)
+    elif isinstance(value, np.ndarray):
+        return value.tolist()
+    elif isinstance(value, bytes):
+        return value.decode("utf-8")
+    else:
+        return value
+
+
+def create_metadata(
+    ds: xr.Dataset, derived_metadata_key: str, climate_variable: str
+) -> Dict:
+    """Creates json metadata and summary metrics for
+    frontend
+
+    Args:
+        ds (xr.Dataset): Processed Climate Dataset
+        derived_metadata_key (str): Metadata key for any metadata derived during the process
+        climate_variable (str): Specific variable being processed in pipeline
+
+    Returns:
+        Dict: Dict with metadata
+    """
+    metadata = {key: convert_to_serializable(value) for key, value in ds.attrs.items()}
+
+    metadata[climate_variable] = {
+        key: convert_to_serializable(value)
+        for key, value in ds[climate_variable].attrs.items()
+    }
+
+    # Add any additional useful metadeta to the key UW_CRL_DERIVED
+    metadata[derived_metadata_key] = {}
+
+    return metadata

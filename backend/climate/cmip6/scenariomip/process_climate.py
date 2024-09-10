@@ -1,9 +1,11 @@
-import xarray as xr
-import rioxarray
+import logging
 import os
 from pathlib import Path
 
-import logging
+import rioxarray
+import xarray as xr
+
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -14,19 +16,19 @@ def decade_month_calc(ds: xr.Dataset, time_dim: str) -> xr.Dataset:
     """Calculates the climatological mean by decade and month.
 
     This function computes the decade-by-decade average for each month in the provided dataset.
-    The process involves averaging values across each decade for each month separately. 
-    For instance, for the 2050s, the function calculates the average values for January, February, 
-    March, and so on, resulting in 12 averaged values corresponding to each month of the 2050s. 
-    This approach preserves seasonal variability while smoothing out interannual variability 
+    The process involves averaging values across each decade for each month separately.
+    For instance, for the 2050s, the function calculates the average values for January, February,
+    March, and so on, resulting in 12 averaged values corresponding to each month of the 2050s.
+    This approach preserves seasonal variability while smoothing out interannual variability
     within each decade.
 
     The function performs the following steps:
     1. Assigns new coordinates to the dataset:
        - `decade`: Represents the decade (e.g., 2050 for the 2050s).
        - `month`: Represents the month (1 for January, 2 for February, etc.).
-    2. Creates a combined `decade_month` coordinate, formatted as "YYYY-MM", 
+    2. Creates a combined `decade_month` coordinate, formatted as "YYYY-MM",
        where "YYYY" is the starting year of the decade, and "MM" is the month.
-    3. Groups the dataset by the `decade_mon 
+    3. Groups the dataset by the `decade_mon
     """
     ds = ds.assign_coords(
         decade=(ds["time.year"] // 10) * 10, month=ds["time"].dt.month
@@ -61,13 +63,15 @@ def climate_calc(ds: xr.Dataset, time_dim: str, time_agg_method: str) -> xr.Data
 def main(
     file_directory: str,
     xarray_engine: str,
+    climate_variable: str,
     crs: str,
     x_dim: str,
     y_dim: str,
     convert_360_lon: bool,
     bbox: dict,
     time_dim: str,
-    time_agg_method: str,
+    climatology_mean_method: str,
+    derived_metadata_key: str,
 ) -> xr.Dataset:
     """Processes climate data
 
@@ -80,7 +84,8 @@ def main(
         convert_360_lon (bool): If True, converts 0-360 lon values to -180-180
         bbox (dict): Dict with keys (min_lon, min_lat, max_lon, max_lat) to filter data
         time_dim (str): The name of the time dimension in the dataset
-        time_agg_method (str): The method by which to average over time.
+        climatology_mean_method (str): The method by which to average climate variable over time.
+        derived_metadata_key (str): Keyname to store custom metadata in
 
     Returns:
         xr.Dataset: Xarray dataset of processed climate data
@@ -96,7 +101,7 @@ def main(
             engine=xarray_engine,
             decode_times=True,
             use_cftime=True,
-            decode_coords="all",
+            decode_coords=True,
             mask_and_scale=True,
         )
         data.append(_ds)
@@ -127,9 +132,22 @@ def main(
     ds.rio.set_spatial_dims(x_dim=x_dim, y_dim=y_dim, inplace=True)
     ds.rio.write_coordinate_system(inplace=True)
 
-    ds = climate_calc(ds=ds, time_dim=time_dim, time_agg_method=time_agg_method)
+    ds = climate_calc(ds=ds, time_dim=time_dim, time_agg_method=climatology_mean_method)
 
-    return ds
+    metadata = utils.create_metadata(
+        ds=ds,
+        derived_metadata_key=derived_metadata_key,
+        climate_variable=climate_variable,
+    )
+
+    metadata[derived_metadata_key]["max_climate_variable_value"] = float(
+        ds[climate_variable].max()
+    )
+    metadata[derived_metadata_key]["min_climate_variable_value"] = float(
+        ds[climate_variable].min()
+    )
+
+    return ds, metadata
 
 
 if __name__ == "__main__":

@@ -36,17 +36,17 @@ tests-mypy = ["mypy (>=1.11.1)", "pytest-mypy-plugins"]
 
 [[package]]
 name = "boto3"
-version = "1.35.12"
+version = "1.35.14"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "boto3-1.35.12-py3-none-any.whl", hash = "sha256:acaa7c75cbf483605e3c46e9ac03043a4cf5e9866940122d68b06d1defe00774"},
-    {file = "boto3-1.35.12.tar.gz", hash = "sha256:b32faab174f6f9b75fada27bcf054ab3e8846bd410ed9817d0b511109326b6b1"},
+    {file = "boto3-1.35.14-py3-none-any.whl", hash = "sha256:c3e138e9041d59cd34cdc28a587dfdc899dba02ea26ebc3e10fb4bc88e5cf31b"},
+    {file = "boto3-1.35.14.tar.gz", hash = "sha256:7bc78d7140c353b10a637927fe4bc4c4d95a464d1b8f515d5844def2ee52cbd5"},
 ]
 
 [package.dependencies]
-botocore = ">=1.35.12,<1.36.0"
+botocore = ">=1.35.14,<1.36.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.10.0,<0.11.0"
 
@@ -55,13 +55,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.35.12"
+version = "1.35.14"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.35.12-py3-none-any.whl", hash = "sha256:cb787030415438ea6ff8381f8acd8b1107593d5ebea457fd843a5e36ba19e9a4"},
-    {file = "botocore-1.35.12.tar.gz", hash = "sha256:a8f8230032d090225a93763675a73c208d121bb63ed99f41ee6ad3d51b74b80d"},
+    {file = "botocore-1.35.14-py3-none-any.whl", hash = "sha256:24823135232f88266b66ae8e1d0f3d40872c14cd976781f7fe52b8f0d79035a0"},
+    {file = "botocore-1.35.14.tar.gz", hash = "sha256:8515a2fc7ca5bcf0b10016ba05ccf2d642b7cb77d8773026ff2fa5aa3bf38d2e"},
 ]
 
 [package.dependencies]
@@ -140,7 +140,7 @@ files = [
 ]
 
 [package.dependencies]
-numpy = {version = ">=1.26.0b1", markers = "python_version >= \"3.12.0.rc1\""}
+numpy = {version = ">1.13.3", markers = "python_version < \"3.12.0.rc1\""}
 
 [[package]]
 name = "click"
@@ -199,6 +199,41 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
+]
+
+[[package]]
+name = "exactextract"
+version = "0.2.0"
+description = "Fast and accurate raster zonal statistics"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "exactextract-0.2.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ac116486d9f63431466e0a6ca1158a8b56e3c83c69d89c90344d1c0a8556e8a5"},
+    {file = "exactextract-0.2.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:bafba5e31c46d421085c8550b0ad54baf2ace48141a9b61ae4f19f35119ac9a0"},
+    {file = "exactextract-0.2.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9460990cb7d87a258093b92d3e4e7fb14fa7fdad508009e97646f17a23a286f9"},
+    {file = "exactextract-0.2.0-cp310-cp310-win32.whl", hash = "sha256:b554fab820ccf38d6f7b2f66d437c5f8ff74a43e6462d408ba9f7bbcc3afeadb"},
+    {file = "exactextract-0.2.0-cp310-cp310-win_amd64.whl", hash = "sha256:e28fc1e194084643dbf7ebb3e279ae962af88dea9919c601dc707ce4b3d19724"},
+    {file = "exactextract-0.2.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:818b4f9b6fd80372954603f25d5e87733cbd4f1aa6958a6847bb97260a5ba215"},
+    {file = "exactextract-0.2.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:a0abee41395293593a2ff12038e62c355677d9166a61586ed5f1f93ca467c122"},
+    {file = "exactextract-0.2.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:21b9c444fdaaea925198e4df574c226dda2572144b5f44d78529c23687174ba0"},
+    {file = "exactextract-0.2.0-cp311-cp311-win32.whl", hash = "sha256:4015a6673d21f09dcc69eea2a611cd0aa86366f8b1d4d0064f54b72576323e6b"},
+    {file = "exactextract-0.2.0-cp311-cp311-win_amd64.whl", hash = "sha256:7af83879c9af80c90faca8d11d83e43326915b485160a1c7a10a7b535f568359"},
+    {file = "exactextract-0.2.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:1eb5480c4b56086b3aab295ec4255912f16e8b671c5b6e75c515a2669b76c872"},
+    {file = "exactextract-0.2.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:e2cc8831a1e3c215097fe29cf093e82bb16ebc8293988e38330c5b9396be6d7f"},
+    {file = "exactextract-0.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f66e6b4ee4846b15647a77e4ed8d4efa81161686a7dd243eb7a848fc416d5266"},
+    {file = "exactextract-0.2.0-cp312-cp312-win32.whl", hash = "sha256:7f7384ddd3ac7e8aa81d66db61a97746860ff380e5cf496df889afddd2b959d3"},
+    {file = "exactextract-0.2.0-cp312-cp312-win_amd64.whl", hash = "sha256:7f1dea7545cb82cd1bd47b5e93de8a9f2baedd88c95a9d1fd0a24d5387ed8809"},
+    {file = "exactextract-0.2.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:7bd2dfd6f923797fa4908ca82a50ed603d95245f7f42339a6e4d094a58861793"},
+    {file = "exactextract-0.2.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:652b34c69c46a6ebcd42f0daa6e36a64008198db6f0f19adb2fd4e58f7dece8c"},
+    {file = "exactextract-0.2.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:56b09fef5d68d7f713c50d518404e62d93886d0aacdc920054ad29b6a7666de1"},
+    {file = "exactextract-0.2.0-cp313-cp313-win32.whl", hash = "sha256:c6d9821c3c72d5aa2231909faedc944ddbd4b16771c03cf03d84f24809740f39"},
+    {file = "exactextract-0.2.0-cp313-cp313-win_amd64.whl", hash = "sha256:edd2c79ee71a4d9cb5dccbbebf838f8dfda3d2c68a6b7b5960f01f3c37c98894"},
+    {file = "exactextract-0.2.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:dd2952509354a824afcf61064032f2d041cd7af69d569c9b901baf5ac4eba535"},
+    {file = "exactextract-0.2.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:b7221ccc33883a7b27866f0eb99bf17fe74104495e83603d32b7d915ec16a948"},
+    {file = "exactextract-0.2.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:21bc3ddc3cacae908a6b1d42a04fe6a9dc34c65be05c6f1569dec933f91b3436"},
+    {file = "exactextract-0.2.0-cp39-cp39-win32.whl", hash = "sha256:50d914ceb1b89d43ae1b36f6d9cc2ead6cd685893c1969c51afec745844370a5"},
+    {file = "exactextract-0.2.0-cp39-cp39-win_amd64.whl", hash = "sha256:b23a584ca9827dce34296799f461667cece77bb321bd25684673bdf952781354"},
+    {file = "exactextract-0.2.0.tar.gz", hash = "sha256:776b5619a1642f674e8575cee9d5b8dfa756d9b4a81a73c2749773557a3d4871"},
 ]
 
 [[package]]
@@ -437,7 +472,7 @@ files = [
 ]
 
 [package.dependencies]
-numpy = {version = ">=1.26.0", markers = "python_version >= \"3.12\""}
+numpy = {version = ">=1.23.2", markers = "python_version == \"3.11\""}
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
 tzdata = ">=2022.7"
@@ -778,13 +813,13 @@ crt = ["botocore[crt] (>=1.33.2,<2.0a.0)"]
 
 [[package]]
 name = "setuptools"
-version = "74.1.1"
+version = "74.1.2"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "setuptools-74.1.1-py3-none-any.whl", hash = "sha256:fc91b5f89e392ef5b77fe143b17e32f65d3024744fba66dc3afe07201684d766"},
-    {file = "setuptools-74.1.1.tar.gz", hash = "sha256:2353af060c06388be1cecbf5953dcdb1f38362f87a2356c480b6b4d5fcfc8847"},
+    {file = "setuptools-74.1.2-py3-none-any.whl", hash = "sha256:5f4c08aa4d3ebcb57a50c33b1b07e94315d7fc7230f7115e47fc99776c8ce308"},
+    {file = "setuptools-74.1.2.tar.gz", hash = "sha256:95b40ed940a1c67eb70fc099094bd6e99c6ee7c23aa2306f4d2697ba7916f9c6"},
 ]
 
 [package.extras]
@@ -954,5 +989,5 @@ xarray = ">=2022.12.0"
 
 [metadata]
 lock-version = "2.0"
-python-versions = "3.12.5"
-content-hash = "2baa27b95aaeb57745bf644da6e35e810246c0ab78f903bc48f35e06a8fad239"
+python-versions = "3.11.2"
+content-hash = "07ad94eaf52ba72e5e5e75e7addd6a9ade0caf0862a38394fd9dfc917ae328a9"
