@@ -1,4 +1,4 @@
-import pgosm_flex_api
+import frontend.dash_leaflet.osm_api as osm_api
 from dotenv import load_dotenv
 import os
 
@@ -11,7 +11,7 @@ PG_PORT = os.environ["PG_PORT"]
 
 if __name__ == "__main__":
 
-    api = pgosm_flex_api.OpenStreetMapDataAPI(
+    api = osm_api.OpenStreetMapDataAPI(
         dbname=PG_DBNAME, host=PG_HOST, user=PG_USER, password=PG_PASSWORD, port=PG_PORT
     )
     # Test bbox selection, should return 2 power plants

@@ -1,4 +1,4 @@
-# Experiment with GeoJSON Infrastructure + Climate TIFFs
+# Dash Leaflet Frontend Map
 
 ## Overview
 
@@ -8,9 +8,9 @@ The sample climate data in the `experimentation/tile_service/raster_tiler/dynami
 
 
 ## How to run
-0. Set up a local or remote postgres instance and load using the steps in `backend/physical-asset/database` and `backend/physical-asset/etl`.
+0. Set up a local or remote postgres instance and load using the steps in `backend/physical-_sset/database` and `backend/physical_asset/etl`.
 
-1. Navigate to this current directory (`/climate-risk-map/experimentation/frontend/dash_leaflet/geojson`) and build the docker image.
+1. Navigate to this current directory (`/climate-risk-map/frontend/dash_leaflet`) and build the docker image.
 
 *Note, if the docker build fails because of the build dependencies and an error about "Hash Sum Mismatch", try building on another network or VPN.*
 
