@@ -10,6 +10,8 @@ import psycopg2 as pg
 import psycopg2.sql as sql
 import xarray as xr
 
+def str_to_bool(s):
+    return s.lower() in ['true', '1', 't', 'y', 'yes']
 
 def get_state_bbox(state: str) -> Dict[str, float]:
     """Returns bbox of state
