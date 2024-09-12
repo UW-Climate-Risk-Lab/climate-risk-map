@@ -6,6 +6,9 @@ import re
 import json
 import psycopg2 as pg
 from psycopg2 import OperationalError
+from geojson_pydantic import FeatureCollection
+from pydantic import ValidationError
+
 
 from typing import List, Dict, Tuple
 
@@ -101,118 +104,6 @@ class OpenStreetMapDataAPI:
 
         return column_names
 
-    def _is_valid_geometry(self, geometry: Dict) -> bool:
-        """Used with _is_valid_geojson() method"""
-        if "type" not in geometry or "coordinates" not in geometry:
-            return False
-        geom_type = geometry["type"]
-        coordinates = geometry["coordinates"]
-        if geom_type == "Point":
-            return (
-                isinstance(coordinates, list)
-                and len(coordinates) == 2
-                and all(isinstance(coord, (int, float)) for coord in coordinates)
-            )
-        elif geom_type == "MultiPoint":
-            return isinstance(coordinates, list) and all(
-                isinstance(coord, list)
-                and len(coord) == 2
-                and all(isinstance(c, (int, float)) for c in coord)
-                for coord in coordinates
-            )
-        elif geom_type == "LineString":
-            return isinstance(coordinates, list) and all(
-                isinstance(coord, list)
-                and len(coord) == 2
-                and all(isinstance(c, (int, float)) for c in coord)
-                for coord in coordinates
-            )
-        elif geom_type == "MultiLineString":
-            return isinstance(coordinates, list) and all(
-                isinstance(line, list)
-                and all(
-                    isinstance(coord, list)
-                    and len(coord) == 2
-                    and all(isinstance(c, (int, float)) for c in coord)
-                    for coord in line
-                )
-                for line in coordinates
-            )
-        elif geom_type == "Polygon":
-            return isinstance(coordinates, list) and all(
-                isinstance(ring, list)
-                and all(
-                    isinstance(coord, list)
-                    and len(coord) == 2
-                    and all(isinstance(c, (int, float)) for c in coord)
-                    for coord in ring
-                )
-                for ring in coordinates
-            )
-        elif geom_type == "MultiPolygon":
-            return isinstance(coordinates, list) and all(
-                isinstance(polygon, list)
-                and all(
-                    isinstance(ring, list)
-                    and all(
-                        isinstance(coord, list)
-                        and len(coord) == 2
-                        and all(isinstance(c, (int, float)) for c in coord)
-                        for coord in ring
-                    )
-                    for ring in polygon
-                )
-                for polygon in coordinates
-            )
-        elif geom_type == "GeometryCollection":
-            return isinstance(coordinates, list) and all(
-                self._is_valid_geometry(geom) for geom in coordinates
-            )
-        return False
-
-    def _is_valid_feature(self, feature: Dict) -> bool:
-        """Used with _is_valid_geojson() method"""
-        if "type" not in feature or feature["type"] != "Feature":
-            return False
-        if "geometry" not in feature or not self._is_valid_geometry(
-            feature["geometry"]
-        ):
-            return False
-        if "properties" not in feature or not isinstance(feature["properties"], dict):
-            return False
-        return True
-
-    def _is_valid_geojson(self, geojson: Dict) -> bool:
-        """Checks if the dict is in valid GeoJSON format
-
-        TODO: Move the GeoJSON checking logic out of class
-        """
-        if "type" not in geojson:
-            return False
-        geojson_type = geojson["type"]
-        if geojson_type == "FeatureCollection":
-            if geojson["features"] is None:
-                print("No data returned by GeoJSON query!")
-                return True
-            if "features" not in geojson or not isinstance(geojson["features"], list):
-                return False
-            return all(
-                self._is_valid_feature(feature) for feature in geojson["features"]
-            )
-        elif geojson_type == "Feature":
-            return self._is_valid_feature(geojson)
-        elif geojson_type in [
-            "Point",
-            "MultiPoint",
-            "LineString",
-            "MultiLineString",
-            "Polygon",
-            "MultiPolygon",
-            "GeometryCollection",
-        ]:
-            return self._is_valid_geometry(geojson)
-        return False
-
     def _check_args_get_osm_data(self, args: List[Dict]) -> None:
         """Used to quality check the args in get_osm_data()
 
@@ -230,7 +121,20 @@ class OpenStreetMapDataAPI:
             else:
                 if not isinstance(arg["value"], arg["type"]):
                     raise TypeError(f"The input {arg["name"]} should be of type: {str(arg["type"])}")
-        
+    
+    def _is_valid_geojson_featurecollection(self, data: Dict) -> bool:
+        try:
+            features = data["features"]
+        except KeyError as e:
+            raise KeyError("When checking GeoJSON Feature Collection, no 'features' key was found")
+
+        try:
+            fc = FeatureCollection(type="FeatureCollection", features=features)
+            return fc.type == "FeatureCollection"
+        except ValidationError as e:
+            print(e)
+            return False
+
     def get_osm_data(
         self,
         categories: List[str],
@@ -324,8 +228,8 @@ class OpenStreetMapDataAPI:
 
         # Check that bbox is a geojson
         if bbox:
-            if not self._is_valid_geojson(geojson=bbox):
-                raise TypeError("The bbox provide is not a valid GeoJSON!")
+            if not self._is_valid_geojson_featurecollection(data=bbox):
+                raise TypeError("The bbox provided is not a valid GeoJSON!")
 
         # This builds a query to return a GeoJSON object
         # Uses the PostGIS function "ST_AsGeoJSON" in every query
@@ -410,6 +314,8 @@ class OpenStreetMapDataAPI:
 
         result = self.__execute_postgis(query=full_query, params=tuple(params))
         geojson = result[0][0]
-        if not self._is_valid_geojson(geojson=geojson):
+        if not self._is_valid_geojson_featurecollection(data=geojson):
             raise ValueError("The returned data is not in proper geojson format")
         return geojson
+
+
