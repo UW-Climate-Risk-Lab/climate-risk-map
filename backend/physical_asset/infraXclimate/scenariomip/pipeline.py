@@ -23,7 +23,7 @@ Y_DIM = os.environ["Y_DIM"]
 TIME_DIM = os.environ["TIME_DIM"]
 CLIMATOLOGY_MEAN_METHOD = os.environ["CLIMATOLOGY_MEAN_METHOD"]
 ZONAL_AGG_METHOD = os.environ["ZONAL_AGG_METHOD"]
-CONVERT_360_LON = bool(os.environ["CONVERT_360_LON"])
+CONVERT_360_LON = utils.str_to_bool(os.environ.get("CONVERT_360_LON", False))
 STATE_BBOX = os.environ.get("STATE_BBOX", None)
 OSM_CATEGORY = os.environ["OSM_CATEGORY"]
 OSM_TYPE = os.environ["OSM_TYPE"]
@@ -32,9 +32,7 @@ PG_USER = os.environ["PG_USER"]
 PG_PASSWORD = os.environ["PG_PASSWORD"]
 PG_HOST = os.environ["PG_HOST"]
 PG_PORT = os.environ["PG_PORT"]
-
-# Hardcode metadata key for metadata the lab derives
-METADATA_KEY = "UW_CRL_DERIVED"
+METADATA_KEY = os.environ["METADATA_KEY"]
 
 # Centrally manage database connections for the pipeline
 CONNECTION_POOL = pool.SimpleConnectionPool(

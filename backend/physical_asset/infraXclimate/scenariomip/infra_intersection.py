@@ -139,7 +139,6 @@ def zonal_aggregation(
     )
 
     # The following parallelizes the zonal aggregation of non-point geometry features
-    # The 
     workers = os.cpu_count()
     futures = []
     results = []
