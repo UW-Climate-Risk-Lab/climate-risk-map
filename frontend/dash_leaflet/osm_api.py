@@ -5,7 +5,7 @@ Interface with PostGIS Database for getting asset data
 import re
 import json
 import psycopg2 as pg
-from psycopg2 import OperationalError
+from psycopg2 import sql
 from geojson_pydantic import FeatureCollection
 from pydantic import ValidationError
 
@@ -30,10 +30,9 @@ class OpenStreetMapDataAPI:
         self.conn = conn
 
         # schema where the feature data tables are
-        self.schema = "osm"
+        self.osm_schema = "osm"
 
         # As of Aug-2024, set manually for time being.
-        # Keys are categories, values are lists of available geometry types of that category
         # Possible categories here: https://pgosm-flex.com/layersets.html
         self.available_categories = "infrastructure"
 
@@ -61,11 +60,12 @@ class OpenStreetMapDataAPI:
 
         tables = []
 
-        query = """
+        query = sql.SQL("""
         SELECT tablename FROM pg_tables
-        WHERE schemaname='osm'
-        """
-        result = self.__execute_postgis(query=query, params=None)
+        WHERE schemaname = %s
+        """)
+        params = (self.osm_schema,)
+        result = self.__execute_postgis(query=query, params=params)
 
         # Uses Regex to check whether to use the table
         # Tables always start with the category name
@@ -93,11 +93,11 @@ class OpenStreetMapDataAPI:
         """
 
         # Query to fetch column names and types
-        query = """
+        query = sql.SQL("""
         SELECT column_name
         FROM information_schema.columns
         WHERE table_name = %s
-        """
+        """)
 
         result = self.__execute_postgis(query, (table_name,))
         column_names = [row[0] for row in result]
@@ -246,7 +246,6 @@ class OpenStreetMapDataAPI:
         for table in tables:
             # Creates a query for each table in the given category
             columns = self._get_table_columns(table_name=table)
-            # TODO: Make SRID an input param, not hardcoded as 4326
 
             # TODO: Implement sql.SQL strings for building better sql queries 
             # https://www.psycopg.org/docs/sql.html
