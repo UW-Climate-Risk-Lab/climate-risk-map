@@ -32,6 +32,7 @@ CREATE INDEX idx_geom ON osm.infrastructure USING GIST (geom);
 CREATE INDEX idx_osm_type ON osm.infrastructure (osm_type);
 CREATE INDEX idx_osm_subtype ON osm.infrastructure (osm_subtype);
 CREATE INDEX idx_osm_type_subtype ON osm.infrastructure (osm_type, osm_subtype);
+CREATE INDEX idx_geom_type ON osm.infrastructure (geom_type);
 
 -- Grant SELECT on the materialized view to osm_ro_user and climate_user
 GRANT SELECT ON osm.infrastructure TO osm_ro_user;
