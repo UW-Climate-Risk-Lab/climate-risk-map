@@ -12,16 +12,10 @@ PG_PORT = os.environ["PG_PORT"]
 
 if __name__ == "__main__":
     conn = psycopg2.connect(
-            dbname=PG_DBNAME,
-            user=PG_USER,
-            password=PG_PASSWORD,
-            host=PG_HOST,
-            port=PG_PORT
-        )
-
-    api = infraxclimate_api.infraXclimateAPI(
-        conn=conn
+        dbname=PG_DBNAME, user=PG_USER, password=PG_PASSWORD, host=PG_HOST, port=PG_PORT
     )
+
+    api = infraxclimate_api.infraXclimateAPI(conn=conn)
     # Test bbox selection, should return 2 power plants
     bbox = {
         "type": "FeatureCollection",
@@ -74,5 +68,17 @@ if __name__ == "__main__":
             },
         ],
     }
-    data = api.get_osm_data("infrastructure", ["power"], ["line"], bbox=bbox, county=True, city=True)
+    data = api.get_osm_data(
+        "infrastructure",
+        ["power"],
+        ["line"],
+        bbox=bbox,
+        county=True,
+        city=True,
+        climate_variable="burntFractionAll",
+        climate_decade=[2060],
+        cliamte_month=[8],
+        climate_ssp=126,
+        climate_metadata=True,
+    )
     print(data)

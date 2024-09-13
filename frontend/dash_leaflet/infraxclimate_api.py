@@ -39,6 +39,11 @@ class infraXclimateAPI:
         # Possible categories here: https://pgosm-flex.com/layersets.html
         self.available_categories = ["infrastructure", self.osm_table_places]
 
+        self.climate_schema = "climate"
+        self.scenariomip_table = "scenariomip"
+        self.scenariomip_variable_table = "scenariomip_variables"
+        self.climate_table_alias = "climate_data"  # Table alias from nested join between scenariomip and scenariomip variables
+
     def __del__(self):
         if self.conn:
             self.conn.close()
@@ -92,6 +97,11 @@ class infraXclimateAPI:
         epsg_code: int,
         geom_type: str,
         centroid: bool,
+        climate_variable: str,
+        climate_month: int,
+        climate_decade: int,
+        climate_ssp: int,
+        climate_metadata: bool,
     ) -> None:
         """Used to quality check the args in get_osm_data()
 
@@ -130,6 +140,36 @@ class infraXclimateAPI:
             {"name": "epsg_code", "required": True, "type": int, "value": epsg_code},
             {"name": "geom_type", "required": False, "type": str, "value": geom_type},
             {"name": "centroid", "required": True, "type": bool, "value": centroid},
+            {
+                "name": "climate_variable",
+                "required": False,
+                "type": str,
+                "value": climate_variable,
+            },
+            {
+                "name": "climate_ssp",
+                "required": False,
+                "type": int,
+                "value": climate_ssp,
+            },
+            {
+                "name": "climate_decade",
+                "required": False,
+                "type": list,
+                "value": climate_decade,
+            },
+            {
+                "name": "climate_month",
+                "required": False,
+                "type": list,
+                "value": climate_month,
+            },
+            {
+                "name": "climate_metadata",
+                "required": False,
+                "type": bool,
+                "value": climate_metadata,
+            },
         ]
 
         for arg in args:
@@ -184,6 +224,11 @@ class infraXclimateAPI:
         osm_subtypes: List[str],
         county: bool,
         city: bool,
+        climate_variable: str,
+        climate_month: int,
+        climate_decade: int,
+        climate_ssp: int,
+        climate_metadata: bool,
     ) -> sql.SQL:
         """Bulids a dynamic SQL SELECT statement for the get_osm_data method"""
 
@@ -238,10 +283,48 @@ class infraXclimateAPI:
             )
             select_fields.append(city_field)
 
+        if climate_variable and climate_ssp and climate_month and climate_decade:
+            select_fields.append(
+                sql.SQL("{climate_table_alias}.ssp").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias),
+                )
+            )
+            select_fields.append(
+                sql.SQL("{climate_table_alias}.month").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias),
+                )
+            )
+            select_fields.append(
+                sql.SQL("{climate_table_alias}.decade").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias),
+                )
+            )
+            select_fields.append(
+                sql.SQL("{climate_table_alias}.variable AS climate_variable").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias),
+                )
+            )
+            select_fields.append(
+                sql.SQL("{climate_table_alias}.value AS climate_value").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias),
+                )
+            )
+            if climate_metadata:
+                select_fields.append(
+                    sql.SQL("{climate_table_alias}.climate_metadata").format(
+                        climate_schema=sql.Identifier(self.climate_schema),
+                        climate_table_alias=sql.Identifier(self.climate_table_alias),
+                    )
+                )
+
         select_statement = sql.SQL("SELECT {columns}").format(
             columns=sql.SQL(", ").join(select_fields)
         )
-
         return select_statement
 
     def _create_from_statement(self, primary_table: str) -> sql.SQL:
@@ -252,7 +335,15 @@ class infraXclimateAPI:
         return from_statement
 
     def _create_join_statement(
-        self, primary_table: str, params: List, county: bool, city: bool
+        self,
+        primary_table: str,
+        params: List,
+        county: bool,
+        city: bool,
+        climate_variable: str,
+        climate_month: int,
+        climate_decade: int,
+        climate_ssp: int,
     ) -> sql.SQL:
 
         # the tags table contains all of the properties of the features
@@ -286,6 +377,33 @@ class infraXclimateAPI:
             )
             params.append(admin["level"])
             join_statement = sql.SQL(" ").join([join_statement, admin_join])
+
+        if climate_variable and climate_ssp and climate_month and climate_decade:
+            climate_join = sql.SQL(
+                """
+            LEFT JOIN(
+                SELECT s.osm_id, v.ssp, v.variable, s.month, s.decade, s.value, v.metadata AS climate_metadata
+                FROM {climate_schema}.{scenariomip} s
+                LEFT JOIN {climate_schema}.{scenariomip_variable} v
+                ON s.variable_id = v.id
+                WHERE v.ssp = %s
+                AND v.variable = %s
+                AND s.decade IN %s
+                AND s.month IN %s
+            ) AS {climate_table_alias}
+            ON {schema}.{primary_table}.osm_id = {climate_table_alias}.osm_id
+            """
+            ).format(
+                climate_schema=sql.Identifier(self.climate_schema),
+                scenariomip=sql.Identifier(self.scenariomip_table),
+                scenariomip_variable=sql.Identifier(self.scenariomip_variable_table),
+                schema=sql.Identifier(self.osm_schema),
+                primary_table=sql.Identifier(primary_table),
+                climate_table_alias=sql.Identifier(self.climate_table_alias),
+            )
+            params += [climate_ssp, climate_variable, tuple(set(climate_decade)), tuple(set(climate_month))]
+            
+            join_statement = sql.SQL(" ").join([join_statement, climate_join])
 
         return join_statement
 
@@ -370,6 +488,11 @@ class infraXclimateAPI:
         epsg_code: int = 4326,
         geom_type: str = None,
         centroid: bool = False,
+        climate_variable: str = None,
+        climate_ssp: int = None,
+        cliamte_month: List[int] = None,
+        climate_decade: List[int] = None,
+        climate_metadata: bool = None,
     ) -> Dict:
         """Gets OSM data from provided filters.
 
@@ -388,6 +511,11 @@ class infraXclimateAPI:
             epsg_code (int): Spatial reference ID, default is 4326 (Representing EPSG:4326)
             geom_type (str): If used, returns only features of the specified geom_type
             centroid (bool): If True, returns the geometry as a Point, the centroid of the features geometry
+            climate_variable (str): Climate variable to filter on
+            climate_ssp (int): Climate SSP (Shared Socioeconomic Pathway) to filter on
+            climate_month (List[int]): List of months to filter on
+            climate_decade (List[int]): List of decades to filter on
+            climate_metadata (bool): Returns metadata of climate variable as dict
         """
 
         # Quality check of input args
@@ -401,10 +529,15 @@ class infraXclimateAPI:
             epsg_code=epsg_code,
             geom_type=geom_type,
             centroid=centroid,
+            climate_variable=climate_variable,
+            climate_ssp=climate_ssp,
+            climate_decade=climate_decade,
+            climate_month=cliamte_month,
+            climate_metadata=climate_metadata,
         )
 
         # This builds a query to return a GeoJSON object
-        # Uses the PostGIS function "ST_AsGeoJSON" in every query
+        # This method should always return a GeoJSON to the client
         sql_geojson_build = sql.SQL(
             """ 
         SELECT json_build_object(
@@ -437,12 +570,24 @@ class infraXclimateAPI:
             osm_subtypes=osm_subtypes,
             county=county,
             city=city,
+            climate_variable=climate_variable,
+            climate_ssp=climate_ssp,
+            climate_decade=climate_decade,
+            climate_month=cliamte_month,
+            climate_metadata=climate_metadata,
         )
 
         from_statement = self._create_from_statement(primary_table=primary_table)
 
         join_statement = self._create_join_statement(
-            primary_table=primary_table, params=params, county=county, city=city
+            primary_table=primary_table,
+            params=params,
+            county=county,
+            city=city,
+            climate_variable=climate_variable,
+            climate_ssp=climate_ssp,
+            climate_decade=climate_decade,
+            climate_month=cliamte_month,
         )
 
         where_clause = self._create_where_clause(
