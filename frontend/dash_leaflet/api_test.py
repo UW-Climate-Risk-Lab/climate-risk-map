@@ -2,6 +2,7 @@ import infraxclimate_api
 from dotenv import load_dotenv
 import os
 import psycopg2
+import time
 
 load_dotenv()
 PG_DBNAME = os.environ["PG_DBNAME"]
@@ -68,17 +69,19 @@ if __name__ == "__main__":
             },
         ],
     }
+    start_time = time.time()
     data = api.get_osm_data(
         "infrastructure",
         ["power"],
-        ["line"],
         bbox=bbox,
         county=True,
         city=True,
         climate_variable="burntFractionAll",
-        climate_decade=[2060],
-        cliamte_month=[8],
+        climate_decade=[2060, 2070],
+        cliamte_month=[8, 9],
         climate_ssp=126,
         climate_metadata=True,
     )
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time} seconds")
     print(data)

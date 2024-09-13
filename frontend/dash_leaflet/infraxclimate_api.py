@@ -1,5 +1,6 @@
 """
-Interface with PostGIS Database for getting asset data
+Interface with PostGIS Database for getting asset data. 
+Create class to manage queries across the same connection the class is initialized with
 """
 
 import re
@@ -21,7 +22,7 @@ class infraXclimateAPI:
         It is based on data loaded using PG-OSM Flex (https://pgosm-flex.com).
         As of Aug-2024, PG-OSM Flex is used as the ETL process.
 
-        Can create full-fledged API based on this class int.
+        Can create full-fledged API based on this class in the future.
 
         Args:
             conn: connection to a PG OSM Flex loaded postgres database
@@ -494,28 +495,81 @@ class infraXclimateAPI:
         climate_decade: List[int] = None,
         climate_metadata: bool = None,
     ) -> Dict:
-        """Gets OSM data from provided filters.
+        """
+        Gets OSM data from provided filters and returns a GeoJSON Dict.
 
-        **Return value is in a dict that is GeoJSON format**
+        A query is built and passed to the database to return the data.
 
-        The tags table is always joined on the requested category tables
-        as it contains all of the tags across all of the tables.
+        If multiple months/decades are passed in, a feature will be returned for each time
 
+        Example SQL query created from all params:
+        --------------------------------------------------------------------------------
+            SELECT json_build_object(
+            'type', 'FeatureCollection',
+            'features', json_agg(ST_AsGeoJSON(geojson.*)::json)
+            )
+            FROM (
+            SELECT 
+                "osm"."infrastructure"."osm_id", 
+                "osm"."infrastructure"."osm_type", 
+                "osm"."tags"."tags", 
+                ST_Transform("osm"."infrastructure"."geom", %s) AS geometry, 
+                "county".name AS county_name, 
+                "city".name AS city_name, 
+                "climate_data".ssp, 
+                "climate_data".month, 
+                "climate_data".decade, 
+                "climate_data".variable AS climate_variable, 
+                "climate_data".value AS climate_value, 
+                "climate_data".climate_metadata 
+            FROM 
+                "osm"."infrastructure"
+            JOIN "osm"."tags" ON "osm"."infrastructure"."osm_id" = "osm"."tags"."osm_id"
+            LEFT JOIN "osm"."place_polygon" AS "county" ON 
+                ST_Intersects("osm"."infrastructure"."geom", "county"."geom") AND "county".admin_level = %s
+            LEFT JOIN "osm"."place_polygon" AS "city" ON 
+                ST_Intersects("osm"."infrastructure"."geom", "city"."geom") AND "city".admin_level = %s
+            LEFT JOIN (
+                SELECT s.osm_id, v.ssp, v.variable, s.month, s.decade, s.value, v.metadata AS climate_metadata
+                FROM "climate"."scenariomip" s
+                LEFT JOIN "climate"."scenariomip_variables" v ON s.variable_id = v.id
+                WHERE v.ssp = %s
+                AND v.variable = %s
+                AND s.decade IN %s
+                AND s.month IN %s
+            ) AS "climate_data"
+            ON 
+                "osm"."infrastructure".osm_id = "climate_data".osm_id
+            WHERE 
+                "osm"."infrastructure"."osm_type" IN %s
+            AND (
+                ST_Intersects(
+                ST_Transform("osm"."infrastructure"."geom", %s), 
+                ST_GeomFromGeoJSON(%s)
+                ) 
+            OR 
+                ST_Intersects(
+                ST_Transform("osm"."infrastructure"."geom", %s), 
+                ST_GeomFromGeoJSON(%s)
+                )
+            )
+            ) AS geojson;
+        --------------------------------------------------------------------------------
         Args:
-            category (str): OSM Category to get data from
-            osm_types (List[str]): OSM Type to Filter On
-            osm_subtypes (List[str]): OSM Subtypes to filter on
-            bbox (FeatureCollection): A Dict in the GeoJSON Feature Collection format. Used for filtering
-            county (bool): If True, returns the county of the feature as a property
-            city (bool): If True, returns the city of the feature as a property
-            epsg_code (int): Spatial reference ID, default is 4326 (Representing EPSG:4326)
-            geom_type (str): If used, returns only features of the specified geom_type
-            centroid (bool): If True, returns the geometry as a Point, the centroid of the features geometry
-            climate_variable (str): Climate variable to filter on
-            climate_ssp (int): Climate SSP (Shared Socioeconomic Pathway) to filter on
-            climate_month (List[int]): List of months to filter on
-            climate_decade (List[int]): List of decades to filter on
-            climate_metadata (bool): Returns metadata of climate variable as dict
+            category (str): OSM Category to get data from.
+            osm_types (List[str]): OSM Type to filter on.
+            osm_subtypes (List[str]): OSM Subtypes to filter on.
+            bbox (FeatureCollection): A Dict in the GeoJSON Feature Collection format. Used for filtering.
+            county (bool): If True, returns the county of the feature as a property.
+            city (bool): If True, returns the city of the feature as a property.
+            epsg_code (int): Spatial reference ID, default is 4326 (Representing EPSG:4326).
+            geom_type (str): If used, returns only features of the specified geom_type.
+            centroid (bool): If True, returns the geometry as a Point, the centroid of the feature's geometry.
+            climate_variable (str): Climate variable to filter on.
+            climate_ssp (int): Climate SSP (Shared Socioeconomic Pathway) to filter on.
+            climate_month (List[int]): List of months to filter on.
+            climate_decade (List[int]): List of decades to filter on.
+            climate_metadata (bool): Returns metadata of climate variable as dict.
         """
 
         # Quality check of input args
