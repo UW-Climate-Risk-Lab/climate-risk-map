@@ -62,7 +62,10 @@ CLIMATE_VARIABLE_SELECTOR = html.Div(
                         ),
                         dcc.Dropdown(
                             [
-                                {"label": properties["label"], "value": climate_variable}
+                                {
+                                    "label": properties["label"],
+                                    "value": climate_variable,
+                                }
                                 for climate_variable, properties in app_config.CLIMATE_DATA.items()
                             ],
                             id="climate-variable-dropdown",
@@ -147,4 +150,20 @@ CLIMATE_SCENARIO_SELECTOR = html.Div(
         ),
     ],
     style={"padding": "15px"},
+)
+
+DOWNLOAD_DATA_BUTTON = html.Div(
+    dbc.Row(
+        align="center",
+        children=[
+            dbc.Button(
+                "Download Data",
+                id="csv-btn",
+                color="primary",
+                className="me-1",
+                n_clicks=0,
+            ),
+            dcc.Download(id="csv-download"),
+        ],
+    ),
 )

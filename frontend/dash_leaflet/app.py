@@ -76,6 +76,8 @@ app.layout = dbc.Container(
                         app_control_panel.CLIMATE_VARIABLE_SELECTOR,
                         html.Br(),
                         app_control_panel.CLIMATE_SCENARIO_SELECTOR,
+                        html.Br(),
+                        app_control_panel.DOWNLOAD_DATA_BUTTON,
                     ],
                     style={"backgroundColor": "#39275B"},
                     width=4,
@@ -114,14 +116,16 @@ def load_climate_metadata(climate_variable, ssp):
     max_value = metadata["UW_CRL_DERIVED"]["max_climate_variable_value"]
     unit = metadata[climate_variable]["units"]
     colormap = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["colormap"]
-    layer_opacity = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["layer_opacity"]
+    layer_opacity = app_config.CLIMATE_DATA[climate_variable]["geotiff"][
+        "layer_opacity"
+    ]
 
     return {
         "min_value": min_value,
         "max_value": max_value,
         "colormap": colormap,
         "unit": unit,
-        "layer_opacity": layer_opacity
+        "layer_opacity": layer_opacity,
     }
 
 
@@ -139,7 +143,7 @@ def load_climate_metadata(climate_variable, ssp):
         Input("ssp-dropdown", "value"),
         Input("decade-slider", "value"),
         Input("month-slider", "value"),
-        Input("climate-metadata-store", "data")
+        Input("climate-metadata-store", "data"),
     ],
 )
 def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata):
@@ -166,7 +170,6 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
     colormap = climate_metadata["colormap"]
     unit = climate_metadata["unit"]
     layer_opacity = climate_metadata["layer_opacity"]
-
 
     url = app_utils.get_tilejson_url(
         file_url=file_url,
@@ -225,16 +228,29 @@ def download_csv(
     if (shapes is None) or (len(shapes["features"]) == 0) or (n_clicks is None):
         return no_update, 0
 
+    # Only want to return climate data if user has selected all relevant criteria
+    if None in [climate_variable, ssp, decade, month]:
+        climate_variable = None
+        ssp = None
+        decade = None
+        month = None
+    else:
+        if decade is not None:
+            decade = [decade]
+        if month is not None:
+            month = [month]
+        if ssp is not None:
+            ssp = ssp[3:]
+
     if n_clicks > 0:
-        categories = []
         osm_types = []
         osm_subtypes = []
+        category = (
+            "infrastructure"  # Quick fix as this is the only available category for now
+        )
+
         # Use the selected overlays to get the proper types to return in the data
         for overlay in selected_overlays:
-            categories = (
-                categories
-                + app_config.POWER_GRID_LAYERS[overlay]["GeoJSON"]["categories"]
-            )
             osm_types = (
                 osm_types
                 + app_config.POWER_GRID_LAYERS[overlay]["GeoJSON"]["osm_types"]
@@ -247,7 +263,7 @@ def download_csv(
         conn = get_connection()
         api = infraxclimate_api.infraXclimateAPI(conn=conn)
         params = infraxclimate_api.infraXclimateInput(
-            categories=list(set(categories)),
+            category=category,
             osm_types=list(set(osm_types)),
             osm_subtypes=list(set(osm_subtypes)),
             bbox=shapes,
