@@ -8,7 +8,7 @@ from dash import Dash, Input, Output, html, dcc, no_update
 from dash.exceptions import PreventUpdate
 from typing import List
 
-import osm_api
+import infraxclimate_api
 import app_utils
 import app_map
 import app_control_panel
@@ -184,7 +184,7 @@ def download_csv(n_clicks, shapes, selected_overlays):
             )
 
         conn = get_connection()
-        api = osm_api.OpenStreetMapDataAPI(conn=conn)
+        api = infraxclimate_api.infraXclimateAPI(conn=conn)
         # quick fix, use list(set()) to remove duplicates from input params
         data = api.get_osm_data(
             categories=list(set(categories)),
@@ -193,7 +193,7 @@ def download_csv(n_clicks, shapes, selected_overlays):
             bbox=shapes,
             county=True,
             city=True,
-            srid=4326,
+            epsg_code=4326,
         )
         release_connection(conn=conn)
         df = app_utils.process_output_csv(data=data)

@@ -1,6 +1,8 @@
-import frontend.dash_leaflet.osm_api as osm_api
+import infraxclimate_api
 from dotenv import load_dotenv
 import os
+import psycopg2
+import time
 
 load_dotenv()
 PG_DBNAME = os.environ["PG_DBNAME"]
@@ -10,10 +12,11 @@ PG_PASSWORD = os.environ["PG_PASSWORD"]
 PG_PORT = os.environ["PG_PORT"]
 
 if __name__ == "__main__":
-
-    api = osm_api.OpenStreetMapDataAPI(
-        dbname=PG_DBNAME, host=PG_HOST, user=PG_USER, password=PG_PASSWORD, port=PG_PORT
+    conn = psycopg2.connect(
+        dbname=PG_DBNAME, user=PG_USER, password=PG_PASSWORD, host=PG_HOST, port=PG_PORT
     )
+
+    api = infraxclimate_api.infraXclimateAPI(conn=conn)
     # Test bbox selection, should return 2 power plants
     bbox = {
         "type": "FeatureCollection",
@@ -66,5 +69,22 @@ if __name__ == "__main__":
             },
         ],
     }
-    data = api.get_osm_data(["infrastructure"], ["power"], ["line"])
+    start_time = time.time()
+    params = infraxclimate_api.infraXclimateInput(
+        category="infrastructure",
+        osm_types=["power"],
+        osm_subtypes=["line"],
+        bbox=bbox,
+        county=True,
+        city=True,
+        climate_variable="burntFractionAll",
+        climate_decade=[2060, 2070],
+        climate_month=[8, 9],
+        climate_ssp=126,
+        climate_metadata=True,
+    )
+    data = api.get_data(input_params=params
+    )
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time} seconds")
     print(data)
