@@ -45,11 +45,18 @@ class infraXclimateAPI:
         self.scenariomip_variable_table = "scenariomip_variables"
         self.climate_table_alias = "climate_data"  # Table alias from nested join between scenariomip and scenariomip variables
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.conn:
+            self.conn.close()
+    
     def __del__(self):
         if self.conn:
             self.conn.close()
 
-    def __execute_postgis(self, query: str, params: Tuple[str] = None):
+    def _execute_postgis(self, query: str, params: Tuple[str] = None):
         """Takes query (in PostgreSQL language) and params and executes
         in the current instance connection"""
         if not self.conn:
@@ -491,7 +498,7 @@ class infraXclimateAPI:
         centroid: bool = False,
         climate_variable: str = None,
         climate_ssp: int = None,
-        cliamte_month: List[int] = None,
+        climate_month: List[int] = None,
         climate_decade: List[int] = None,
         climate_metadata: bool = None,
     ) -> Dict:
@@ -586,7 +593,7 @@ class infraXclimateAPI:
             climate_variable=climate_variable,
             climate_ssp=climate_ssp,
             climate_decade=climate_decade,
-            climate_month=cliamte_month,
+            climate_month=climate_month,
             climate_metadata=climate_metadata,
         )
 
@@ -627,7 +634,7 @@ class infraXclimateAPI:
             climate_variable=climate_variable,
             climate_ssp=climate_ssp,
             climate_decade=climate_decade,
-            climate_month=cliamte_month,
+            climate_month=climate_month,
             climate_metadata=climate_metadata,
         )
 
@@ -641,7 +648,7 @@ class infraXclimateAPI:
             climate_variable=climate_variable,
             climate_ssp=climate_ssp,
             climate_decade=climate_decade,
-            climate_month=cliamte_month,
+            climate_month=climate_month,
         )
 
         where_clause = self._create_where_clause(
