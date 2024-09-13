@@ -82,7 +82,7 @@ CLIMATE_VARIABLE_SELECTOR = html.Div(
                 html.Div(
                     dcc.Dropdown(
                         id="ssp-dropdown",
-                        placeholder="Select an emissions scenario...",
+                        placeholder="Select an Emissions Scenario...",
                     )
                 )
             ],
@@ -159,11 +159,17 @@ DOWNLOAD_DATA_BUTTON = html.Div(
             dbc.Button(
                 "Download Data",
                 id="csv-btn",
-                color="primary",
                 className="me-1",
                 n_clicks=0,
+                style={
+                "backgroundColor": "white",
+                "border-radius": "15px",
+                "color": "#39275B",
+            },  # Make the box rounded,
             ),
             dcc.Download(id="csv-download"),
         ],
+        class_name="g-0",
+        style={"border-radius": "25px"}
     ),
 )

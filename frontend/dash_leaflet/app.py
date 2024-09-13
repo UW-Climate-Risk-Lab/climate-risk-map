@@ -7,6 +7,7 @@ from psycopg2 import pool
 from dash import Dash, Input, Output, html, dcc, no_update
 from dash.exceptions import PreventUpdate
 from typing import List
+import pandas as pd
 
 import infraxclimate_api
 import app_utils
@@ -119,6 +120,9 @@ def load_climate_metadata(climate_variable, ssp):
     layer_opacity = app_config.CLIMATE_DATA[climate_variable]["geotiff"][
         "layer_opacity"
     ]
+
+    del api
+    release_connection(conn=conn)
 
     return {
         "min_value": min_value,
@@ -261,25 +265,32 @@ def download_csv(
             )
 
         conn = get_connection()
-        api = infraxclimate_api.infraXclimateAPI(conn=conn)
-        params = infraxclimate_api.infraXclimateInput(
-            category=category,
-            osm_types=list(set(osm_types)),
-            osm_subtypes=list(set(osm_subtypes)),
-            bbox=shapes,
-            county=True,
-            city=True,
-            epsg_code=4326,
-            climate_variable=climate_variable,
-            climate_ssp=ssp,
-            climate_month=month,
-            climate_decade=decade,
-            climate_metadata=False,
-        )
-        # quick fix, use list(set()) to remove duplicates from input params
-        data = api.get_data(input_params=params)
+        try:
+            params = infraxclimate_api.infraXclimateInput(
+                category=category,
+                osm_types=list(set(osm_types)),
+                osm_subtypes=list(set(osm_subtypes)),
+                bbox=shapes,
+                county=True,
+                city=True,
+                epsg_code=4326,
+                climate_variable=climate_variable,
+                climate_ssp=ssp,
+                climate_month=month,
+                climate_decade=decade,
+                climate_metadata=False,
+            )
+            
+            api = infraxclimate_api.infraXclimateAPI(conn=conn)
+            # quick fix, use list(set()) to remove duplicates from input params
+            data = api.get_data(input_params=params)
+            df = app_utils.process_output_csv(data=data)
+            del api
+        except Exception as e:
+            print(e)
+            df = pd.DataFrame()
+        
         release_connection(conn=conn)
-        df = app_utils.process_output_csv(data=data)
         return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0
     return no_update, 0
 
