@@ -70,17 +70,20 @@ if __name__ == "__main__":
         ],
     }
     start_time = time.time()
-    data = api.get_osm_data(
-        "infrastructure",
-        ["power"],
+    params = infraxclimate_api.infraXclimateInput(
+        category="infrastructure",
+        osm_types=["power"],
+        osm_subtypes=["line"],
         bbox=bbox,
         county=True,
         city=True,
         climate_variable="burntFractionAll",
         climate_decade=[2060, 2070],
-        cliamte_month=[8, 9],
+        climate_month=[8, 9],
         climate_ssp=126,
         climate_metadata=True,
+    )
+    data = api.get_data(params=params
     )
     end_time = time.time()
     print(f"Execution time: {end_time - start_time} seconds")

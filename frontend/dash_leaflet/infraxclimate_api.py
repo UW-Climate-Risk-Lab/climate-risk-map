@@ -1,6 +1,8 @@
 """
 Interface with PostGIS Database for getting asset data. 
 Create class to manage queries across the same connection the class is initialized with
+
+#TODO: Logging
 """
 
 import re
@@ -8,11 +10,63 @@ import json
 import psycopg2 as pg
 from psycopg2 import sql
 from geojson_pydantic import FeatureCollection
-from pydantic import ValidationError
+from pydantic import BaseModel, model_validator, ValidationError
+from typing import List, Optional
 
 
 from typing import List, Dict, Tuple
 
+class infraXclimateInput(BaseModel):
+    """Used to validate input parameters
+    
+    category (str): OSM Category to get data from.
+    osm_types (List[str]): OSM Type to filter on.
+    osm_subtypes (List[str]): OSM Subtypes to filter on.
+    bbox (FeatureCollection): A Dict in the GeoJSON Feature Collection format. Used for filtering.
+    county (bool): If True, returns the county of the feature as a property.
+    city (bool): If True, returns the city of the feature as a property.
+    epsg_code (int): Spatial reference ID, default is 4326 (Representing EPSG:4326).
+    geom_type (str): If used, returns only features of the specified geom_type.
+    centroid (bool): If True, returns the geometry as a Point, the centroid of the feature's geometry.
+    climate_variable (str): Climate variable to filter on.
+    climate_ssp (int): Climate SSP (Shared Socioeconomic Pathway) to filter on.
+    climate_month (List[int]): List of months to filter on.
+    climate_decade (List[int]): List of decades to filter on.
+    climate_metadata (bool): Returns metadata of climate variable as dict.
+    
+    """
+    category: str
+    osm_types: List[str]
+    osm_subtypes: Optional[List[str]] = None
+    bbox: Optional[FeatureCollection] = None
+    county: bool = False
+    city: bool = False
+    epsg_code: int = 4326
+    geom_type: Optional[str] = None
+    centroid: bool = False
+    climate_variable: Optional[str] = None
+    climate_ssp: Optional[int] = None
+    climate_month: Optional[List[int]] = None
+    climate_decade: Optional[List[int]] = None
+    climate_metadata: bool = False
+
+    # Custom validator to check that if climate data is provided, all required fields are present
+    @model_validator(mode='after')
+    def check_climate_params(self):
+        if any(param is not None for param in [self.climate_variable, self.climate_ssp, self.climate_month, self.climate_decade]):
+            if self.climate_variable is None:
+                raise ValueError('climate_variable is required when requesting climate data')
+            if self.climate_ssp is None:
+                raise ValueError('climate_ssp is required when requesting climate data')
+            if self.climate_month is None:
+                raise ValueError('climate_month is required when requesting climate data')
+            if self.climate_decade is None:
+                raise ValueError('climate_decade is required when requesting climate data')
+        return self
+
+class infraXclimateOutput(BaseModel):
+    """Checks output is a GeoJSON"""
+    geojson: FeatureCollection
 
 class infraXclimateAPI:
     def __init__(self, conn: pg.extensions.connection):
@@ -89,129 +143,11 @@ class infraXclimateAPI:
         """
         )
 
-        result = self.__execute_postgis(query, (table_name + "%",))
+        result = self._execute_postgis(query, (table_name + "%",))
         column_names = set([row[0] for row in result])
 
         return list(column_names)
 
-    def _check_args_get_osm_data(
-        self,
-        category: str,
-        osm_types: List[str],
-        osm_subtypes: List[str],
-        bbox: FeatureCollection,
-        county: bool,
-        city: bool,
-        epsg_code: int,
-        geom_type: str,
-        centroid: bool,
-        climate_variable: str,
-        climate_month: int,
-        climate_decade: int,
-        climate_ssp: int,
-        climate_metadata: bool,
-    ) -> None:
-        """Used to quality check the args in get_osm_data()
-
-        Will raise error if check fails, else returns None
-
-        Args:
-            args: List of dicts that describe each arg
-        """
-        args = [
-            {
-                "name": "category",
-                "required": True,
-                "type": str,
-                "value": category,
-            },
-            {
-                "name": "osm_types",
-                "required": True,
-                "type": list,
-                "value": osm_types,
-            },
-            {
-                "name": "osm_subtypes",
-                "required": False,
-                "type": list,
-                "value": osm_subtypes,
-            },
-            {
-                "name": "bbox",
-                "required": False,
-                "type": dict,
-                "value": bbox,
-            },
-            {"name": "county", "required": True, "type": bool, "value": county},
-            {"name": "city", "required": True, "type": bool, "value": city},
-            {"name": "epsg_code", "required": True, "type": int, "value": epsg_code},
-            {"name": "geom_type", "required": False, "type": str, "value": geom_type},
-            {"name": "centroid", "required": True, "type": bool, "value": centroid},
-            {
-                "name": "climate_variable",
-                "required": False,
-                "type": str,
-                "value": climate_variable,
-            },
-            {
-                "name": "climate_ssp",
-                "required": False,
-                "type": int,
-                "value": climate_ssp,
-            },
-            {
-                "name": "climate_decade",
-                "required": False,
-                "type": list,
-                "value": climate_decade,
-            },
-            {
-                "name": "climate_month",
-                "required": False,
-                "type": list,
-                "value": climate_month,
-            },
-            {
-                "name": "climate_metadata",
-                "required": False,
-                "type": bool,
-                "value": climate_metadata,
-            },
-        ]
-
-        for arg in args:
-            if arg["value"] is None:
-                if arg["required"]:
-                    raise TypeError(f"The input {arg['name']} is required!")
-                continue
-            else:
-                if not isinstance(arg["value"], arg["type"]):
-                    raise TypeError(
-                        f"The input {arg['name']} should be of type: {str(arg['type'])}"
-                    )
-
-        # Check that bbox is a geojson
-        if bbox:
-            if not self._is_valid_geojson_featurecollection(data=bbox):
-                raise TypeError(
-                    "The bounding box (bbox) provided is not a valid GeoJSON!"
-                )
-
-    def _is_valid_geojson_featurecollection(self, data: Dict) -> bool:
-        try:
-            features = data["features"]
-        except KeyError as e:
-            raise KeyError(
-                "When checking GeoJSON Feature Collection, no 'features' key was found"
-            )
-
-        try:
-            fc = FeatureCollection(type="FeatureCollection", features=features)
-            return fc.type == "FeatureCollection"
-        except ValidationError as e:
-            print(e)
-            return False
 
     def _create_admin_table_conditions(self, condition: str) -> Dict:
 
@@ -460,23 +396,22 @@ class infraXclimateAPI:
             bbox_filter = sql.SQL("AND (")
             count = 0
             # Handles multiple bounding boxes drawn by user
-            for feature in bbox["features"]:
+            for feature in bbox.features:
                 if count == 0:
                     pass
                 else:
                     conditional = sql.SQL("OR")
                     bbox_filter = sql.SQL(" ").join([bbox_filter, conditional])
-
-                geojson_str = json.dumps(feature["geometry"])
                 feature_filter = sql.SQL(
-                    "ST_Intersects(ST_Transform({schema}.{primary_table}.{geom_column}, %s), ST_GeomFromGeoJSON(%s))"
+                    "ST_Intersects(ST_Transform({schema}.{primary_table}.{geom_column}, %s), ST_GeomFromText(%s, %s))"
                 ).format(
                     schema=sql.Identifier(self.osm_schema),
                     primary_table=sql.Identifier(primary_table),
                     geom_column=sql.Identifier(self.osm_column_geom),
                 )
                 params.append(epsg_code)
-                params.append(geojson_str)
+                params.append(feature.geometry.wkt)
+                params.append(epsg_code)
                 bbox_filter = sql.SQL(" ").join([bbox_filter, feature_filter])
                 count += 1
             bbox_filter = sql.SQL(" ").join([bbox_filter, sql.SQL(")")])
@@ -485,29 +420,21 @@ class infraXclimateAPI:
 
         return where_clause
 
-    def get_osm_data(
+    def get_data(
         self,
-        category: str,
-        osm_types: List[str],
-        osm_subtypes: List[str] = None,
-        bbox: FeatureCollection = None,
-        county: bool = False,
-        city: bool = False,
-        epsg_code: int = 4326,
-        geom_type: str = None,
-        centroid: bool = False,
-        climate_variable: str = None,
-        climate_ssp: int = None,
-        climate_month: List[int] = None,
-        climate_decade: List[int] = None,
-        climate_metadata: bool = None,
+        input_params: infraXclimateInput
     ) -> Dict:
         """
-        Gets OSM data from provided filters and returns a GeoJSON Dict.
+        Gets infrastructure and climate data from provided filters and returns a GeoJSON Dict.
 
-        A query is built and passed to the database to return the data.
+        Args:
+            input_params (infraXclimateInput): Instance containing query parameters
+            
+        Returns:
+            Dict: A GeoJSON dictionary of the queried data.
 
-        If multiple months/decades are passed in, a feature will be returned for each time
+
+        If multiple months/decades are passed in, a feature will be returned for each time step.
 
         Example SQL query created from all params:
         --------------------------------------------------------------------------------
@@ -562,52 +489,23 @@ class infraXclimateAPI:
             )
             ) AS geojson;
         --------------------------------------------------------------------------------
-        Args:
-            category (str): OSM Category to get data from.
-            osm_types (List[str]): OSM Type to filter on.
-            osm_subtypes (List[str]): OSM Subtypes to filter on.
-            bbox (FeatureCollection): A Dict in the GeoJSON Feature Collection format. Used for filtering.
-            county (bool): If True, returns the county of the feature as a property.
-            city (bool): If True, returns the city of the feature as a property.
-            epsg_code (int): Spatial reference ID, default is 4326 (Representing EPSG:4326).
-            geom_type (str): If used, returns only features of the specified geom_type.
-            centroid (bool): If True, returns the geometry as a Point, the centroid of the feature's geometry.
-            climate_variable (str): Climate variable to filter on.
-            climate_ssp (int): Climate SSP (Shared Socioeconomic Pathway) to filter on.
-            climate_month (List[int]): List of months to filter on.
-            climate_decade (List[int]): List of decades to filter on.
-            climate_metadata (bool): Returns metadata of climate variable as dict.
+        
         """
-
-        # Quality check of input args
-        self._check_args_get_osm_data(
-            category=category,
-            osm_types=osm_types,
-            osm_subtypes=osm_subtypes,
-            bbox=bbox,
-            county=county,
-            city=city,
-            epsg_code=epsg_code,
-            geom_type=geom_type,
-            centroid=centroid,
-            climate_variable=climate_variable,
-            climate_ssp=climate_ssp,
-            climate_decade=climate_decade,
-            climate_month=climate_month,
-            climate_metadata=climate_metadata,
-        )
-
-        # This builds a query to return a GeoJSON object
-        # This method should always return a GeoJSON to the client
-        sql_geojson_build = sql.SQL(
-            """ 
-        SELECT json_build_object(
-            'type', 'FeatureCollection',
-            'features', json_agg(ST_AsGeoJSON(geojson.*)::json))
-            
-            FROM (
-        """
-        )
+    
+        category = input_params.category
+        osm_types = input_params.osm_types
+        osm_subtypes = input_params.osm_subtypes
+        bbox = input_params.bbox
+        county = input_params.county
+        city = input_params.city
+        epsg_code = input_params.epsg_code
+        geom_type = input_params.geom_type
+        centroid = input_params.centroid
+        climate_variable = input_params.climate_variable
+        climate_ssp = input_params.climate_ssp
+        climate_month = input_params.climate_month
+        climate_decade = input_params.climate_decade
+        climate_metadata = input_params.climate_metadata
 
         # Primary table will actually be a materialized view of the given category
         primary_table = category if category in self.available_categories else None
@@ -621,10 +519,22 @@ class infraXclimateAPI:
             osm_subtypes = None
 
         # Params are added in order while creating SQL statements
-        params = []
+        query_params = []
+
+        # This builds a query to return a GeoJSON object
+        # This method should always return a GeoJSON to the client
+        geojson_statement = sql.SQL(
+            """ 
+        SELECT json_build_object(
+            'type', 'FeatureCollection',
+            'features', json_agg(ST_AsGeoJSON(geojson.*)::json))
+            
+            FROM (
+        """
+        )
 
         select_statement = self._create_select_statement(
-            params=params,
+            params=query_params,
             primary_table=primary_table,
             centroid=centroid,
             epsg_code=epsg_code,
@@ -642,7 +552,7 @@ class infraXclimateAPI:
 
         join_statement = self._create_join_statement(
             primary_table=primary_table,
-            params=params,
+            params=query_params,
             county=county,
             city=city,
             climate_variable=climate_variable,
@@ -653,7 +563,7 @@ class infraXclimateAPI:
 
         where_clause = self._create_where_clause(
             primary_table=primary_table,
-            params=params,
+            params=query_params,
             osm_types=osm_types,
             osm_subtypes=osm_subtypes,
             geom_type=geom_type,
@@ -663,7 +573,7 @@ class infraXclimateAPI:
 
         query = sql.SQL(" ").join(
             [
-                sql_geojson_build,
+                geojson_statement,
                 select_statement,
                 from_statement,
                 join_statement,
@@ -672,8 +582,13 @@ class infraXclimateAPI:
             ]
         )
 
-        result = self.__execute_postgis(query=query, params=tuple(params))
+        result = self._execute_postgis(query=query, params=tuple(query_params))
         geojson = result[0][0]
-        if not self._is_valid_geojson_featurecollection(data=geojson):
-            raise ValueError("The returned data is not in proper geojson format")
+        try:
+            infraXclimateOutput(geojson={"geojson": geojson})
+        except ValidationError as e:
+            print(e)
+        
         return geojson
+
+
