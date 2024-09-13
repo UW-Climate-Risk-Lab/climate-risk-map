@@ -86,12 +86,15 @@ def get_power_grid_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
         # This allows a finer level of config for clustering points, which improves performance.
         # We generally want to cluster Points, and not cluster other geom types
         for geom_type in subtype_config["geom_types"]:
-            data = api.get_osm_data(
+
+            params = infraxclimate_api.infraXclimateInput(
                 categories=subtype_config["GeoJSON"]["categories"],
                 osm_types=subtype_config["GeoJSON"]["osm_types"],
                 osm_subtypes=subtype_config["GeoJSON"]["osm_subtypes"],
                 geom_type=geom_type,
             )
+            
+            data = api.get_data(params=params)
             data = app_utils.create_feature_toolip(geojson=data)
 
             if geom_type != "Point":
@@ -206,11 +209,8 @@ def get_map(conn: pg.extensions.connection):
     )
 
     climate_layer = dl.TileLayer(
-                    url=config["base_map"]["url"],
-                    opacity=1,
-                    id="climate-tile-layer"
-                )
-            
+        url=config["base_map"]["url"], opacity=1, id="climate-tile-layer"
+    )
 
     feature_layers = get_feature_overlays(conn=conn)
 

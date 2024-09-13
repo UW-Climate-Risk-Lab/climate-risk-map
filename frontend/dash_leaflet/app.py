@@ -91,45 +91,65 @@ app.layout = dbc.Container(
     ],
 )
 
+
 @app.callback(
-    [Output("climate-tile-layer", "url"),
-     Output("climate-tile-layer", "opacity"),
-     Output("color-bar", "min"),
-     Output("color-bar", "max"),
-     Output("color-bar", "colorscale"),
-     Output("color-bar", "unit")],
+    [
+        Output("climate-tile-layer", "url"),
+        Output("climate-tile-layer", "opacity"),
+        Output("color-bar", "min"),
+        Output("color-bar", "max"),
+        Output("color-bar", "colorscale"),
+        Output("color-bar", "unit"),
+    ],
     [
         Input("climate-variable-dropdown", "value"),
         Input("ssp-dropdown", "value"),
         Input("decade-slider", "value"),
         Input("month-slider", "value"),
-        
     ],
 )
-def update_climate_file(climate_variable, ssp, decade, month):
+def update_climate_tiles(climate_variable, ssp, decade, month):
     # TODO: Make state selection dynamic
-    state = 'washington'
-    if (ssp is None) or (climate_variable is None) or (decade is None) or (month is None):
+    state = "washington"
+    if (
+        (ssp is None)
+        or (climate_variable is None)
+        or (decade is None)
+        or (month is None)
+    ):
         raise PreventUpdate
-    
+
     properties = app_config.CLIMATE_DATA[climate_variable]
-    
+
     file = f"{decade}-{month:02d}-{state}.tif"
-    file_url = f"s3://{properties["geotiff"]["s3_bucket"]}/{properties['geotiff']["s3_base_prefix"]}/{str(ssp)}/cogs/{file}"
-    min_climate_value, max_climate_value = app_utils.get_climate_min_max(file_url=file_url)
+    bucket = properties["geotiff"]["s3_bucket"]
+    prefix = properties["geotiff"]["s3_base_prefix"]
+
+    file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{file}"
+    min_climate_value, max_climate_value = app_utils.get_climate_min_max(
+        file_url=file_url
+    )
     colormap = properties["geotiff"]["colormap"]
     layer_opacity = properties["geotiff"]["layer_opacity"]
     unit = properties["unit"]
 
-    url = app_utils.get_tilejson_url(file_url=file_url,
-                                        climate_variable=climate_variable,
-                                        min_climate_value=min_climate_value,
-                                        max_climate_value=max_climate_value,
-                                        colormap=colormap)
-            
-    return_values = (url, layer_opacity, min_climate_value, max_climate_value, colormap, unit)
+    url = app_utils.get_tilejson_url(
+        file_url=file_url,
+        climate_variable=climate_variable,
+        min_climate_value=min_climate_value,
+        max_climate_value=max_climate_value,
+        colormap=colormap,
+    )
+
+    return_values = (
+        url,
+        layer_opacity,
+        min_climate_value,
+        max_climate_value,
+        colormap,
+        unit,
+    )
     return return_values
-    
 
 
 @app.callback(
@@ -156,9 +176,13 @@ def update_ssp_dropdown(climate_variable: str) -> List[str]:
         Input("csv-btn", "n_clicks"),
         Input("drawn-shapes", "geojson"),
         Input("layers-control", "overlays"),
+        Input("climate-variable-dropdown", "value"),
+        Input("ssp-dropdown", "value"),
+        Input("decade-slider", "value"),
+        Input("month-slider", "value"),
     ],
 )
-def download_csv(n_clicks, shapes, selected_overlays):
+def download_csv(n_clicks, shapes, selected_overlays, climate_variable, ssp, decade, month):
 
     # Need to check shapes value for different cases
     if (shapes is None) or (len(shapes["features"]) == 0) or (n_clicks is None):
@@ -185,8 +209,7 @@ def download_csv(n_clicks, shapes, selected_overlays):
 
         conn = get_connection()
         api = infraxclimate_api.infraXclimateAPI(conn=conn)
-        # quick fix, use list(set()) to remove duplicates from input params
-        data = api.get_osm_data(
+        params = infraxclimate_api.infraXclimateInput(
             categories=list(set(categories)),
             osm_types=list(set(osm_types)),
             osm_subtypes=list(set(osm_subtypes)),
@@ -194,7 +217,15 @@ def download_csv(n_clicks, shapes, selected_overlays):
             county=True,
             city=True,
             epsg_code=4326,
+            climate_variable=climate_variable,
+            climate_ssp=ssp,
+            climate_month=month,
+            climate_decade=decade,
+            climate_metadata=False
+
         )
+        # quick fix, use list(set()) to remove duplicates from input params
+        data = api.get_data(input_params=params)
         release_connection(conn=conn)
         df = app_utils.process_output_csv(data=data)
         return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0
