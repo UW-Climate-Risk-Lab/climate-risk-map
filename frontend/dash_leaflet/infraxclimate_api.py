@@ -3,10 +3,10 @@ Interface with PostGIS Database for getting asset data.
 Create class to manage queries across the same connection the class is initialized with
 
 #TODO: Logging
+#TODO: Unit Tests
+#TODO: Migrate to standalone API
 """
 
-import re
-import json
 import psycopg2 as pg
 from psycopg2 import sql
 from geojson_pydantic import FeatureCollection
@@ -74,9 +74,7 @@ class infraXclimateAPI:
         to the database and performs SQL queries.
 
         It is based on data loaded using PG-OSM Flex (https://pgosm-flex.com).
-        As of Aug-2024, PG-OSM Flex is used as the ETL process.
-
-        Can create full-fledged API based on this class in the future.
+        As of Aug-2024, PG-OSM Flex is used as the ETL process for OpenStreetMap Data.
 
         Args:
             conn: connection to a PG OSM Flex loaded postgres database
