@@ -67,7 +67,7 @@ POWER_GRID_LAYERS = {
         },
         "GeoJSON": {
             "id": "power-plant-geojson",
-            "categories": ["infrastructure"],
+            "category": "infrastructure",
             "osm_types": ["power"],
             "osm_subtypes": ["plant"],
             "hoverStyle": arrow_function(dict(weight=3, color="yellow", dashArray="")),
@@ -91,7 +91,7 @@ POWER_GRID_LAYERS = {
         },
         "GeoJSON": {
             "id": "power-substation-geojson",
-            "categories": ["infrastructure"],
+            "category": "infrastructure",
             "osm_types": ["power"],
             "osm_subtypes": ["substation"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
@@ -115,7 +115,7 @@ POWER_GRID_LAYERS = {
         },
         "GeoJSON": {
             "id": "power-line-geojson",
-            "categories": ["infrastructure"],
+            "category": "infrastructure",
             "osm_types": ["power"],
             "osm_subtypes": ["line"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
@@ -139,7 +139,7 @@ POWER_GRID_LAYERS = {
         },
         "GeoJSON": {
             "id": "power-cable-geojson",
-            "categories": ["infrastructure"],
+            "category": "infrastructure",
             "osm_types": ["power"],
             "osm_subtypes": ["cable"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
@@ -163,7 +163,7 @@ POWER_GRID_LAYERS = {
         },
         "GeoJSON": {
             "id": "power-generator-geojson",
-            "categories": ["infrastructure"],
+            "category": "infrastructure",
             "osm_types": ["power"],
             "osm_subtypes": ["generator"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
@@ -187,7 +187,7 @@ POWER_GRID_LAYERS = {
         },
         "GeoJSON": {
             "id": "power-transformer-geojson",
-            "categories": ["infrastructure"],
+            "category": "infrastructure",
             "osm_types": ["power"],
             "osm_subtypes": ["transformer"],
             "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),

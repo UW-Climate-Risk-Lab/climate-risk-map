@@ -88,13 +88,13 @@ def get_power_grid_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
         for geom_type in subtype_config["geom_types"]:
 
             params = infraxclimate_api.infraXclimateInput(
-                categories=subtype_config["GeoJSON"]["categories"],
+                category=subtype_config["GeoJSON"]["category"],
                 osm_types=subtype_config["GeoJSON"]["osm_types"],
                 osm_subtypes=subtype_config["GeoJSON"]["osm_subtypes"],
                 geom_type=geom_type,
             )
-            
-            data = api.get_data(params=params)
+
+            data = api.get_data(input_params=params)
             data = app_utils.create_feature_toolip(geojson=data)
 
             if geom_type != "Point":
@@ -134,13 +134,14 @@ def get_power_grid_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
             # * NOTE, performance may be an issue if there are too many features are returned
             if subtype_config["icon"] is not None:
                 if (subtype_config["icon"]["create_points"]) & (geom_type != "Point"):
-                    data = api.get_osm_data(
-                        categories=subtype_config["GeoJSON"]["categories"],
+                    params = infraxclimate_api.infraXclimateInput(
+                        category=subtype_config["GeoJSON"]["category"],
                         osm_types=subtype_config["GeoJSON"]["osm_types"],
                         osm_subtypes=subtype_config["GeoJSON"]["osm_subtypes"],
                         geom_type=geom_type,
                         centroid=True,
                     )
+                    data = api.get_data(input_params=params)
                     data = app_utils.create_feature_toolip(geojson=data)
                     layergroup_children.append(
                         dl.GeoJSON(

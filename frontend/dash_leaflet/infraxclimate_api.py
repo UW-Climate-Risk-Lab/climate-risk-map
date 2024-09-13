@@ -583,7 +583,7 @@ class infraXclimateAPI:
         result = self._execute_postgis(query=query, params=tuple(query_params))
         geojson = result[0][0]
         try:
-            infraXclimateOutput(geojson={"geojson": geojson})
+            infraXclimateOutput(geojson=geojson)
         except ValidationError as e:
             print(e)
         
