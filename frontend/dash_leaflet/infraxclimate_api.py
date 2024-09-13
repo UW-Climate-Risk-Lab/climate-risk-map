@@ -414,7 +414,7 @@ class infraXclimateAPI:
                 count += 1
             bbox_filter = sql.SQL(" ").join([bbox_filter, sql.SQL(")")])
 
-        where_clause = sql.SQL(" ").join([where_clause, bbox_filter])
+            where_clause = sql.SQL(" ").join([where_clause, bbox_filter])
 
         return where_clause
 

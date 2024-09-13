@@ -83,7 +83,7 @@ if __name__ == "__main__":
         climate_ssp=126,
         climate_metadata=True,
     )
-    data = api.get_data(params=params
+    data = api.get_data(input_params=params
     )
     end_time = time.time()
     print(f"Execution time: {end_time - start_time} seconds")
