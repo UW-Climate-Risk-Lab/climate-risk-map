@@ -6,7 +6,7 @@ from typing import List
 
 import app_config
 import app_utils
-import frontend.dash_leaflet.osm_api as osm_api
+import infraxclimate_api
 
 from dash_extensions.javascript import assign
 
@@ -73,7 +73,7 @@ def get_power_grid_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
         List[dl.Overlay]: Returns a final list of dl.Overlay components. These are added to the map's LayerControl
         component's children
     """
-    api = osm_api.OpenStreetMapDataAPI(conn=conn)
+    api = infraxclimate_api.infraXclimateAPI(conn=conn)
 
     overlays = []
 

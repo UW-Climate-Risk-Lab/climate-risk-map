@@ -1,4 +1,4 @@
-import osm_api
+import infraxclimate_api
 from dotenv import load_dotenv
 import os
 import psycopg2
@@ -19,7 +19,7 @@ if __name__ == "__main__":
             port=PG_PORT
         )
 
-    api = osm_api.OpenStreetMapDataAPI(
+    api = infraxclimate_api.infraXclimateAPI(
         conn=conn
     )
     # Test bbox selection, should return 2 power plants
@@ -74,5 +74,5 @@ if __name__ == "__main__":
             },
         ],
     }
-    data = api.get_osm_data(["infrastructure"], ["power"], ["line"], bbox=bbox)
+    data = api.get_osm_data("infrastructure", ["power"], ["line"], bbox=bbox, county=True, city=True)
     print(data)
