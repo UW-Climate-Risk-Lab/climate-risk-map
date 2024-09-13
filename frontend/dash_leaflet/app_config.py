@@ -9,12 +9,12 @@ CLIMATE_DATA = {
         "geotiff": {
             "format": "cogs",
             "s3_bucket": "uw-climaterisklab",
-            "s3_base_prefix": "climate/CMIP6/ScenarioMIP/burntFractionAll",
+            "s3_base_prefix": "climate-risk-map/backend/climate/scenariomip/burntFractionAll",
             "colormap": "reds",
             "layer_opacity": 0.6
         },
         "available_ssp": ["ssp126", "ssp245", "ssp370", "ssp585"],
-        "timescale": "decade-month",
+        "climatological_mean": "decade_month",
         "unit": "%"
     }
 

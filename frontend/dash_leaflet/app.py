@@ -87,9 +87,42 @@ app.layout = dbc.Container(
                     ],
                 ),
             ],
-        )
+        ),
+        dcc.Store("climate-metadata-store"),
     ],
 )
+
+
+@app.callback(
+    Output("climate-metadata-store", "data"),
+    [
+        Input("climate-variable-dropdown", "value"),
+        Input("ssp-dropdown", "value"),
+    ],
+)
+def load_climate_metadata(climate_variable, ssp):
+    """Stores select metadata for use in app"""
+    if (ssp is None) or (climate_variable is None):
+        raise PreventUpdate
+
+    conn = get_connection()
+    api = infraxclimate_api.infraXclimateAPI(conn=conn)
+    ssp = int(ssp[3:])  # Quickfix to get the ssp int value
+    metadata = api.get_climate_metadata(climate_variable=climate_variable, ssp=ssp)
+
+    min_value = metadata["UW_CRL_DERIVED"]["min_climate_variable_value"]
+    max_value = metadata["UW_CRL_DERIVED"]["max_climate_variable_value"]
+    unit = metadata[climate_variable]["units"]
+    colormap = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["colormap"]
+    layer_opacity = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["layer_opacity"]
+
+    return {
+        "min_value": min_value,
+        "max_value": max_value,
+        "colormap": colormap,
+        "unit": unit,
+        "layer_opacity": layer_opacity
+    }
 
 
 @app.callback(
@@ -106,9 +139,10 @@ app.layout = dbc.Container(
         Input("ssp-dropdown", "value"),
         Input("decade-slider", "value"),
         Input("month-slider", "value"),
+        Input("climate-metadata-store", "data")
     ],
 )
-def update_climate_tiles(climate_variable, ssp, decade, month):
+def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata):
     # TODO: Make state selection dynamic
     state = "washington"
     if (
@@ -124,14 +158,15 @@ def update_climate_tiles(climate_variable, ssp, decade, month):
     file = f"{decade}-{month:02d}-{state}.tif"
     bucket = properties["geotiff"]["s3_bucket"]
     prefix = properties["geotiff"]["s3_base_prefix"]
+    climatological_mean = properties["climatological_mean"]
 
-    file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{file}"
-    min_climate_value, max_climate_value = app_utils.get_climate_min_max(
-        file_url=file_url
-    )
-    colormap = properties["geotiff"]["colormap"]
-    layer_opacity = properties["geotiff"]["layer_opacity"]
-    unit = properties["unit"]
+    file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{climatological_mean}/{file}"
+    min_climate_value = climate_metadata["min_value"]
+    max_climate_value = climate_metadata["max_value"]
+    colormap = climate_metadata["colormap"]
+    unit = climate_metadata["unit"]
+    layer_opacity = climate_metadata["layer_opacity"]
+
 
     url = app_utils.get_tilejson_url(
         file_url=file_url,
@@ -182,7 +217,9 @@ def update_ssp_dropdown(climate_variable: str) -> List[str]:
         Input("month-slider", "value"),
     ],
 )
-def download_csv(n_clicks, shapes, selected_overlays, climate_variable, ssp, decade, month):
+def download_csv(
+    n_clicks, shapes, selected_overlays, climate_variable, ssp, decade, month
+):
 
     # Need to check shapes value for different cases
     if (shapes is None) or (len(shapes["features"]) == 0) or (n_clicks is None):
@@ -221,8 +258,7 @@ def download_csv(n_clicks, shapes, selected_overlays, climate_variable, ssp, dec
             climate_ssp=ssp,
             climate_month=month,
             climate_decade=decade,
-            climate_metadata=False
-
+            climate_metadata=False,
         )
         # quick fix, use list(set()) to remove duplicates from input params
         data = api.get_data(input_params=params)
