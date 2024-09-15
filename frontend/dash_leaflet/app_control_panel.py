@@ -152,24 +152,31 @@ CLIMATE_SCENARIO_SELECTOR = html.Div(
     style={"padding": "15px"},
 )
 
-DOWNLOAD_DATA_BUTTON = html.Div(
+DOWNLOAD_DATA_BUTTONS = html.Div(
     dbc.Row(
         align="center",
         children=[
-            dbc.Button(
-                "Download Data",
-                id="csv-btn",
-                className="me-1",
-                n_clicks=0,
-                style={
-                "backgroundColor": "white",
-                "border-radius": "15px",
-                "color": "#39275B",
-            },  # Make the box rounded,
-            ),
-            dcc.Download(id="csv-download"),
+            dbc.Col(
+                align="center",
+                width="auto",
+                children=[
+                    dbc.Button(
+                        "Download Data",
+                        id="csv-btn",
+                        className="me-1",
+                        n_clicks=0,
+                        style={
+                            "backgroundColor": "white",
+                            "border-radius": "15px",
+                            "color": "#39275B",
+                        },  # Make the box rounded,
+                    ),
+                    dcc.Download(id="csv-download"),
+                ]
+            )
         ],
+        justify="center",
         class_name="g-0",
-        style={"border-radius": "25px"}
+        style={"border-radius": "25px"},
     ),
 )

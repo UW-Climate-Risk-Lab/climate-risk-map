@@ -78,7 +78,7 @@ app.layout = dbc.Container(
                         html.Br(),
                         app_control_panel.CLIMATE_SCENARIO_SELECTOR,
                         html.Br(),
-                        app_control_panel.DOWNLOAD_DATA_BUTTON,
+                        app_control_panel.DOWNLOAD_DATA_BUTTONS,
                     ],
                     style={"backgroundColor": "#39275B"},
                     width=4,
