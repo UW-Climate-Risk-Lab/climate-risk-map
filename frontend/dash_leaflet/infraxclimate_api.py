@@ -16,9 +16,10 @@ from typing import List, Optional
 
 from typing import List, Dict, Tuple
 
+
 class infraXclimateInput(BaseModel):
     """Used to validate input parameters
-    
+
     category (str): OSM Category to get data from.
     osm_types (List[str]): OSM Type to filter on.
     osm_subtypes (List[str]): OSM Subtypes to filter on.
@@ -33,8 +34,9 @@ class infraXclimateInput(BaseModel):
     climate_month (List[int]): List of months to filter on.
     climate_decade (List[int]): List of decades to filter on.
     climate_metadata (bool): Returns metadata of climate variable as dict.
-    
+
     """
+
     category: str
     osm_types: List[str]
     osm_subtypes: Optional[List[str]] = None
@@ -51,22 +53,39 @@ class infraXclimateInput(BaseModel):
     climate_metadata: bool = False
 
     # Custom validator to check that if climate data is provided, all required fields are present
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def check_climate_params(self):
-        if any(param is not None for param in [self.climate_variable, self.climate_ssp, self.climate_month, self.climate_decade]):
+        if any(
+            param is not None
+            for param in [
+                self.climate_variable,
+                self.climate_ssp,
+                self.climate_month,
+                self.climate_decade,
+            ]
+        ):
             if self.climate_variable is None:
-                raise ValueError('climate_variable is required when requesting climate data')
+                raise ValueError(
+                    "climate_variable is required when requesting climate data"
+                )
             if self.climate_ssp is None:
-                raise ValueError('climate_ssp is required when requesting climate data')
+                raise ValueError("climate_ssp is required when requesting climate data")
             if self.climate_month is None:
-                raise ValueError('climate_month is required when requesting climate data')
+                raise ValueError(
+                    "climate_month is required when requesting climate data"
+                )
             if self.climate_decade is None:
-                raise ValueError('climate_decade is required when requesting climate data')
+                raise ValueError(
+                    "climate_decade is required when requesting climate data"
+                )
         return self
+
 
 class infraXclimateOutput(BaseModel):
     """Checks output is a GeoJSON"""
+
     geojson: FeatureCollection
+
 
 class infraXclimateAPI:
     def __init__(self, conn: pg.extensions.connection):
@@ -103,7 +122,7 @@ class infraXclimateAPI:
     def __exit__(self, exc_type, exc_value, traceback):
         if self.conn:
             self.conn.close()
-    
+
     def __del__(self):
         if self.conn:
             self.conn.close()
@@ -145,7 +164,6 @@ class infraXclimateAPI:
         column_names = set([row[0] for row in result])
 
         return list(column_names)
-
 
     def _create_admin_table_conditions(self, condition: str) -> Dict:
 
@@ -343,8 +361,13 @@ class infraXclimateAPI:
                 primary_table=sql.Identifier(primary_table),
                 climate_table_alias=sql.Identifier(self.climate_table_alias),
             )
-            params += [climate_ssp, climate_variable, tuple(set(climate_decade)), tuple(set(climate_month))]
-            
+            params += [
+                climate_ssp,
+                climate_variable,
+                tuple(set(climate_decade)),
+                tuple(set(climate_month)),
+            ]
+
             join_statement = sql.SQL(" ").join([join_statement, climate_join])
 
         return join_statement
@@ -418,16 +441,31 @@ class infraXclimateAPI:
 
         return where_clause
 
-    def get_data(
-        self,
-        input_params: infraXclimateInput
-    ) -> Dict:
+    def get_climate_metadata(self, climate_variable: str, ssp: str) -> Dict:
+        """Returns climate metadata for given climate_variable and ssp
+
+        Args:
+            climate_variable (str): _description_
+        """
+
+        query = sql.SQL(
+            "SELECT metadata FROM {schema}.{scenariomip_variable} WHERE variable = %s AND ssp = %s"
+        ).format(
+            schema=sql.Identifier(self.climate_schema),
+            scenariomip_variable=sql.Identifier(self.scenariomip_variable_table),
+        )
+
+        result = self._execute_postgis(query=query, params=(climate_variable, ssp))
+
+        return result[0][0]
+
+    def get_data(self, input_params: infraXclimateInput) -> Dict:
         """
         Gets infrastructure and climate data from provided filters and returns a GeoJSON Dict.
 
         Args:
             input_params (infraXclimateInput): Instance containing query parameters
-            
+
         Returns:
             Dict: A GeoJSON dictionary of the queried data.
 
@@ -441,25 +479,25 @@ class infraXclimateAPI:
             'features', json_agg(ST_AsGeoJSON(geojson.*)::json)
             )
             FROM (
-            SELECT 
-                "osm"."infrastructure"."osm_id", 
-                "osm"."infrastructure"."osm_type", 
-                "osm"."tags"."tags", 
-                ST_Transform("osm"."infrastructure"."geom", %s) AS geometry, 
-                "county".name AS county_name, 
-                "city".name AS city_name, 
-                "climate_data".ssp, 
-                "climate_data".month, 
-                "climate_data".decade, 
-                "climate_data".variable AS climate_variable, 
-                "climate_data".value AS climate_value, 
-                "climate_data".climate_metadata 
-            FROM 
+            SELECT
+                "osm"."infrastructure"."osm_id",
+                "osm"."infrastructure"."osm_type",
+                "osm"."tags"."tags",
+                ST_Transform("osm"."infrastructure"."geom", %s) AS geometry,
+                "county".name AS county_name,
+                "city".name AS city_name,
+                "climate_data".ssp,
+                "climate_data".month,
+                "climate_data".decade,
+                "climate_data".variable AS climate_variable,
+                "climate_data".value AS climate_value,
+                "climate_data".climate_metadata
+            FROM
                 "osm"."infrastructure"
             JOIN "osm"."tags" ON "osm"."infrastructure"."osm_id" = "osm"."tags"."osm_id"
-            LEFT JOIN "osm"."place_polygon" AS "county" ON 
+            LEFT JOIN "osm"."place_polygon" AS "county" ON
                 ST_Intersects("osm"."infrastructure"."geom", "county"."geom") AND "county".admin_level = %s
-            LEFT JOIN "osm"."place_polygon" AS "city" ON 
+            LEFT JOIN "osm"."place_polygon" AS "city" ON
                 ST_Intersects("osm"."infrastructure"."geom", "city"."geom") AND "city".admin_level = %s
             LEFT JOIN (
                 SELECT s.osm_id, v.ssp, v.variable, s.month, s.decade, s.value, v.metadata AS climate_metadata
@@ -470,26 +508,26 @@ class infraXclimateAPI:
                 AND s.decade IN %s
                 AND s.month IN %s
             ) AS "climate_data"
-            ON 
+            ON
                 "osm"."infrastructure".osm_id = "climate_data".osm_id
-            WHERE 
+            WHERE
                 "osm"."infrastructure"."osm_type" IN %s
             AND (
                 ST_Intersects(
-                ST_Transform("osm"."infrastructure"."geom", %s), 
+                ST_Transform("osm"."infrastructure"."geom", %s),
                 ST_GeomFromGeoJSON(%s)
-                ) 
-            OR 
+                )
+            OR
                 ST_Intersects(
-                ST_Transform("osm"."infrastructure"."geom", %s), 
+                ST_Transform("osm"."infrastructure"."geom", %s),
                 ST_GeomFromGeoJSON(%s)
                 )
             )
             ) AS geojson;
         --------------------------------------------------------------------------------
-        
+
         """
-    
+
         category = input_params.category
         osm_types = input_params.osm_types
         osm_subtypes = input_params.osm_subtypes
@@ -583,10 +621,8 @@ class infraXclimateAPI:
         result = self._execute_postgis(query=query, params=tuple(query_params))
         geojson = result[0][0]
         try:
-            infraXclimateOutput(geojson={"geojson": geojson})
+            infraXclimateOutput(geojson=geojson)
         except ValidationError as e:
             print(e)
-        
+
         return geojson
-
-
