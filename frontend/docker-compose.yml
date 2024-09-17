@@ -4,6 +4,8 @@ services:
     build: ./dash_leaflet
     restart: always
     env_file: .env
+    ports:
+      - 8050:8050
   dash_nginx: 
     build:
       context: ./nginx
