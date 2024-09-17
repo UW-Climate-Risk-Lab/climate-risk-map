@@ -15,3 +15,7 @@ services:
       - 80:80
     depends_on:
       - dash_app
+  titiler:
+    image: ghcr.io/developmentseed/titiler:latest
+    ports:
+      - "8000:8000"
