@@ -6,6 +6,8 @@ services:
     env_file: .env
     ports:
       - 8050:8050
+    depends_on:
+      - titiler
   dash_nginx: 
     build:
       context: ./nginx
