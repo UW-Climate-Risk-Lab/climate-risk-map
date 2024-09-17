@@ -21,3 +21,5 @@ services:
     image: ghcr.io/developmentseed/titiler:latest
     ports:
       - 8000:8000
+    environment:
+      - PORT=8000
