@@ -20,4 +20,4 @@ services:
   titiler:
     image: ghcr.io/developmentseed/titiler:latest
     ports:
-      - "8000:8000"
+      - 8000:8000
