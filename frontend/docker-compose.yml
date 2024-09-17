@@ -3,6 +3,7 @@ services:
   dash_app:
     build: ./dash_leaflet
     restart: always
+    env_file: .env
   dash_nginx: 
     build:
       context: ./nginx
