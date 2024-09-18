@@ -263,7 +263,7 @@ def download_csv(
         raise PreventUpdate
 
     if shapes is None or len(shapes["features"]) == 0:
-        download_message = "Please select an area on the map."
+        download_message = "Please select an area on the map (Hint: Click the black square in the upper right of the map)."
         is_open = True
         download_message_color = "warning"
         return no_update, 0, download_counter, download_message, is_open, download_message_color
