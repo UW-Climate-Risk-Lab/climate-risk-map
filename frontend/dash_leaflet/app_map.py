@@ -9,6 +9,7 @@ import app_utils
 import infraxclimate_api
 
 from dash_extensions.javascript import assign
+from dash import html
 
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
@@ -219,14 +220,10 @@ def get_map(conn: pg.extensions.connection):
     state_outline_overlay = get_state_overlay(state="washington", z_index=300)
 
     # Default colorscale transparent while callbacks load
-    color_bar = dl.Colorbar(
-        id=config["color_bar"]["id"],
-        width=config["color_bar"]["width"],
-        colorscale=["rgba(0, 0, 0, 0)", "rgba(0, 0, 0, 0)"],
-        height=config["color_bar"]["height"],
-        position=config["color_bar"]["position"],
-        min=0,
-        max=1,
+    color_bar = html.Div(
+        id=config["color_bar"]["id"] + "-div",
+        style={"display": "none"},
+        children=[]
     )
 
     map = dl.Map(

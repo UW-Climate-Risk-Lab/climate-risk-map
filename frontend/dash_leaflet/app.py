@@ -117,17 +117,21 @@ def load_climate_metadata(climate_variable, ssp):
     api = infraxclimate_api.infraXclimateAPI(conn=conn)
     ssp = int(ssp[3:])  # Quickfix to get the ssp int value
     metadata = api.get_climate_metadata(climate_variable=climate_variable, ssp=ssp)
+    del api
+    release_connection(conn=conn)
 
     min_value = metadata["UW_CRL_DERIVED"]["min_climate_variable_value"]
     max_value = metadata["UW_CRL_DERIVED"]["max_climate_variable_value"]
     unit = metadata[climate_variable]["units"]
+    climatology_mean_method = metadata["UW_CRL_DERIVED"]["climatology_mean_method"]
+
     colormap = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["colormap"]
     layer_opacity = app_config.CLIMATE_DATA[climate_variable]["geotiff"][
         "layer_opacity"
     ]
+    
+    
 
-    del api
-    release_connection(conn=conn)
 
     return {
         "min_value": min_value,
@@ -135,6 +139,7 @@ def load_climate_metadata(climate_variable, ssp):
         "colormap": colormap,
         "unit": unit,
         "layer_opacity": layer_opacity,
+        "climatology_mean_method": climatology_mean_method
     }
 
 
@@ -142,10 +147,7 @@ def load_climate_metadata(climate_variable, ssp):
     [
         Output("climate-tile-layer", "url"),
         Output("climate-tile-layer", "opacity"),
-        Output("color-bar", "min"),
-        Output("color-bar", "max"),
-        Output("color-bar", "colorscale"),
-        Output("color-bar", "unit"),
+        Output("color-bar-div", "children"),
     ],
     [
         Input("climate-variable-dropdown", "value"),
@@ -164,23 +166,35 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
         or (decade is None)
         or (month is None)
     ):
-        raise PreventUpdate
+        
+        return app_config.MAP_COMPONENT["base_map"]["url"], 1, []
 
-    properties = app_config.CLIMATE_DATA[climate_variable]
-
-    file = f"{decade}-{month:02d}-{state}.tif"
-    bucket = properties["geotiff"]["s3_bucket"]
-    prefix = properties["geotiff"]["s3_base_prefix"]
-    climatological_mean = properties["climatological_mean"]
-
-    file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{climatological_mean}/{file}"
+    climatology_mean_method = climate_metadata["climatology_mean_method"]
     min_climate_value = climate_metadata["min_value"]
     max_climate_value = climate_metadata["max_value"]
     colormap = climate_metadata["colormap"]
     unit = climate_metadata["unit"]
     layer_opacity = climate_metadata["layer_opacity"]
 
-    url = app_utils.get_tilejson_url(
+    # Generate Colorbar to match tiles
+    color_bar = dl.Colorbar(
+                id=app_config.MAP_COMPONENT["color_bar"]["id"],
+                width=app_config.MAP_COMPONENT["color_bar"]["width"],
+                colorscale=colormap,
+                height=app_config.MAP_COMPONENT["color_bar"]["height"],
+                position=app_config.MAP_COMPONENT["color_bar"]["position"],
+                min=min_climate_value,
+                max=max_climate_value,
+                unit=unit
+            )
+    
+    # Generaye S3 URI to COG File
+    bucket = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_bucket"]
+    prefix = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_base_prefix"]
+    file = f"{decade}-{month:02d}-{state}.tif"
+    file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{climatology_mean_method}/{file}"
+
+    tile_url = app_utils.get_tilejson_url(
         file_url=file_url,
         climate_variable=climate_variable,
         min_climate_value=min_climate_value,
@@ -189,12 +203,9 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
     )
 
     return_values = (
-        url,
+        tile_url,
         layer_opacity,
-        min_climate_value,
-        max_climate_value,
-        colormap,
-        unit,
+        [color_bar]
     )
     return return_values
 

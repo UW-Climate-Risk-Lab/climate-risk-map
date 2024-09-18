@@ -14,8 +14,6 @@ CLIMATE_DATA = {
             "layer_opacity": 0.6
         },
         "available_ssp": ["ssp126", "ssp245", "ssp370", "ssp585"],
-        "climatological_mean": "decade_month",
-        "unit": "%"
     }
 
 }
