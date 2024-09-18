@@ -10,12 +10,10 @@ CLIMATE_DATA = {
             "format": "cogs",
             "s3_bucket": "uw-climaterisklab",
             "s3_base_prefix": "climate-risk-map/backend/climate/scenariomip/burntFractionAll",
-            "colormap": "reds",
+            "colormap": "ylorbr",
             "layer_opacity": 0.6
         },
         "available_ssp": ["ssp126", "ssp245", "ssp370", "ssp585"],
-        "climatological_mean": "decade_month",
-        "unit": "%"
     }
 
 }

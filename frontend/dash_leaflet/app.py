@@ -4,7 +4,7 @@ import dash_leaflet as dl
 import dash_bootstrap_components as dbc
 
 from psycopg2 import pool
-from dash import Dash, Input, Output, html, dcc, no_update
+from dash import Dash, Input, Output, State, html, dcc, no_update
 from dash.exceptions import PreventUpdate
 from typing import List
 import pandas as pd
@@ -22,6 +22,9 @@ PG_HOST = os.environ["PG_HOST"]
 PG_PASSWORD = os.environ["PG_PASSWORD"]
 PG_PORT = os.environ["PG_PORT"]
 PG_MAX_CONN = os.environ["PG_MAX_CONN"]
+
+MAX_DOWNLOADS = int(os.environ["MAX_DOWNLOADS"])  # Maximum downloads per session
+MAX_DOWNLOAD_AREA = float(os.environ["MAX_DOWNLOAD_AREA"])    # Maximum area in square kilometers the user can download at once
 
 CONNECTION_POOL = pool.SimpleConnectionPool(
     minconn=1,
@@ -81,7 +84,7 @@ app.layout = dbc.Container(
                         app_control_panel.DOWNLOAD_DATA_BUTTONS,
                     ],
                     style={"backgroundColor": "#39275B"},
-                    width=4,
+                    width=3,
                 ),
                 dbc.Col(
                     id="map-col",
@@ -92,6 +95,8 @@ app.layout = dbc.Container(
             ],
         ),
         dcc.Store("climate-metadata-store"),
+        dcc.Store(id="download-counter", data=0, storage_type="session"),
+        
     ],
 )
 
@@ -112,17 +117,21 @@ def load_climate_metadata(climate_variable, ssp):
     api = infraxclimate_api.infraXclimateAPI(conn=conn)
     ssp = int(ssp[3:])  # Quickfix to get the ssp int value
     metadata = api.get_climate_metadata(climate_variable=climate_variable, ssp=ssp)
+    del api
+    release_connection(conn=conn)
 
     min_value = metadata["UW_CRL_DERIVED"]["min_climate_variable_value"]
     max_value = metadata["UW_CRL_DERIVED"]["max_climate_variable_value"]
     unit = metadata[climate_variable]["units"]
+    climatology_mean_method = metadata["UW_CRL_DERIVED"]["climatology_mean_method"]
+
     colormap = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["colormap"]
     layer_opacity = app_config.CLIMATE_DATA[climate_variable]["geotiff"][
         "layer_opacity"
     ]
+    
+    
 
-    del api
-    release_connection(conn=conn)
 
     return {
         "min_value": min_value,
@@ -130,6 +139,7 @@ def load_climate_metadata(climate_variable, ssp):
         "colormap": colormap,
         "unit": unit,
         "layer_opacity": layer_opacity,
+        "climatology_mean_method": climatology_mean_method
     }
 
 
@@ -137,10 +147,7 @@ def load_climate_metadata(climate_variable, ssp):
     [
         Output("climate-tile-layer", "url"),
         Output("climate-tile-layer", "opacity"),
-        Output("color-bar", "min"),
-        Output("color-bar", "max"),
-        Output("color-bar", "colorscale"),
-        Output("color-bar", "unit"),
+        Output("color-bar-div", "children"),
     ],
     [
         Input("climate-variable-dropdown", "value"),
@@ -159,23 +166,35 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
         or (decade is None)
         or (month is None)
     ):
-        raise PreventUpdate
+        
+        return app_config.MAP_COMPONENT["base_map"]["url"], 1, []
 
-    properties = app_config.CLIMATE_DATA[climate_variable]
-
-    file = f"{decade}-{month:02d}-{state}.tif"
-    bucket = properties["geotiff"]["s3_bucket"]
-    prefix = properties["geotiff"]["s3_base_prefix"]
-    climatological_mean = properties["climatological_mean"]
-
-    file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{climatological_mean}/{file}"
+    climatology_mean_method = climate_metadata["climatology_mean_method"]
     min_climate_value = climate_metadata["min_value"]
     max_climate_value = climate_metadata["max_value"]
     colormap = climate_metadata["colormap"]
     unit = climate_metadata["unit"]
     layer_opacity = climate_metadata["layer_opacity"]
 
-    url = app_utils.get_tilejson_url(
+    # Generate Colorbar to match tiles
+    color_bar = dl.Colorbar(
+                id=app_config.MAP_COMPONENT["color_bar"]["id"],
+                width=app_config.MAP_COMPONENT["color_bar"]["width"],
+                colorscale=colormap,
+                height=app_config.MAP_COMPONENT["color_bar"]["height"],
+                position=app_config.MAP_COMPONENT["color_bar"]["position"],
+                min=min_climate_value,
+                max=max_climate_value,
+                unit=unit
+            )
+    
+    # Generaye S3 URI to COG File
+    bucket = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_bucket"]
+    prefix = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_base_prefix"]
+    file = f"{decade}-{month:02d}-{state}.tif"
+    file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{climatology_mean_method}/{file}"
+
+    tile_url = app_utils.get_tilejson_url(
         file_url=file_url,
         climate_variable=climate_variable,
         min_climate_value=min_climate_value,
@@ -184,12 +203,9 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
     )
 
     return_values = (
-        url,
+        tile_url,
         layer_opacity,
-        min_climate_value,
-        max_climate_value,
-        colormap,
-        unit,
+        [color_bar]
     )
     return return_values
 
@@ -213,7 +229,14 @@ def update_ssp_dropdown(climate_variable: str) -> List[str]:
 
 
 @app.callback(
-    [Output("csv-download", "data"), Output("csv-btn", "n_clicks")],
+    [
+        Output("csv-download", "data"),
+        Output("csv-btn", "n_clicks"),
+        Output("download-counter", "data"),
+        Output("download-message", "children"),
+        Output("download-message", "is_open"),
+        Output("download-message", "color"),
+    ],
     [
         Input("csv-btn", "n_clicks"),
         Input("drawn-shapes", "geojson"),
@@ -223,14 +246,44 @@ def update_ssp_dropdown(climate_variable: str) -> List[str]:
         Input("decade-slider", "value"),
         Input("month-slider", "value"),
     ],
+    State("download-counter", "data"),
 )
 def download_csv(
-    n_clicks, shapes, selected_overlays, climate_variable, ssp, decade, month
+    n_clicks, shapes, selected_overlays, climate_variable, ssp, decade, month, download_counter
 ):
+    # TODO: Create function to package return values tuple
+    # TODO: Add return value checking (Pydantic)
+    
 
-    # Need to check shapes value for different cases
-    if (shapes is None) or (len(shapes["features"]) == 0) or (n_clicks is None):
-        return no_update, 0
+    download_message = ''
+    is_open = False
+    download_message_color = None
+
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    if shapes is None or len(shapes["features"]) == 0:
+        download_message = "Please select an area on the map (Hint: Click the black square in the upper right of the map)."
+        is_open = True
+        download_message_color = "warning"
+        return no_update, 0, download_counter, download_message, is_open, download_message_color
+
+    # Initialize download counter if None
+    if download_counter is None:
+        download_counter = 0
+
+    # Check download limit
+    if download_counter >= MAX_DOWNLOADS:
+        download_message = f"You have reached the maximum of {MAX_DOWNLOADS} downloads per session."
+        is_open = True
+        download_message_color = "danger"
+        return no_update, 0, download_counter, download_message, is_open, download_message_color
+    
+    if app_utils.calc_bbox_area(features=shapes["features"]) > MAX_DOWNLOAD_AREA:
+        download_message = f"Your selected area is too large to download"
+        is_open = True
+        download_message_color = "danger"
+        return no_update, 0, download_counter, download_message, is_open, download_message_color
 
     # Only want to return climate data if user has selected all relevant criteria
     if None in [climate_variable, ssp, decade, month]:
@@ -280,18 +333,25 @@ def download_csv(
                 climate_decade=decade,
                 climate_metadata=False,
             )
-            
+
             api = infraxclimate_api.infraXclimateAPI(conn=conn)
-            # quick fix, use list(set()) to remove duplicates from input params
             data = api.get_data(input_params=params)
             df = app_utils.process_output_csv(data=data)
             del api
+            
         except Exception as e:
             print(e)
             df = pd.DataFrame()
-        
+
         release_connection(conn=conn)
-        return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0
+
+        # Increment download counter, reset error message
+        download_counter += 1
+        download_message = 'Download in progress!'
+        is_open = True
+        download_message_color = "success"
+        
+        return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0, download_counter, download_message, is_open, download_message_color
     return no_update, 0
 
 

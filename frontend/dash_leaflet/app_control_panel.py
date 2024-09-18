@@ -153,30 +153,53 @@ CLIMATE_SCENARIO_SELECTOR = html.Div(
 )
 
 DOWNLOAD_DATA_BUTTONS = html.Div(
-    dbc.Row(
-        align="center",
-        children=[
-            dbc.Col(
-                align="center",
-                width="auto",
-                children=[
-                    dbc.Button(
-                        "Download Data",
-                        id="csv-btn",
-                        className="me-1",
-                        n_clicks=0,
-                        style={
-                            "backgroundColor": "white",
-                            "border-radius": "15px",
-                            "color": "#39275B",
-                        },  # Make the box rounded,
-                    ),
-                    dcc.Download(id="csv-download"),
-                ]
-            )
-        ],
-        justify="center",
-        class_name="g-0",
-        style={"border-radius": "25px"},
-    ),
+    children=[
+        dbc.Row(
+            align="center",
+            children=[
+                dbc.Col(
+                    align="center",
+                    width="auto",
+                    children=[
+                        dbc.Button(
+                            "Download Data",
+                            id="csv-btn",
+                            className="me-1",
+                            n_clicks=0,
+                            style={
+                                "backgroundColor": "white",
+                                "border-radius": "15px",
+                                "color": "#39275B",
+                            },  # Make the box rounded,
+                        ),
+                        dcc.Download(id="csv-download"),
+                    ],
+                )
+            ],
+            justify="center",
+            class_name="g-0",
+            style={"border-radius": "25px"},
+        ),
+        html.Br(),
+        dbc.Row(
+            align="center",
+            children=[
+                dbc.Col(
+                    align="center",
+                    width={"size": 8, "offset": 0},
+                    children=[
+                        dbc.Alert(
+                            id="download-message",
+                            color="danger",
+                            is_open=False,
+                            duration=3000,
+                        )
+                    ],
+                ),
+            ],
+            justify="center",
+            class_name="g-0",
+            style={"border-radius": "25px"},
+        ),
+    ]
 )
