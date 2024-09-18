@@ -192,7 +192,7 @@ DOWNLOAD_DATA_BUTTONS = html.Div(
                             id="download-message",
                             color="danger",
                             is_open=False,
-                            duration=2000,
+                            duration=3000,
                         )
                     ],
                 ),

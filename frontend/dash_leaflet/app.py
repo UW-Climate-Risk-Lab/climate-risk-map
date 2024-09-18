@@ -84,7 +84,7 @@ app.layout = dbc.Container(
                         app_control_panel.DOWNLOAD_DATA_BUTTONS,
                     ],
                     style={"backgroundColor": "#39275B"},
-                    width=4,
+                    width=3,
                 ),
                 dbc.Col(
                     id="map-col",
