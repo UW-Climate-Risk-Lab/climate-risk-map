@@ -224,6 +224,7 @@ def update_ssp_dropdown(climate_variable: str) -> List[str]:
         Output("download-counter", "data"),
         Output("download-message", "children"),
         Output("download-message", "is_open"),
+        Output("download-message", "color"),
     ],
     [
         Input("csv-btn", "n_clicks"),
@@ -243,16 +244,18 @@ def download_csv(
     # TODO: Add return value checking (Pydantic)
     
 
-    error_message = ''
+    download_message = ''
     is_open = False
+    download_message_color = None
 
     if n_clicks is None or n_clicks == 0:
         raise PreventUpdate
 
     if shapes is None or len(shapes["features"]) == 0:
-        error_message = "Please select an area on the map."
+        download_message = "Please select an area on the map."
         is_open = True
-        return no_update, 0, download_counter, error_message, is_open
+        download_message_color = "warning"
+        return no_update, 0, download_counter, download_message, is_open, download_message_color
 
     # Initialize download counter if None
     if download_counter is None:
@@ -260,14 +263,16 @@ def download_csv(
 
     # Check download limit
     if download_counter >= MAX_DOWNLOADS:
-        error_message = f"You have reached the maximum of {MAX_DOWNLOADS} downloads per session."
+        download_message = f"You have reached the maximum of {MAX_DOWNLOADS} downloads per session."
         is_open = True
-        return no_update, 0, download_counter, error_message, is_open
+        download_message_color = "danger"
+        return no_update, 0, download_counter, download_message, is_open, download_message_color
     
     if app_utils.calc_bbox_area(features=shapes["features"]) > MAX_DOWNLOAD_AREA:
-        error_message = f"Your selected area is too large to download"
+        download_message = f"Your selected area is too large to download"
         is_open = True
-        return no_update, 0, download_counter, error_message, is_open
+        download_message_color = "danger"
+        return no_update, 0, download_counter, download_message, is_open, download_message_color
 
     # Only want to return climate data if user has selected all relevant criteria
     if None in [climate_variable, ssp, decade, month]:
@@ -319,7 +324,6 @@ def download_csv(
             )
 
             api = infraxclimate_api.infraXclimateAPI(conn=conn)
-            # quick fix, use list(set()) to remove duplicates from input params
             data = api.get_data(input_params=params)
             df = app_utils.process_output_csv(data=data)
             del api
@@ -332,9 +336,11 @@ def download_csv(
 
         # Increment download counter, reset error message
         download_counter += 1
-        error_message = ''
-        is_open = False
-        return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0, download_counter, error_message, is_open
+        download_message = 'Download in progress!'
+        is_open = True
+        download_message_color = "success"
+        
+        return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0, download_counter, download_message, is_open, download_message_color
     return no_update, 0
 
 
