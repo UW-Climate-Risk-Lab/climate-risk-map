@@ -4,7 +4,7 @@ import dash_leaflet as dl
 import dash_bootstrap_components as dbc
 
 from psycopg2 import pool
-from dash import Dash, Input, Output, html, dcc, no_update
+from dash import Dash, Input, Output, State, html, dcc, no_update
 from dash.exceptions import PreventUpdate
 from typing import List
 import pandas as pd
@@ -22,6 +22,9 @@ PG_HOST = os.environ["PG_HOST"]
 PG_PASSWORD = os.environ["PG_PASSWORD"]
 PG_PORT = os.environ["PG_PORT"]
 PG_MAX_CONN = os.environ["PG_MAX_CONN"]
+
+MAX_DOWNLOADS = int(os.environ["MAX_DOWNLOADS"])  # Maximum downloads per session
+MAX_DOWNLOAD_AREA = float(os.environ["MAX_DOWNLOAD_AREA"])    # Maximum area in square kilometers the user can download at once
 
 CONNECTION_POOL = pool.SimpleConnectionPool(
     minconn=1,
@@ -92,6 +95,8 @@ app.layout = dbc.Container(
             ],
         ),
         dcc.Store("climate-metadata-store"),
+        dcc.Store(id="download-counter", data=0, storage_type="session"),
+        
     ],
 )
 
@@ -213,7 +218,13 @@ def update_ssp_dropdown(climate_variable: str) -> List[str]:
 
 
 @app.callback(
-    [Output("csv-download", "data"), Output("csv-btn", "n_clicks")],
+    [
+        Output("csv-download", "data"),
+        Output("csv-btn", "n_clicks"),
+        Output("download-counter", "data"),
+        Output("download-message", "children"),
+        Output("download-message", "is_open"),
+    ],
     [
         Input("csv-btn", "n_clicks"),
         Input("drawn-shapes", "geojson"),
@@ -223,14 +234,40 @@ def update_ssp_dropdown(climate_variable: str) -> List[str]:
         Input("decade-slider", "value"),
         Input("month-slider", "value"),
     ],
+    State("download-counter", "data"),
 )
 def download_csv(
-    n_clicks, shapes, selected_overlays, climate_variable, ssp, decade, month
+    n_clicks, shapes, selected_overlays, climate_variable, ssp, decade, month, download_counter
 ):
+    # TODO: Create function to package return values tuple
+    # TODO: Add return value checking (Pydantic)
+    
 
-    # Need to check shapes value for different cases
-    if (shapes is None) or (len(shapes["features"]) == 0) or (n_clicks is None):
-        return no_update, 0
+    error_message = ''
+    is_open = False
+
+    if n_clicks is None or n_clicks == 0:
+        raise PreventUpdate
+
+    if shapes is None or len(shapes["features"]) == 0:
+        error_message = "Please select an area on the map."
+        is_open = True
+        return no_update, 0, download_counter, error_message, is_open
+
+    # Initialize download counter if None
+    if download_counter is None:
+        download_counter = 0
+
+    # Check download limit
+    if download_counter >= MAX_DOWNLOADS:
+        error_message = f"You have reached the maximum of {MAX_DOWNLOADS} downloads per session."
+        is_open = True
+        return no_update, 0, download_counter, error_message, is_open
+    
+    if app_utils.calc_bbox_area(features=shapes["features"]) > MAX_DOWNLOAD_AREA:
+        error_message = f"Your selected area is too large to download"
+        is_open = True
+        return no_update, 0, download_counter, error_message, is_open
 
     # Only want to return climate data if user has selected all relevant criteria
     if None in [climate_variable, ssp, decade, month]:
@@ -280,18 +317,24 @@ def download_csv(
                 climate_decade=decade,
                 climate_metadata=False,
             )
-            
+
             api = infraxclimate_api.infraXclimateAPI(conn=conn)
             # quick fix, use list(set()) to remove duplicates from input params
             data = api.get_data(input_params=params)
             df = app_utils.process_output_csv(data=data)
             del api
+            
         except Exception as e:
             print(e)
             df = pd.DataFrame()
-        
+
         release_connection(conn=conn)
-        return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0
+
+        # Increment download counter, reset error message
+        download_counter += 1
+        error_message = ''
+        is_open = False
+        return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0, download_counter, error_message, is_open
     return no_update, 0
 
 
