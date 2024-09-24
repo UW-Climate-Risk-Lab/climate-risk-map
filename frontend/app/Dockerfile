@@ -1,33 +1,28 @@
 FROM python:3.12
 
 # Set working directory
-WORKDIR /app
+WORKDIR /climate-risk-map/frontend/app
 
 # Install gdal dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     libgdal-dev \
     --fix-missing
-RUN export CPLUS_INCLUDE_PATH=/usr/include/gdal
-RUN export C_INCLUDE_PATH=/usr/include/gdal
+
+ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
+ENV export C_INCLUDE_PATH=/usr/include/gdal
 
 # Install dependencies
-RUN pip install GDAL==3.6.2
-COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt
+RUN pip install poetry==1.8.3
 
 # Copy the application code
-COPY assets/ ./assets
-COPY app.py .
-COPY app_utils.py .
-COPY app_map.py .
-COPY app_control_panel.py .
-COPY app_config.py .
-COPY infraxclimate_api.py .
-COPY test. ./tests
+COPY . .
+
+# Install dependencies
+RUN poetry install --no-root
 
 # Expose the port the app runs on
 EXPOSE 8050
 
-# Run the application using gunicorn
-CMD exec gunicorn -b 0.0.0.0:8050 --workers $GUNICORN_WORKERS app:server
+# Run the application using poetry and gunicorn
+CMD poetry run gunicorn -b 0.0.0.0:8050 --workers $GUNICORN_WORKERS app:server
