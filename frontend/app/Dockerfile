@@ -24,6 +24,7 @@ COPY app_map.py .
 COPY app_control_panel.py .
 COPY app_config.py .
 COPY infraxclimate_api.py .
+COPY test. ./tests
 
 # Expose the port the app runs on
 EXPOSE 8050
