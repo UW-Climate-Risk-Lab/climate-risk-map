@@ -11,10 +11,7 @@ import psycopg2 as pg
 from psycopg2 import sql
 from geojson_pydantic import FeatureCollection
 from pydantic import BaseModel, model_validator, ValidationError
-from typing import List, Optional
-
-
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional, Any
 
 
 class infraXclimateInput(BaseModel):
@@ -189,7 +186,7 @@ class infraXclimateAPI:
         climate_decade: int,
         climate_ssp: int,
         climate_metadata: bool,
-    ) -> sql.SQL:
+    ) -> Tuple[sql.SQL, List[Any]]:
         """Bulids a dynamic SQL SELECT statement for the get_osm_data method"""
 
         select_fields = [
@@ -224,7 +221,9 @@ class infraXclimateAPI:
 
         # Add extra where clause for subtypes if they are specified
         if osm_subtypes:
-            select_fields.append(sql.Identifier(self.osm_schema, primary_table, "osm_subtype"))
+            select_fields.append(
+                sql.Identifier(self.osm_schema, primary_table, "osm_subtype")
+            )
 
         # County and City tables are aliased in the _create_join_method()
         if county:
@@ -285,7 +284,7 @@ class infraXclimateAPI:
         select_statement = sql.SQL("SELECT {columns}").format(
             columns=sql.SQL(", ").join(select_fields)
         )
-        return select_statement
+        return select_statement, params
 
     def _create_from_statement(self, primary_table: str) -> sql.SQL:
 
@@ -304,7 +303,7 @@ class infraXclimateAPI:
         climate_month: int,
         climate_decade: int,
         climate_ssp: int,
-    ) -> sql.SQL:
+    ) -> Tuple[sql.SQL, List[Any]]:
 
         # the tags table contains all of the properties of the features
         join_statement = sql.SQL(
@@ -370,7 +369,7 @@ class infraXclimateAPI:
 
             join_statement = sql.SQL(" ").join([join_statement, climate_join])
 
-        return join_statement
+        return join_statement, params
 
     def _create_where_clause(
         self,
@@ -381,7 +380,7 @@ class infraXclimateAPI:
         geom_type: str,
         bbox: FeatureCollection,
         epsg_code: int,
-    ):
+    ) -> Tuple[sql.SQL, List[Any]]:
 
         # Always filter by osm type to throttle data output!
         where_clause = sql.SQL("WHERE {schema}.{primary_table}.{column} IN %s").format(
@@ -439,7 +438,7 @@ class infraXclimateAPI:
 
             where_clause = sql.SQL(" ").join([where_clause, bbox_filter])
 
-        return where_clause
+        return where_clause, params
 
     def get_climate_metadata(self, climate_variable: str, ssp: str) -> Dict:
         """Returns climate metadata for given climate_variable and ssp
@@ -569,7 +568,7 @@ class infraXclimateAPI:
         """
         )
 
-        select_statement = self._create_select_statement(
+        select_statement, query_params = self._create_select_statement(
             params=query_params,
             primary_table=primary_table,
             centroid=centroid,
@@ -586,7 +585,7 @@ class infraXclimateAPI:
 
         from_statement = self._create_from_statement(primary_table=primary_table)
 
-        join_statement = self._create_join_statement(
+        join_statement, query_params = self._create_join_statement(
             primary_table=primary_table,
             params=query_params,
             county=county,
@@ -597,7 +596,7 @@ class infraXclimateAPI:
             climate_month=climate_month,
         )
 
-        where_clause = self._create_where_clause(
+        where_clause, query_params = self._create_where_clause(
             primary_table=primary_table,
             params=query_params,
             osm_types=osm_types,

@@ -85,164 +85,308 @@ def test_get_data_invalid_category(mock_conn):
         api.get_data(input_params)
 
 
-def test_create_select_statement(mock_conn):
+@pytest.mark.parametrize(
+    "input_params, expected_select_statement, expected_params",
+    [
+        # Centroid False test case
+        (
+            infraXclimateInput(
+                category="infrastructure",
+                osm_types=["power"],
+                osm_subtypes=["line"],
+                centroid=False,
+                county=True,
+                city=True,
+                epsg_code=4326,
+                climate_variable="burntFractionAll",
+                climate_decade=[2060, 2070],
+                climate_month=[8, 9],
+                climate_ssp=126,
+                climate_metadata=True,
+            ),
+            sql.Composed(
+                [
+                    sql.SQL("SELECT "),
+                    sql.Composed(
+                        [
+                            sql.Identifier("osm", "infrastructure", "osm_id"),
+                            sql.SQL(", "),
+                            sql.Identifier("osm", "infrastructure", "osm_type"),
+                            sql.SQL(", "),
+                            sql.Identifier("osm", "tags", "tags"),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.SQL("ST_Transform("),
+                                    sql.Identifier("osm"),
+                                    sql.SQL("."),
+                                    sql.Identifier("infrastructure"),
+                                    sql.SQL("."),
+                                    sql.Identifier("geom"),
+                                    sql.SQL(", %s) AS geometry"),
+                                ]
+                            ),
+                            sql.SQL(", "),
+                            sql.Identifier("osm", "infrastructure", "osm_subtype"),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.Identifier("county"),
+                                    sql.SQL(".name AS county_name"),
+                                ]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [sql.Identifier("city"), sql.SQL(".name AS city_name")]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [sql.Identifier("climate_data"), sql.SQL(".ssp")]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [sql.Identifier("climate_data"), sql.SQL(".month")]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [sql.Identifier("climate_data"), sql.SQL(".decade")]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.Identifier("climate_data"),
+                                    sql.SQL(".variable AS climate_variable"),
+                                ]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.Identifier("climate_data"),
+                                    sql.SQL(".value AS climate_exposure"),
+                                ]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.Identifier("climate_data"),
+                                    sql.SQL(".climate_metadata"),
+                                ]
+                            ),
+                        ]
+                    ),
+                ]
+            ),
+            [4326],
+        ),
+        # Centroid True test case:
+        (
+            infraXclimateInput(
+                category="infrastructure",
+                osm_types=["power"],
+                osm_subtypes=["line"],
+                centroid=True,
+                county=True,
+                city=True,
+                epsg_code=4326,
+                climate_variable="burntFractionAll",
+                climate_decade=[2060, 2070],
+                climate_month=[8, 9],
+                climate_ssp=126,
+                climate_metadata=True,
+            ),
+            sql.Composed(
+                [
+                    sql.SQL("SELECT "),
+                    sql.Composed(
+                        [
+                            sql.Identifier("osm", "infrastructure", "osm_id"),
+                            sql.SQL(", "),
+                            sql.Identifier("osm", "infrastructure", "osm_type"),
+                            sql.SQL(", "),
+                            sql.Identifier("osm", "tags", "tags"),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.SQL("ST_Centroid(ST_Transform("),
+                                    sql.Identifier("osm"),
+                                    sql.SQL("."),
+                                    sql.Identifier("infrastructure"),
+                                    sql.SQL("."),
+                                    sql.Identifier("geom"),
+                                    sql.SQL(", %s)) AS geometry"),
+                                ]
+                            ),
+                            sql.SQL(", "),
+                            sql.Identifier("osm", "infrastructure", "osm_subtype"),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.Identifier("county"),
+                                    sql.SQL(".name AS county_name"),
+                                ]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [sql.Identifier("city"), sql.SQL(".name AS city_name")]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [sql.Identifier("climate_data"), sql.SQL(".ssp")]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [sql.Identifier("climate_data"), sql.SQL(".month")]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [sql.Identifier("climate_data"), sql.SQL(".decade")]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.Identifier("climate_data"),
+                                    sql.SQL(".variable AS climate_variable"),
+                                ]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.Identifier("climate_data"),
+                                    sql.SQL(".value AS climate_exposure"),
+                                ]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.Identifier("climate_data"),
+                                    sql.SQL(".climate_metadata"),
+                                ]
+                            ),
+                        ]
+                    ),
+                ]
+            ),
+            [4326],
+        ),
+        # Climate query test case 1 - Any climate argument that is None will result in no climate columns returned
+        (
+            infraXclimateInput(
+                category="infrastructure",
+                osm_types=["power"],
+                osm_subtypes=["line"],
+                centroid=False,
+                county=True,
+                city=True,
+                epsg_code=4326,
+                climate_variable=None,
+                climate_decade=None,
+                climate_month=None,
+                climate_ssp=None,
+                climate_metadata=True,
+            ),
+            sql.Composed(
+                [
+                    sql.SQL("SELECT "),
+                    sql.Composed(
+                        [
+                            sql.Identifier("osm", "infrastructure", "osm_id"),
+                            sql.SQL(", "),
+                            sql.Identifier("osm", "infrastructure", "osm_type"),
+                            sql.SQL(", "),
+                            sql.Identifier("osm", "tags", "tags"),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.SQL("ST_Transform("),
+                                    sql.Identifier("osm"),
+                                    sql.SQL("."),
+                                    sql.Identifier("infrastructure"),
+                                    sql.SQL("."),
+                                    sql.Identifier("geom"),
+                                    sql.SQL(", %s) AS geometry"),
+                                ]
+                            ),
+                            sql.SQL(", "),
+                            sql.Identifier("osm", "infrastructure", "osm_subtype"),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [
+                                    sql.Identifier("county"),
+                                    sql.SQL(".name AS county_name"),
+                                ]
+                            ),
+                            sql.SQL(", "),
+                            sql.Composed(
+                                [sql.Identifier("city"), sql.SQL(".name AS city_name")]
+                            ),
+                        ]
+                    ),
+                ]
+            ),
+            [4326],
+        ),
+    ],
+)
+def test_create_select_statement(
+    input_params, expected_select_statement, expected_params, mock_conn
+):
 
     api = infraXclimateAPI(conn=mock_conn)
 
-    generated_select_statement_no_centroid = api._create_select_statement(
+    generated_select_statement, generated_params = api._create_select_statement(
         params=[],
-        primary_table="infrastructure",
-        centroid=False,
-        osm_subtypes=["line"],
-        county=True,
-        city=True,
-        epsg_code=4326,
-        climate_variable="burntFractionAll",
-        climate_decade=[2060, 2070],
-        climate_month=[8, 9],
-        climate_ssp=126,
-        climate_metadata=True,
+        primary_table=input_params.category,
+        centroid=input_params.centroid,
+        osm_subtypes=input_params.osm_subtypes,
+        county=input_params.county,
+        city=input_params.city,
+        epsg_code=input_params.epsg_code,
+        climate_variable=input_params.climate_variable,
+        climate_decade=input_params.climate_decade,
+        climate_month=input_params.climate_month,
+        climate_ssp=input_params.climate_ssp,
+        climate_metadata=input_params.climate_metadata,
     )
 
-    generated_select_statement_w_centroid = api._create_select_statement(
-        params=[],
-        primary_table="infrastructure",
-        centroid=True,
-        osm_subtypes=["line"],
-        county=True,
-        city=True,
-        epsg_code=4326,
-        climate_variable="burntFractionAll",
-        climate_decade=[2060, 2070],
-        climate_month=[8, 9],
-        climate_ssp=126,
-        climate_metadata=True,
-    )
+    assert generated_select_statement == expected_select_statement
+    assert generated_params == expected_params
 
-    expected_select_statement_no_centroid = sql.Composed(
-        [
-            sql.SQL("SELECT "),
+
+@pytest.mark.parametrize(
+    "input_params, expected_from_statement",
+    [
+        (
+            infraXclimateInput(
+                category="infrastructure",
+                osm_types=["power"],
+                osm_subtypes=["line"],
+                centroid=False,
+                county=True,
+                city=True,
+                epsg_code=4326,
+                climate_variable="burntFractionAll",
+                climate_decade=[2060, 2070],
+                climate_month=[8, 9],
+                climate_ssp=126,
+                climate_metadata=True,
+            ),
             sql.Composed(
                 [
-                    sql.Identifier("osm", "infrastructure", "osm_id"),
-                    sql.SQL(", "),
-                    sql.Identifier("osm", "infrastructure", "osm_type"),
-                    sql.SQL(", "),
-                    sql.Identifier("osm", "tags", "tags"),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [
-                            sql.SQL("ST_Transform("),
-                            sql.Identifier("osm"),
-                            sql.SQL("."),
-                            sql.Identifier("infrastructure"),
-                            sql.SQL("."),
-                            sql.Identifier("geom"),
-                            sql.SQL(", %s) AS geometry"),
-                        ]
-                    ),
-                    sql.SQL(", "),
-                    sql.Identifier("osm", "infrastructure", "osm_subtype"),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [sql.Identifier("county"), sql.SQL(".name AS county_name")]
-                    ),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [sql.Identifier("city"), sql.SQL(".name AS city_name")]
-                    ),
-                    sql.SQL(", "),
-                    sql.Composed([sql.Identifier("climate_data"), sql.SQL(".ssp")]),
-                    sql.SQL(", "),
-                    sql.Composed([sql.Identifier("climate_data"), sql.SQL(".month")]),
-                    sql.SQL(", "),
-                    sql.Composed([sql.Identifier("climate_data"), sql.SQL(".decade")]),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [
-                            sql.Identifier("climate_data"),
-                            sql.SQL(".variable AS climate_variable"),
-                        ]
-                    ),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [
-                            sql.Identifier("climate_data"),
-                            sql.SQL(".value AS climate_exposure"),
-                        ]
-                    ),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [sql.Identifier("climate_data"), sql.SQL(".climate_metadata")]
-                    ),
+                    sql.SQL("FROM "),
+                    sql.Identifier("osm"),
+                    sql.SQL("."),
+                    sql.Identifier("infrastructure"),
                 ]
             ),
-        ]
+        )
+    ],
+)
+def test_create_from_statement(input_params, expected_from_statement, mock_conn):
+
+    api = infraXclimateAPI(conn=mock_conn)
+
+    generated_from_statement = api._create_from_statement(
+        primary_table=input_params.category
     )
 
-    expected_select_statement_w_centroid = sql.Composed(
-        [
-            sql.SQL("SELECT "),
-            sql.Composed(
-                [
-                    sql.Identifier("osm", "infrastructure", "osm_id"),
-                    sql.SQL(", "),
-                    sql.Identifier("osm", "infrastructure", "osm_type"),
-                    sql.SQL(", "),
-                    sql.Identifier("osm", "tags", "tags"),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [
-                            sql.SQL("ST_Centroid(ST_Transform("),
-                            sql.Identifier("osm"),
-                            sql.SQL("."),
-                            sql.Identifier("infrastructure"),
-                            sql.SQL("."),
-                            sql.Identifier("geom"),
-                            sql.SQL(", %s)) AS geometry"),
-                        ]
-                    ),
-                    sql.SQL(", "),
-                    sql.Identifier("osm", "infrastructure", "osm_subtype"),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [sql.Identifier("county"), sql.SQL(".name AS county_name")]
-                    ),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [sql.Identifier("city"), sql.SQL(".name AS city_name")]
-                    ),
-                    sql.SQL(", "),
-                    sql.Composed([sql.Identifier("climate_data"), sql.SQL(".ssp")]),
-                    sql.SQL(", "),
-                    sql.Composed([sql.Identifier("climate_data"), sql.SQL(".month")]),
-                    sql.SQL(", "),
-                    sql.Composed([sql.Identifier("climate_data"), sql.SQL(".decade")]),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [
-                            sql.Identifier("climate_data"),
-                            sql.SQL(".variable AS climate_variable"),
-                        ]
-                    ),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [
-                            sql.Identifier("climate_data"),
-                            sql.SQL(".value AS climate_exposure"),
-                        ]
-                    ),
-                    sql.SQL(", "),
-                    sql.Composed(
-                        [sql.Identifier("climate_data"), sql.SQL(".climate_metadata")]
-                    ),
-                ]
-            ),
-        ]
-    )
-
-    assert (
-        generated_select_statement_no_centroid == expected_select_statement_no_centroid
-    )
-
-    assert generated_select_statement_w_centroid == expected_select_statement_w_centroid
+    assert generated_from_statement == expected_from_statement
