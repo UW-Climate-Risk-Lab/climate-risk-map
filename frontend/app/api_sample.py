@@ -1,10 +1,8 @@
 import infraxclimate_api
-from dotenv import load_dotenv
 import os
 import psycopg2
 import time
 
-load_dotenv()
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]
@@ -82,6 +80,7 @@ if __name__ == "__main__":
         climate_month=[8, 9],
         climate_ssp=126,
         climate_metadata=True,
+        centroid=True
     )
     data = api.get_data(input_params=params
     )

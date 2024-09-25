@@ -224,7 +224,7 @@ class infraXclimateAPI:
 
         # Add extra where clause for subtypes if they are specified
         if osm_subtypes:
-            select_fields.append(sql.Identifier(primary_table, "osm_subtype"))
+            select_fields.append(sql.Identifier(self.osm_schema, primary_table, "osm_subtype"))
 
         # County and City tables are aliased in the _create_join_method()
         if county:
@@ -269,7 +269,7 @@ class infraXclimateAPI:
                 )
             )
             select_fields.append(
-                sql.SQL("{climate_table_alias}.value AS climate_value").format(
+                sql.SQL("{climate_table_alias}.value AS climate_exposure").format(
                     climate_schema=sql.Identifier(self.climate_schema),
                     climate_table_alias=sql.Identifier(self.climate_table_alias),
                 )
@@ -490,7 +490,7 @@ class infraXclimateAPI:
                 "climate_data".month,
                 "climate_data".decade,
                 "climate_data".variable AS climate_variable,
-                "climate_data".value AS climate_value,
+                "climate_data".value AS climate_exposure,
                 "climate_data".climate_metadata
             FROM
                 "osm"."infrastructure"
