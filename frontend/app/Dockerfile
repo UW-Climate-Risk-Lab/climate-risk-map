@@ -9,17 +9,23 @@ RUN apt-get update && apt-get install -y \
     libgdal-dev \
     --fix-missing
 
-ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
-ENV export C_INCLUDE_PATH=/usr/include/gdal
+ENV CPLUS_INCLUDE_PATH /usr/include/gdal
+ENV export C_INCLUDE_PATH /usr/include/gdal
 
 # Install dependencies
 RUN pip install poetry==1.8.3
 
-# Copy the application code
-COPY . .
+# Copy the dependancies to install
+COPY poetry.lock pyproject.toml ./
 
 # Install dependencies
 RUN poetry install --no-root
+
+# Copy rest of code into image
+COPY . .
+
+# Make sure tests pass before building
+RUN poetry run pytest
 
 # Expose the port the app runs on
 EXPOSE 8050
