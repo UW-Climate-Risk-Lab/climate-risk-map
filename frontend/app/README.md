@@ -15,7 +15,7 @@ The sample climate data in the `experimentation/tile_service/raster_tiler/dynami
 *Note, if the docker build fails because of the build dependencies and an error about "Hash Sum Mismatch", try building on another network or VPN.*
 
 ```bash
-docker build -t climate-risk-map-test .
+docker build -t climate-risk-map/frontend/app .
 ```
 
 2. Create a .env file, following the env.sample file. The TiTiler endpoint is meant to be
@@ -24,7 +24,7 @@ a deployed endpoint. TiTiler deployment on AWS Lambda can be done easily using [
 3. Run a container using the docker image we just built, using the following command
 
 ```bash
-docker run -p 8050:8050 --rm --env-file .env climate-risk-map-test
+docker run -p 8050:8050 --rm --env-file .env climate-risk-map/frontend/app
 ```
 4. Go to `http://0.0.0.0:8050/` in your broswer to see the map.
 
