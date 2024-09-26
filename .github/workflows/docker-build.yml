@@ -1,3 +1,4 @@
+name: Docker build
 jobs:
   build_frontend:
     if: contains(github.event.pull_request.changed_files, 'frontend/')
