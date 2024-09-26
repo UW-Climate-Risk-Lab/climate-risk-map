@@ -174,7 +174,7 @@ class infraXclimateAPI:
 
     def _create_select_statement(
         self,
-        params: List,
+        params: List[Any],
         primary_table: str,
         centroid: bool,
         epsg_code: int,
@@ -295,8 +295,8 @@ class infraXclimateAPI:
 
     def _create_join_statement(
         self,
+        params: List[Any],
         primary_table: str,
-        params: List,
         county: bool,
         city: bool,
         climate_variable: str,
@@ -338,28 +338,28 @@ class infraXclimateAPI:
             join_statement = sql.SQL(" ").join([join_statement, admin_join])
 
         if climate_variable and climate_ssp and climate_month and climate_decade:
-            climate_join = sql.SQL(
-                """
-            LEFT JOIN(
-                SELECT s.osm_id, v.ssp, v.variable, s.month, s.decade, s.value, v.metadata AS climate_metadata
-                FROM {climate_schema}.{scenariomip} s
-                LEFT JOIN {climate_schema}.{scenariomip_variable} v
-                ON s.variable_id = v.id
-                WHERE v.ssp = %s
-                AND v.variable = %s
-                AND s.decade IN %s
-                AND s.month IN %s
-            ) AS {climate_table_alias}
-            ON {schema}.{primary_table}.osm_id = {climate_table_alias}.osm_id
-            """
-            ).format(
-                climate_schema=sql.Identifier(self.climate_schema),
-                scenariomip=sql.Identifier(self.scenariomip_table),
-                scenariomip_variable=sql.Identifier(self.scenariomip_variable_table),
-                schema=sql.Identifier(self.osm_schema),
-                primary_table=sql.Identifier(primary_table),
-                climate_table_alias=sql.Identifier(self.climate_table_alias),
-            )
+            climate_join = sql.Composed([
+                sql.SQL("LEFT JOIN ("),
+                sql.SQL("SELECT s.osm_id, v.ssp, v.variable, s.month, s.decade, s.value, v.metadata AS climate_metadata "),
+                sql.SQL("FROM {climate_schema}.{scenariomip} s ").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    scenariomip=sql.Identifier(self.scenariomip_table)
+                ),
+                sql.SQL("LEFT JOIN {climate_schema}.{scenariomip_variable} v ").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    scenariomip_variable=sql.Identifier(self.scenariomip_variable_table)
+                ),
+                sql.SQL("ON s.variable_id = v.id "),
+                sql.SQL("WHERE v.ssp = %s AND v.variable = %s AND s.decade IN %s AND s.month IN %s"),
+                sql.SQL(") AS {climate_table_alias} ").format(
+                    climate_table_alias=sql.Identifier(self.climate_table_alias)
+                ),
+                sql.SQL("ON {schema}.{primary_table}.osm_id = {climate_table_alias}.osm_id").format(
+                    schema=sql.Identifier(self.osm_schema),
+                    primary_table=sql.Identifier(primary_table),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias)
+                )
+            ])
             params += [
                 climate_ssp,
                 climate_variable,
@@ -373,8 +373,8 @@ class infraXclimateAPI:
 
     def _create_where_clause(
         self,
+        params: List[Any],
         primary_table: str,
-        params: List,
         osm_types: List[str],
         osm_subtypes: List[str],
         geom_type: str,
@@ -441,10 +441,14 @@ class infraXclimateAPI:
         return where_clause, params
 
     def get_climate_metadata(self, climate_variable: str, ssp: str) -> Dict:
-        """Returns climate metadata for given climate_variable and ssp
+        """Returns climate metadata JSON blob for given climate_variable and ssp
 
         Args:
-            climate_variable (str): _description_
+            climate_variable (str): climate variable name
+            ssp (str): SSP number
+
+        Returns:
+            Dict: JSON blob of climate metadata
         """
 
         query = sql.SQL(
