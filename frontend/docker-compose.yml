@@ -1,7 +1,7 @@
 version: '3'
 services:
   dash_app:
-    build: ./dash_leaflet
+    build: ./app
     restart: always
     env_file: .env
     ports:

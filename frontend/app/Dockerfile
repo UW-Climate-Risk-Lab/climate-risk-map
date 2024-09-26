@@ -1,0 +1,34 @@
+FROM python:3.12
+
+# Set working directory
+WORKDIR /climate-risk-map/frontend/app
+
+# Install gdal dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libgdal-dev \
+    --fix-missing
+
+ENV CPLUS_INCLUDE_PATH /usr/include/gdal
+ENV export C_INCLUDE_PATH /usr/include/gdal
+
+# Install dependencies
+RUN pip install poetry==1.8.3
+
+# Copy the dependancies to install
+COPY poetry.lock pyproject.toml ./
+
+# Install dependencies
+RUN poetry install --no-root
+
+# Copy rest of code into image
+COPY . .
+
+# Make sure tests pass before building
+RUN poetry run pytest
+
+# Expose the port the app runs on
+EXPOSE 8050
+
+# Run the application using poetry and gunicorn
+CMD poetry run gunicorn -b 0.0.0.0:8050 --workers $GUNICORN_WORKERS app:server

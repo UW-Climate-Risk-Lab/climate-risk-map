@@ -11,10 +11,7 @@ import psycopg2 as pg
 from psycopg2 import sql
 from geojson_pydantic import FeatureCollection
 from pydantic import BaseModel, model_validator, ValidationError
-from typing import List, Optional
-
-
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional, Any
 
 
 class infraXclimateInput(BaseModel):
@@ -177,7 +174,7 @@ class infraXclimateAPI:
 
     def _create_select_statement(
         self,
-        params: List,
+        params: List[Any],
         primary_table: str,
         centroid: bool,
         epsg_code: int,
@@ -189,7 +186,7 @@ class infraXclimateAPI:
         climate_decade: int,
         climate_ssp: int,
         climate_metadata: bool,
-    ) -> sql.SQL:
+    ) -> Tuple[sql.SQL, List[Any]]:
         """Bulids a dynamic SQL SELECT statement for the get_osm_data method"""
 
         select_fields = [
@@ -224,7 +221,9 @@ class infraXclimateAPI:
 
         # Add extra where clause for subtypes if they are specified
         if osm_subtypes:
-            select_fields.append(sql.Identifier(primary_table, "osm_subtype"))
+            select_fields.append(
+                sql.Identifier(self.osm_schema, primary_table, "osm_subtype")
+            )
 
         # County and City tables are aliased in the _create_join_method()
         if county:
@@ -269,7 +268,7 @@ class infraXclimateAPI:
                 )
             )
             select_fields.append(
-                sql.SQL("{climate_table_alias}.value AS climate_value").format(
+                sql.SQL("{climate_table_alias}.value AS climate_exposure").format(
                     climate_schema=sql.Identifier(self.climate_schema),
                     climate_table_alias=sql.Identifier(self.climate_table_alias),
                 )
@@ -285,7 +284,7 @@ class infraXclimateAPI:
         select_statement = sql.SQL("SELECT {columns}").format(
             columns=sql.SQL(", ").join(select_fields)
         )
-        return select_statement
+        return select_statement, params
 
     def _create_from_statement(self, primary_table: str) -> sql.SQL:
 
@@ -296,15 +295,15 @@ class infraXclimateAPI:
 
     def _create_join_statement(
         self,
+        params: List[Any],
         primary_table: str,
-        params: List,
         county: bool,
         city: bool,
         climate_variable: str,
         climate_month: int,
         climate_decade: int,
         climate_ssp: int,
-    ) -> sql.SQL:
+    ) -> Tuple[sql.SQL, List[Any]]:
 
         # the tags table contains all of the properties of the features
         join_statement = sql.SQL(
@@ -339,28 +338,28 @@ class infraXclimateAPI:
             join_statement = sql.SQL(" ").join([join_statement, admin_join])
 
         if climate_variable and climate_ssp and climate_month and climate_decade:
-            climate_join = sql.SQL(
-                """
-            LEFT JOIN(
-                SELECT s.osm_id, v.ssp, v.variable, s.month, s.decade, s.value, v.metadata AS climate_metadata
-                FROM {climate_schema}.{scenariomip} s
-                LEFT JOIN {climate_schema}.{scenariomip_variable} v
-                ON s.variable_id = v.id
-                WHERE v.ssp = %s
-                AND v.variable = %s
-                AND s.decade IN %s
-                AND s.month IN %s
-            ) AS {climate_table_alias}
-            ON {schema}.{primary_table}.osm_id = {climate_table_alias}.osm_id
-            """
-            ).format(
-                climate_schema=sql.Identifier(self.climate_schema),
-                scenariomip=sql.Identifier(self.scenariomip_table),
-                scenariomip_variable=sql.Identifier(self.scenariomip_variable_table),
-                schema=sql.Identifier(self.osm_schema),
-                primary_table=sql.Identifier(primary_table),
-                climate_table_alias=sql.Identifier(self.climate_table_alias),
-            )
+            climate_join = sql.Composed([
+                sql.SQL("LEFT JOIN ("),
+                sql.SQL("SELECT s.osm_id, v.ssp, v.variable, s.month, s.decade, s.value, v.metadata AS climate_metadata "),
+                sql.SQL("FROM {climate_schema}.{scenariomip} s ").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    scenariomip=sql.Identifier(self.scenariomip_table)
+                ),
+                sql.SQL("LEFT JOIN {climate_schema}.{scenariomip_variable} v ").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    scenariomip_variable=sql.Identifier(self.scenariomip_variable_table)
+                ),
+                sql.SQL("ON s.variable_id = v.id "),
+                sql.SQL("WHERE v.ssp = %s AND v.variable = %s AND s.decade IN %s AND s.month IN %s"),
+                sql.SQL(") AS {climate_table_alias} ").format(
+                    climate_table_alias=sql.Identifier(self.climate_table_alias)
+                ),
+                sql.SQL("ON {schema}.{primary_table}.osm_id = {climate_table_alias}.osm_id").format(
+                    schema=sql.Identifier(self.osm_schema),
+                    primary_table=sql.Identifier(primary_table),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias)
+                )
+            ])
             params += [
                 climate_ssp,
                 climate_variable,
@@ -370,18 +369,18 @@ class infraXclimateAPI:
 
             join_statement = sql.SQL(" ").join([join_statement, climate_join])
 
-        return join_statement
+        return join_statement, params
 
     def _create_where_clause(
         self,
+        params: List[Any],
         primary_table: str,
-        params: List,
         osm_types: List[str],
         osm_subtypes: List[str],
         geom_type: str,
         bbox: FeatureCollection,
         epsg_code: int,
-    ):
+    ) -> Tuple[sql.SQL, List[Any]]:
 
         # Always filter by osm type to throttle data output!
         where_clause = sql.SQL("WHERE {schema}.{primary_table}.{column} IN %s").format(
@@ -439,13 +438,17 @@ class infraXclimateAPI:
 
             where_clause = sql.SQL(" ").join([where_clause, bbox_filter])
 
-        return where_clause
+        return where_clause, params
 
     def get_climate_metadata(self, climate_variable: str, ssp: str) -> Dict:
-        """Returns climate metadata for given climate_variable and ssp
+        """Returns climate metadata JSON blob for given climate_variable and ssp
 
         Args:
-            climate_variable (str): _description_
+            climate_variable (str): climate variable name
+            ssp (str): SSP number
+
+        Returns:
+            Dict: JSON blob of climate metadata
         """
 
         query = sql.SQL(
@@ -490,7 +493,7 @@ class infraXclimateAPI:
                 "climate_data".month,
                 "climate_data".decade,
                 "climate_data".variable AS climate_variable,
-                "climate_data".value AS climate_value,
+                "climate_data".value AS climate_exposure,
                 "climate_data".climate_metadata
             FROM
                 "osm"."infrastructure"
@@ -569,7 +572,7 @@ class infraXclimateAPI:
         """
         )
 
-        select_statement = self._create_select_statement(
+        select_statement, query_params = self._create_select_statement(
             params=query_params,
             primary_table=primary_table,
             centroid=centroid,
@@ -586,7 +589,7 @@ class infraXclimateAPI:
 
         from_statement = self._create_from_statement(primary_table=primary_table)
 
-        join_statement = self._create_join_statement(
+        join_statement, query_params = self._create_join_statement(
             primary_table=primary_table,
             params=query_params,
             county=county,
@@ -597,7 +600,7 @@ class infraXclimateAPI:
             climate_month=climate_month,
         )
 
-        where_clause = self._create_where_clause(
+        where_clause, query_params = self._create_where_clause(
             primary_table=primary_table,
             params=query_params,
             osm_types=osm_types,
