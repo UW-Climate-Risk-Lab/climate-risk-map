@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
+TEST = ':)'
 # Initialize the Dash app
 app = dash.Dash(__name__)
 
