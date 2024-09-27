@@ -3,8 +3,11 @@ name: Docker build
 on:
   push:
     branches: [ "main" ]
+    paths: [ "frontend/app/**" ]
+  
   pull_request:
     branches: [ "main" ]
+    paths: [ "frontend/app/**" ]
 
 jobs:
 
