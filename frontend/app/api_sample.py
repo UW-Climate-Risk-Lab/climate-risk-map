@@ -80,7 +80,7 @@ if __name__ == "__main__":
         climate_month=[8, 9],
         climate_ssp=126,
         climate_metadata=True,
-        centroid=True
+        centroid=False
     )
     data = api.get_data(input_params=params
     )

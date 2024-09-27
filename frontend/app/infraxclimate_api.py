@@ -26,7 +26,6 @@ class infraXclimateInput(BaseModel):
     city (bool): If True, returns the city of the feature as a property.
     epsg_code (int): Spatial reference ID, default is 4326 (Representing EPSG:4326).
     geom_type (str): If used, returns only features of the specified geom_type.
-    centroid (bool): If True, returns the geometry as a Point, the centroid of the feature's geometry.
     climate_variable (str): Climate variable to filter on.
     climate_ssp (int): Climate SSP (Shared Socioeconomic Pathway) to filter on.
     climate_month (List[int]): List of months to filter on.
@@ -43,7 +42,6 @@ class infraXclimateInput(BaseModel):
     city: bool = False
     epsg_code: int = 4326
     geom_type: Optional[str] = None
-    centroid: bool = False
     climate_variable: Optional[str] = None
     climate_ssp: Optional[int] = None
     climate_month: Optional[List[int]] = None
@@ -177,7 +175,6 @@ class infraXclimateAPI:
         self,
         params: List[Any],
         primary_table: str,
-        centroid: bool,
         epsg_code: int,
         osm_subtypes: List[str],
         county: bool,
@@ -190,35 +187,44 @@ class infraXclimateAPI:
     ) -> Tuple[sql.SQL, List[Any]]:
         """Bulids a dynamic SQL SELECT statement for the get_osm_data method"""
 
+        # NOTE, we use ST_Centroid() to get lat/lon values for non-point shapes.
+        # The lat/lon returned is not guarenteed to be on the shape itself, and represents the 
+        # geometric center of mass of the shape. This should be fine for polygons and points,
+        # but may be meaningless for long linestrings. 
+        # Aleternative methods may be ST_PointOnSurface() or ST_LineInterpolatePoint(), however
+        # these are more computationally expensive and for now not worth the implementation.
+        
+
+        # Initial list of fields that are always returned
         select_fields = [
             sql.Identifier(self.osm_schema, primary_table, "osm_id"),
             sql.Identifier(self.osm_schema, primary_table, "osm_type"),
             sql.Identifier(self.osm_schema, self.osm_table_tags, "tags"),
+            sql.SQL(
+                "ST_Transform({schema}.{table}.{column}, %s) AS geometry"
+            ).format(
+                schema=sql.Identifier(self.osm_schema),
+                table=sql.Identifier(primary_table),
+                column=sql.Identifier(self.osm_column_geom),
+            ),
+            sql.SQL(
+                "ST_X(ST_Centroid(ST_Transform({schema}.{table}.{column}, %s))) AS longitude"
+            ).format(
+                schema=sql.Identifier(self.osm_schema),
+                table=sql.Identifier(primary_table),
+                column=sql.Identifier(self.osm_column_geom),
+            ),
+            sql.SQL(
+                "ST_Y(ST_Centroid(ST_Transform({schema}.{table}.{column}, %s))) AS latitude"
+            ).format(
+                schema=sql.Identifier(self.osm_schema),
+                table=sql.Identifier(primary_table),
+                column=sql.Identifier(self.osm_column_geom),
+            )
+            
         ]
-
-        # If the user just wants the Centroid point of the feature, we need to use PostGIS function
-        # ST_Centroid. ST_Transform is always
-        if centroid:
-            select_fields.append(
-                sql.SQL(
-                    "ST_Centroid(ST_Transform({schema}.{table}.{column}, %s)) AS geometry"
-                ).format(
-                    schema=sql.Identifier(self.osm_schema),
-                    table=sql.Identifier(primary_table),
-                    column=sql.Identifier(self.osm_column_geom),
-                )
-            )
-        else:
-            select_fields.append(
-                sql.SQL(
-                    "ST_Transform({schema}.{table}.{column}, %s) AS geometry"
-                ).format(
-                    schema=sql.Identifier(self.osm_schema),
-                    table=sql.Identifier(primary_table),
-                    column=sql.Identifier(self.osm_column_geom),
-                )
-            )
-        params.append(epsg_code)
+        params.extend([epsg_code] * 3)
+        
 
         # Add extra where clause for subtypes if they are specified
         if osm_subtypes:
@@ -475,6 +481,10 @@ class infraXclimateAPI:
 
 
         If multiple months/decades are passed in, a feature will be returned for each time step.
+        
+        Latitude and Longitude are returned as properties separate from the geometry. These
+        represent the geometric center of mass of the given feature, 
+        and are not guarenteed to actually intersect with the feature itself.
 
         Example SQL query created from all params:
         --------------------------------------------------------------------------------
@@ -488,6 +498,8 @@ class infraXclimateAPI:
                 "osm"."infrastructure"."osm_type",
                 "osm"."tags"."tags",
                 ST_Transform("osm"."infrastructure"."geom", %s) AS geometry,
+                ST_X(ST_Centroid(ST_Transform("osm"."."infrastructure"."geom", %s))) AS longitude,
+                ST_Y(ST_Centroid(ST_Transform("osm"."."infrastructure"."geom", %s))) AS latitude,
                 "county".name AS county_name,
                 "city".name AS city_name,
                 "climate_data".ssp,
@@ -540,7 +552,6 @@ class infraXclimateAPI:
         city = input_params.city
         epsg_code = input_params.epsg_code
         geom_type = input_params.geom_type
-        centroid = input_params.centroid
         climate_variable = input_params.climate_variable
         climate_ssp = input_params.climate_ssp
         climate_month = input_params.climate_month
@@ -576,7 +587,6 @@ class infraXclimateAPI:
         select_statement, query_params = self._create_select_statement(
             params=query_params,
             primary_table=primary_table,
-            centroid=centroid,
             epsg_code=epsg_code,
             osm_subtypes=osm_subtypes,
             county=county,
