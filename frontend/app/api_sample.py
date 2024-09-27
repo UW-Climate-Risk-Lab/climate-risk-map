@@ -8,7 +8,7 @@ PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]
 PG_PASSWORD = os.environ["PG_PASSWORD"]
 PG_PORT = os.environ["PG_PORT"]
-
+#TEST
 if __name__ == "__main__":
     conn = psycopg2.connect(
         dbname=PG_DBNAME, user=PG_USER, password=PG_PASSWORD, host=PG_HOST, port=PG_PORT
