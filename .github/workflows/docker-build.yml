@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Builds frontend/app
-      run: docker build frontend/app --file Dockerfile --tag frontend/app:$(date +%s)
+      run: docker build --tag frontend/app:$(date +%s) ./frontend/app
