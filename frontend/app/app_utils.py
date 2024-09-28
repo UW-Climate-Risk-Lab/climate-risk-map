@@ -5,11 +5,12 @@ import math
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import shape
+from geojson_pydantic import FeatureCollection
 from dash_extensions.javascript import assign
+from concurrent.futures import ThreadPoolExecutor
 
-from typing import List
+from typing import List, Dict
 
-import app_config
 
 TITILER_BASE_ENDPOINT = os.environ["TITILER_BASE_ENDPOINT"]
 PG_DBNAME = os.environ["PG_DBNAME"]
@@ -42,7 +43,13 @@ def get_climate_min_max(file_url: str):
     return min_climate_value, max_climate_value
 
 
-def get_tilejson_url(file_url: str, climate_variable: str, min_climate_value: str, max_climate_value: str, colormap: str):
+def get_tilejson_url(
+    file_url: str,
+    climate_variable: str,
+    min_climate_value: str,
+    max_climate_value: str,
+    colormap: str,
+):
 
     endpoint = f"{TITILER_BASE_ENDPOINT}/cog/tilejson.json"
     params = {
@@ -120,18 +127,74 @@ def create_custom_icon(icon_url: str):
 
     icon_func = assign(
         """function(feature, latlng){{
-const custom_icon = L.icon({{iconUrl: `{}`, iconSize: [15, 15]}});
-return L.marker(latlng, {{icon: custom_icon}});
-}}""".format(
+            const custom_icon = L.icon({{iconUrl: `{}`, iconSize: [15, 15]}});
+            return L.marker(latlng, {{icon: custom_icon}});
+            }}""".format(
             icon_url
         )
     )
 
     return icon_func
 
+
+def convert_geojson_feature_collection_to_points(
+    geojson: Dict, preserve_types: List[str] = []
+) -> Dict:
+    """
+    Convert all features in a GeoJSON FeatureCollection to Point geometries.
+    This function processes a GeoJSON FeatureCollection and converts each feature's geometry
+    to a Point. It assumes that the centroid latitude and longitude are present in the
+    feature's properties under the keys 'latitude' and 'longitude'. If a feature's geometry
+    is already a Point, it retains the original coordinates. Other properties and keys,
+    such as 'id', are preserved.
+
+    Args:
+        geojson (Dict): A dictionary representing a GeoJSON FeatureCollection.
+        preserve_types (List[str], optional): Geometry types to skip converting to points, e.g, 'LineString'
+    Returns:
+        Dict: A new GeoJSON FeatureCollection with all features converted to Point geometries.
+    """
+
+    def update_feature(feature: Dict) -> Dict:
+        # Preserve the existing feature structure and properties
+        new_feature = {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": []},
+            "properties": feature.get("properties", {}),
+        }
+
+        # Only update if the geometry is not already a Point. If we preserve lines, checks as well
+        if (feature["geometry"]["type"] != "Point") and (
+            feature["geometry"]["type"] not in preserve_types
+        ):
+            properties = feature["properties"]
+            new_feature["geometry"]["coordinates"] = [
+                properties.get("longitude", 0.0),
+                properties.get("latitude", 0.0),
+            ]
+        else:
+            # If already a Point, retain the original coordinates
+            new_feature["geometry"] = feature.get("geometry", {})
+
+        # Preserve other keys like "id" if they exist
+        if "id" in feature:
+            new_feature["id"] = feature["id"]
+
+        return new_feature
+
+    new_geojson = {"type": "FeatureCollection", "features": []}
+
+    with ThreadPoolExecutor() as executor:
+        updated_features = list(executor.map(update_feature, geojson["features"]))
+
+    new_geojson["features"] = updated_features
+
+    return new_geojson
+
+
 def calc_bbox_area(features: List) -> float:
     """Rough calc for area of rectangle bounding box(es) from leaflet drawn shape
-    
+
     Calc'd manually to avoid external package dependancy
     """
     total_area_sq_km = 0
@@ -157,4 +220,3 @@ def calc_bbox_area(features: List) -> float:
         total_area_sq_km += width_km * length_km
 
     return total_area_sq_km
-
