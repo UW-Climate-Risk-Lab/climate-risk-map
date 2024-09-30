@@ -45,13 +45,12 @@ def get_climate_min_max(file_url: str):
 
 def get_tilejson_url(
     file_url: str,
-    climate_variable: str,
     min_climate_value: str,
     max_climate_value: str,
     colormap: str,
 ):
 
-    endpoint = f"{TITILER_BASE_ENDPOINT}/cog/tilejson.json"
+    endpoint = f"{TITILER_BASE_ENDPOINT}/cog/WebMercatorQuad/tilejson.json"
     params = {
         "tileMatrixSetId": "WebMercatorQuad",
         "url": file_url,
