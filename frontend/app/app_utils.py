@@ -7,7 +7,7 @@ import pandas as pd
 from shapely.geometry import shape
 from geojson_pydantic import FeatureCollection
 from dash_extensions.javascript import assign
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 from typing import List, Dict
 
@@ -154,13 +154,14 @@ def convert_geojson_feature_collection_to_points(
         Dict: A new GeoJSON FeatureCollection with all features converted to Point geometries.
     """
 
-    def update_feature(feature: Dict) -> Dict:
-        # Preserve the existing feature structure and properties
+    def convert_geojson_feature_to_point(feature: Dict, preserve_types: List[str]) -> Dict:
+        """Internal helper function
+        """
         new_feature = {
-            "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": []},
-            "properties": feature.get("properties", {}),
-        }
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": []},
+                "properties": feature.get("properties", {}),
+            }
 
         # Only update if the geometry is not already a Point. If we preserve lines, checks as well
         if (feature["geometry"]["type"] != "Point") and (
@@ -183,10 +184,8 @@ def convert_geojson_feature_collection_to_points(
 
     new_geojson = {"type": "FeatureCollection", "features": []}
 
-    with ThreadPoolExecutor() as executor:
-        updated_features = list(executor.map(update_feature, geojson["features"]))
-
-    new_geojson["features"] = updated_features
+    # If this becomes a performance bottleneck, process features in parallel using ProcessPoolExecutor
+    new_geojson["features"] = [convert_geojson_feature_to_point(feature, preserve_types) for feature in geojson["features"]]
 
     return new_geojson
 

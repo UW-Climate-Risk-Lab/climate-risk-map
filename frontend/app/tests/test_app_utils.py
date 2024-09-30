@@ -1,17 +1,12 @@
 import pytest
-from unittest.mock import patch, MagicMock
-import httpx
 import geopandas as gpd
 import pandas as pd
-from shapely.geometry import Point, Polygon
-from concurrent.futures import ThreadPoolExecutor
 
 # Import the module functions
 from app.app_utils import (
     geojson_to_geopandas,
     create_feature_toolip,
     process_output_csv,
-    create_custom_icon,
     convert_geojson_feature_collection_to_points,
     calc_bbox_area,
 )
@@ -24,10 +19,10 @@ SAMPLE_GEOJSON = {
             "type": "Feature",
             "properties": {
                 "tags": {"name": "Sample Point", "type": "Point of Interest"},
-                "latitude": 45.0,
+                "latitude": 40.0,
                 "longitude": -120.0,
             },
-            "geometry": {"type": "Point", "coordinates": [-120.0, 10.0]},
+            "geometry": {"type": "Point", "coordinates": [-120.0, 40.0]},
         },
         {
             "type": "Feature",
@@ -54,18 +49,6 @@ SAMPLE_GEOJSON_NO_TAGS = {
         }
     ],
 }
-
-SAMPLE_FEATURE = [
-    {
-        "type": "Feature",
-        "properties": {
-            "_bounds": [
-                {"lat": 10.0, "lng": 20.0},
-                {"lat": 15.0, "lng": 25.0},
-            ]
-        },
-    }
-]
 
 
 def test_geojson_to_geopandas():
@@ -142,7 +125,47 @@ def test_process_output_csv_no_features():
                     },
                 ],
             },
-        )
+        ),
+        (
+            SAMPLE_GEOJSON.copy(),
+            ["LineString"],
+            {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "properties": {
+                            "tags": {
+                                "name": "Sample Point",
+                                "type": "Point of Interest",
+                            },
+                            "latitude": 40.0,
+                            "longitude": -120.0,
+                        },
+                        "geometry": {"type": "Point", "coordinates": [-120.0, 40.0]},
+                    },
+                    {
+                        "type": "Feature",
+                        "properties": {
+                            "tags": {
+                                "name": "Sample LineString",
+                                "type": "Point of Interest",
+                            },
+                            "latitude": 45.0,
+                            "longitude": -120.0,
+                        },
+                        "geometry": {
+                            "type": "LineString",
+                            "coordinates": [
+                                [-120.0, 10.0],
+                                [-119.0, 11.0],
+                                [-118.0, 12.0],
+                            ],
+                        },
+                    },
+                ],
+            },
+        ),
     ],
 )
 def test_convert_geojson_feature_collection_to_points(
@@ -154,29 +177,23 @@ def test_convert_geojson_feature_collection_to_points(
     assert converted_geojson == expected_output
 
 
-def test_convert_geojson_preserve_types():
-    sample_line_geojson = {
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "properties": {"latitude": 10.0, "longitude": 20.0},
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [[20.0, 10.0], [21.0, 11.0]],
-                },
-            }
-        ],
-    }
-    converted_geojson = convert_geojson_feature_collection_to_points(
-        sample_line_geojson, preserve_types=["LineString"]
-    )
-    assert converted_geojson["features"][0]["geometry"]["type"] == "LineString"
-
-
 def test_calc_bbox_area():
-    area = calc_bbox_area(sample_features_with_bounds)
-    expected_area = 6103.515  # Calculated manually for these coordinates
+    leaflet_bbox = [
+        {
+            "type": "Feature",
+            "properties": {
+                "_bounds": [
+                    {"lat": 10.0, "lng": 11.0},
+                    {"lat": 11.0, "lng": 10.0},
+                ]
+            },
+        }
+    ]
+    area = calc_bbox_area(leaflet_bbox)
+    expected_area = (
+        111**2
+    )  # Calculated manually for sample coordinates assuming 1 deg lat ~= 111km
+    
     assert pytest.approx(area, 0.1) == expected_area
 
 
