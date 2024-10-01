@@ -2,6 +2,7 @@ import infraxclimate_api
 import os
 import psycopg2
 import time
+import app_utils
 
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
@@ -72,7 +73,7 @@ if __name__ == "__main__":
         category="infrastructure",
         osm_types=["power"],
         osm_subtypes=["line"],
-        bbox=bbox,
+        bbox=None,
         county=True,
         city=True,
         climate_variable="burntFractionAll",
@@ -80,7 +81,6 @@ if __name__ == "__main__":
         climate_month=[8, 9],
         climate_ssp=126,
         climate_metadata=True,
-        centroid=True
     )
     data = api.get_data(input_params=params
     )

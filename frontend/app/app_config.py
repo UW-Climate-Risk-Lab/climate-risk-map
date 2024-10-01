@@ -1,7 +1,7 @@
 from dash_extensions.javascript import arrow_function
 from dash_extensions.javascript import assign
 
-DEFAULT_CLIMATE_VARIABLE = "burntFractionAll" # Climate data to load on app start up
+DEFAULT_CLIMATE_VARIABLE = "burntFractionAll"  # Climate data to load on app start up
 
 CLIMATE_DATA = {
     "burntFractionAll": {
@@ -11,11 +11,10 @@ CLIMATE_DATA = {
             "s3_bucket": "uw-climaterisklab",
             "s3_base_prefix": "climate-risk-map/backend/climate/scenariomip/burntFractionAll",
             "colormap": "ylorbr",
-            "layer_opacity": 0.6
+            "layer_opacity": 0.6,
         },
         "available_ssp": ["ssp126", "ssp245", "ssp370", "ssp585"],
     }
-
 }
 
 MAP_COMPONENT = {
@@ -75,35 +74,11 @@ POWER_GRID_LAYERS = {
                 "fillColor": "#D3D3D3",
                 "fillOpacity": 0.8,
             },
-            "cluster": False,
-            "superClusterOptions": SUPERCLUSTER,
+            "cluster": True,
+            "superClusterOptions": {"radius": 50},
         },
         "geom_types": ["MultiPolygon"],
-        "icon": {"create_points": True, "url": "assets/electric.svg"},
-    },
-    "Power Substations": {
-        "Overlay": {
-            "name": "Power Substations",
-            "id": "power-substation-overlay",
-            "checked": True,
-        },
-        "GeoJSON": {
-            "id": "power-substation-geojson",
-            "category": "infrastructure",
-            "osm_types": ["power"],
-            "osm_subtypes": ["substation"],
-            "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
-            "style": {
-                "color": "#696969",
-                "weight": 2,
-                "fillColor": "#5F9EA0",
-                "fillOpacity": 0.5,
-            },
-            "cluster": True,
-            "superClusterOptions": SUPERCLUSTER,
-        },
-        "geom_types": ["MultiPolygon", "Point"],
-        "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL},
+        "icon": {"url": "assets/electric.svg"},
     },
     "Power Lines": {
         "Overlay": {
@@ -157,7 +132,7 @@ POWER_GRID_LAYERS = {
         "Overlay": {
             "name": "Power Generators",
             "id": "power-generator-overlay",
-            "checked": True,
+            "checked": False,
         },
         "GeoJSON": {
             "id": "power-generator-geojson",
@@ -175,13 +150,13 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon", "Point"],
-        "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL},
+        "icon": {"url": DEFAULT_POINT_ICON_URL},
     },
     "Power Transformers": {
         "Overlay": {
             "name": "Power Transformers",
             "id": "power-transformer-overlay",
-            "checked": True,
+            "checked": False,
         },
         "GeoJSON": {
             "id": "power-transformer-geojson",
@@ -199,10 +174,35 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon", "Point"],
-        "icon": {"create_points": False, "url": DEFAULT_POINT_ICON_URL},
+        "icon": {"url": DEFAULT_POINT_ICON_URL},
+    },
+    "Power Substations": {
+        "Overlay": {
+            "name": "Power Substations",
+            "id": "power-substation-overlay",
+            "checked": False,
+        },
+        "GeoJSON": {
+            "id": "power-substation-geojson",
+            "category": "infrastructure",
+            "osm_types": ["power"],
+            "osm_subtypes": ["substation"],
+            "hoverStyle": arrow_function(dict(weight=5, color="yellow", dashArray="")),
+            "style": {
+                "color": "#696969",
+                "weight": 2,
+                "fillColor": "#5F9EA0",
+                "fillOpacity": 0.5,
+            },
+            "cluster": True,
+            "superClusterOptions": SUPERCLUSTER,
+        },
+        "geom_types": ["MultiPolygon", "Point"],
+        "icon": {"url": DEFAULT_POINT_ICON_URL},
     },
 }
 
+# Javascript code to create a transparent cluster icon
 TRANSPARENT_MARKER_CLUSTER = assign(
     """function(feature, latlng, index, context){
     const scatterIcon = L.DivIcon.extend({

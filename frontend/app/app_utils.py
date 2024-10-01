@@ -1,22 +1,9 @@
-import psycopg2
 import httpx
-import os
 import math
-import geopandas as gpd
 import pandas as pd
-from shapely.geometry import shape
 from dash_extensions.javascript import assign
 
-from typing import List
-
-import app_config
-
-TITILER_BASE_ENDPOINT = os.environ["TITILER_BASE_ENDPOINT"]
-PG_DBNAME = os.environ["PG_DBNAME"]
-PG_USER = os.environ["PG_USER"]
-PG_HOST = os.environ["PG_HOST"]
-PG_PASSWORD = os.environ["PG_PASSWORD"]
-
+from typing import List, Dict
 
 def query_titiler(endpoint: str, params):
     try:
@@ -30,21 +17,15 @@ def query_titiler(endpoint: str, params):
     return r.json()
 
 
-def get_climate_min_max(file_url: str):
-    endpoint = f"{TITILER_BASE_ENDPOINT}/cog/statistics"
-    params = {"url": file_url, "bidx": [1]}
-    r = query_titiler(endpoint, params)
+def get_tilejson_url(
+    titiler_endpoint: str,
+    file_url: str,
+    min_climate_value: str,
+    max_climate_value: str,
+    colormap: str,
+):
 
-    # b1 refers to "band 1". Currently the test data is a single band
-    min_climate_value = r["b1"]["min"]
-    max_climate_value = r["b1"]["max"]
-
-    return min_climate_value, max_climate_value
-
-
-def get_tilejson_url(file_url: str, climate_variable: str, min_climate_value: str, max_climate_value: str, colormap: str):
-
-    endpoint = f"{TITILER_BASE_ENDPOINT}/cog/tilejson.json"
+    endpoint = f"{titiler_endpoint}/cog/WebMercatorQuad/tilejson.json"
     params = {
         "tileMatrixSetId": "WebMercatorQuad",
         "url": file_url,
@@ -55,24 +36,22 @@ def get_tilejson_url(file_url: str, climate_variable: str, min_climate_value: st
     return r["tiles"][0]
 
 
-def geojson_to_geopandas(geojson: dict) -> gpd.GeoDataFrame:
+def geojson_to_pandas(geojson: dict) -> pd.DataFrame:
     """
-    Convert a GeoJSON object to a GeoPandas DataFrame.
+    Convert a GeoJSON object to a Pandas DataFrame.
 
     Args:
         geojson (dict): GeoJSON object.
 
     Returns:
-        gpd.GeoDataFrame: GeoPandas DataFrame.
+        pd.DataFrame: GeoPandas DataFrame.
     """
     # Convert GeoJSON features into a list of dictionaries with geometry and properties
-    features = geojson["features"]
-    geometries = [shape(feature["geometry"]) for feature in features]
-    properties = [feature["properties"] for feature in features]
+    properties = [feature["properties"] for feature in geojson["features"]]
 
     # Create a GeoPandas DataFrame
-    gdf = gpd.GeoDataFrame(properties, geometry=geometries)
-    return gdf
+    df = pd.DataFrame(properties)
+    return df
 
 
 def create_feature_toolip(geojson: dict):
@@ -107,10 +86,7 @@ def process_output_csv(data: dict) -> pd.DataFrame:
     if data["features"] is None:
         return pd.DataFrame()
 
-    gdf = geojson_to_geopandas(geojson=data)
-
-    gdf["latitude"] = gdf.geometry.centroid.y
-    gdf["longitude"] = gdf.geometry.centroid.x
+    gdf = geojson_to_pandas(geojson=data)
 
     df = pd.DataFrame(gdf)
     return df
@@ -120,18 +96,73 @@ def create_custom_icon(icon_url: str):
 
     icon_func = assign(
         """function(feature, latlng){{
-const custom_icon = L.icon({{iconUrl: `{}`, iconSize: [15, 15]}});
-return L.marker(latlng, {{icon: custom_icon}});
-}}""".format(
+            const custom_icon = L.icon({{iconUrl: `{}`, iconSize: [15, 15]}});
+            return L.marker(latlng, {{icon: custom_icon}});
+            }}""".format(
             icon_url
         )
     )
 
     return icon_func
 
+
+def convert_geojson_feature_collection_to_points(
+    geojson: Dict, preserve_types: List[str] = []
+) -> Dict:
+    """
+    Convert all features in a GeoJSON FeatureCollection to Point geometries.
+    This function processes a GeoJSON FeatureCollection and converts each feature's geometry
+    to a Point. It assumes that the centroid latitude and longitude are present in the
+    feature's properties under the keys 'latitude' and 'longitude'. If a feature's geometry
+    is already a Point, it retains the original coordinates. Other properties and keys,
+    such as 'id', are preserved.
+
+    Args:
+        geojson (Dict): A dictionary representing a GeoJSON FeatureCollection.
+        preserve_types (List[str], optional): Geometry types to skip converting to points, e.g, 'LineString'
+    Returns:
+        Dict: A new GeoJSON FeatureCollection with all features converted to Point geometries.
+    """
+
+    def convert_geojson_feature_to_point(feature: Dict, preserve_types: List[str]) -> Dict:
+        """Internal helper function
+        """
+        new_feature = {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": []},
+                "properties": feature.get("properties", {}),
+            }
+
+        # Only update if the geometry is not already a Point.
+        if (feature["geometry"]["type"] != "Point") and (
+            feature["geometry"]["type"] not in preserve_types
+        ):
+            properties = feature["properties"]
+            new_feature["geometry"]["coordinates"] = [
+                properties.get("longitude", 0.0),
+                properties.get("latitude", 0.0),
+            ]
+        else:
+            # If already a Point, retain the original coordinates
+            new_feature["geometry"] = feature.get("geometry", {})
+
+        # Preserve other keys like "id" if they exist
+        if "id" in feature:
+            new_feature["id"] = feature["id"]
+
+        return new_feature
+
+    new_geojson = {"type": "FeatureCollection", "features": []}
+
+    # If this becomes a performance bottleneck, process features in parallel using ProcessPoolExecutor
+    new_geojson["features"] = [convert_geojson_feature_to_point(feature, preserve_types) for feature in geojson["features"]]
+
+    return new_geojson
+
+
 def calc_bbox_area(features: List) -> float:
     """Rough calc for area of rectangle bounding box(es) from leaflet drawn shape
-    
+
     Calc'd manually to avoid external package dependancy
     """
     total_area_sq_km = 0
@@ -157,4 +188,3 @@ def calc_bbox_area(features: List) -> float:
         total_area_sq_km += width_km * length_km
 
     return total_area_sq_km
-

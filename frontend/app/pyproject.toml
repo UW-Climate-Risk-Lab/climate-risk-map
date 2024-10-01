@@ -8,14 +8,12 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.12"
 pytest = "^8.3.3"
-gdal = "3.6.2"
 
 [tool.poetry.group.dev.dependencies]
 psycopg2-binary = "^2.9.9"
 dash = "2.17"
 dash-leaflet = "1.0.15"
 dash-extensions = "1.0.16"
-geopandas = "0.14"
 httpx = "^0.27.2"
 pandas = "2.2"
 dash-bootstrap-components = "1.6"

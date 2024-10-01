@@ -6,7 +6,6 @@ WORKDIR /climate-risk-map/frontend/app
 # Install gdal dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
-    libgdal-dev \
     --fix-missing
 
 ENV CPLUS_INCLUDE_PATH /usr/include/gdal

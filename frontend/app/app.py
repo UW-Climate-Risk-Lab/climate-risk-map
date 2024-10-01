@@ -15,7 +15,7 @@ import app_map
 import app_control_panel
 import app_config
 
-
+TITILER_ENDPOINT = os.environ["TITILER_ENDPOINT"]
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]
@@ -188,15 +188,15 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
                 unit=unit
             )
     
-    # Generaye S3 URI to COG File
+    # Generate S3 URI to COG File
     bucket = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_bucket"]
     prefix = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_base_prefix"]
     file = f"{decade}-{month:02d}-{state}.tif"
     file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{climatology_mean_method}/{file}"
 
     tile_url = app_utils.get_tilejson_url(
+        titiler_endpoint=TITILER_ENDPOINT,
         file_url=file_url,
-        climate_variable=climate_variable,
         min_climate_value=min_climate_value,
         max_climate_value=max_climate_value,
         colormap=colormap,

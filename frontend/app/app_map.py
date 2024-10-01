@@ -1,4 +1,3 @@
-import os
 import dash_leaflet as dl
 import psycopg2 as pg
 
@@ -8,14 +7,7 @@ import app_config
 import app_utils
 import infraxclimate_api
 
-from dash_extensions.javascript import assign
 from dash import html
-
-PG_DBNAME = os.environ["PG_DBNAME"]
-PG_USER = os.environ["PG_USER"]
-PG_HOST = os.environ["PG_HOST"]
-PG_PASSWORD = os.environ["PG_PASSWORD"]
-PG_PORT = os.environ["PG_PORT"]
 
 
 def get_state_overlay(state: str, z_index: int) -> dl.Pane:
@@ -82,84 +74,43 @@ def get_power_grid_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
 
         layergroup_children = []
 
-        # We create a separate GeoJSON component for each geom type,
-        # as certain subtypes have multiple geometry types.
-        # This allows a finer level of config for clustering points, which improves performance.
-        # We generally want to cluster Points, and not cluster other geom types
-        for geom_type in subtype_config["geom_types"]:
+        params = infraxclimate_api.infraXclimateInput(
+            category=subtype_config["GeoJSON"]["category"],
+            osm_types=subtype_config["GeoJSON"]["osm_types"],
+            osm_subtypes=subtype_config["GeoJSON"]["osm_subtypes"],
+        )
 
-            params = infraxclimate_api.infraXclimateInput(
-                category=subtype_config["GeoJSON"]["category"],
-                osm_types=subtype_config["GeoJSON"]["osm_types"],
-                osm_subtypes=subtype_config["GeoJSON"]["osm_subtypes"],
-                geom_type=geom_type,
+        data = api.get_data(input_params=params)
+        data = app_utils.create_feature_toolip(geojson=data)
+
+        if subtype_config["GeoJSON"]["cluster"]:
+            data = app_utils.convert_geojson_feature_collection_to_points(geojson=data, preserve_types=["LineString"])
+            cluster = subtype_config["GeoJSON"]["cluster"]
+            clusterToLayer = app_config.TRANSPARENT_MARKER_CLUSTER
+            superClusterOptions = subtype_config["GeoJSON"]["superClusterOptions"]
+
+        else:
+            cluster = False
+            clusterToLayer = None
+            superClusterOptions = False
+
+        if subtype_config["icon"] is not None:
+            pointToLayer = app_utils.create_custom_icon(subtype_config["icon"]["url"])
+        else:
+            pointToLayer = None
+
+        layergroup_children.append(
+            dl.GeoJSON(
+                id=subtype_config["GeoJSON"]["id"],
+                data=data,
+                hoverStyle=subtype_config["GeoJSON"]["hoverStyle"],
+                style=subtype_config["GeoJSON"]["style"],
+                cluster=cluster,
+                clusterToLayer=clusterToLayer,
+                superClusterOptions=superClusterOptions,
+                pointToLayer=pointToLayer,
             )
-
-            data = api.get_data(input_params=params)
-            data = app_utils.create_feature_toolip(geojson=data)
-
-            if geom_type != "Point":
-                cluster = False
-                clusterToLayer = None
-            else:
-                cluster = subtype_config["GeoJSON"]["cluster"]
-                # Javascript code to create a transparent cluster icon
-                clusterToLayer = app_config.TRANSPARENT_MARKER_CLUSTER
-
-            if (subtype_config["icon"] is not None) & (geom_type == "Point"):
-                pointToLayer = app_utils.create_custom_icon(
-                    subtype_config["icon"]["url"]
-                )
-            else:
-                pointToLayer = None
-
-            layergroup_children.append(
-                dl.GeoJSON(
-                    id=subtype_config["GeoJSON"]["id"] + f"-{geom_type}",
-                    data=data,
-                    hoverStyle=subtype_config["GeoJSON"]["hoverStyle"],
-                    style=subtype_config["GeoJSON"]["style"],
-                    cluster=cluster,
-                    clusterToLayer=clusterToLayer,
-                    superClusterOptions=subtype_config["GeoJSON"][
-                        "superClusterOptions"
-                    ],
-                    pointToLayer=pointToLayer,
-                )
-            )
-
-            # This block creates icons for non-points. Above, we create icons for Point geometrys by default
-            # If we want to force a non-Point geometry to display an icon, we flag the "create_points" property
-            # in the config, and provide a url to the icon. This will make a database call and return the centroid to use
-            # as the icon location for the given features.
-            # * NOTE, performance may be an issue if there are too many features are returned
-            if subtype_config["icon"] is not None:
-                if (subtype_config["icon"]["create_points"]) & (geom_type != "Point"):
-                    params = infraxclimate_api.infraXclimateInput(
-                        category=subtype_config["GeoJSON"]["category"],
-                        osm_types=subtype_config["GeoJSON"]["osm_types"],
-                        osm_subtypes=subtype_config["GeoJSON"]["osm_subtypes"],
-                        geom_type=geom_type,
-                        centroid=True,
-                    )
-                    data = api.get_data(input_params=params)
-                    data = app_utils.create_feature_toolip(geojson=data)
-                    layergroup_children.append(
-                        dl.GeoJSON(
-                            id=subtype_config["GeoJSON"]["id"] + f"-icon",
-                            data=data,
-                            hoverStyle=subtype_config["GeoJSON"]["hoverStyle"],
-                            style=subtype_config["GeoJSON"]["style"],
-                            cluster=cluster,
-                            clusterToLayer=clusterToLayer,
-                            superClusterOptions=subtype_config["GeoJSON"][
-                                "superClusterOptions"
-                            ],
-                            pointToLayer=app_utils.create_custom_icon(
-                                subtype_config["icon"]["url"]
-                            ),
-                        )
-                    )
+        )
 
         overlay = dl.Overlay(
             id=subtype_config["Overlay"]["id"],
@@ -221,9 +172,7 @@ def get_map(conn: pg.extensions.connection):
 
     # Default colorscale transparent while callbacks load
     color_bar = html.Div(
-        id=config["color_bar"]["id"] + "-div",
-        style={"display": "none"},
-        children=[]
+        id=config["color_bar"]["id"] + "-div", style={"display": "none"}, children=[]
     )
 
     map = dl.Map(
