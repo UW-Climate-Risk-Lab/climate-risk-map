@@ -188,7 +188,7 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
                 unit=unit
             )
     
-    # Generaye S3 URI to COG File
+    # Generate S3 URI to COG File
     bucket = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_bucket"]
     prefix = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_base_prefix"]
     file = f"{decade}-{month:02d}-{state}.tif"

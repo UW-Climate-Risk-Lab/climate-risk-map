@@ -1,11 +1,10 @@
 import pytest
 import copy
-import geopandas as gpd
 import pandas as pd
 
 # Import the module functions
 from app.app_utils import (
-    geojson_to_geopandas,
+    geojson_to_pandas,
     create_feature_toolip,
     process_output_csv,
     convert_geojson_feature_collection_to_points,
@@ -22,6 +21,7 @@ SAMPLE_GEOJSON = {
                 "tags": {"name": "Sample Point", "type": "Point of Interest"},
                 "latitude": 40.0,
                 "longitude": -120.0,
+                "geometry_wkt": "POINT(-120.0, 40.0)"
             },
             "geometry": {"type": "Point", "coordinates": [-120.0, 40.0]},
         },
@@ -31,6 +31,7 @@ SAMPLE_GEOJSON = {
                 "tags": {"name": "Sample LineString", "type": "Point of Interest"},
                 "latitude": 45.0,
                 "longitude": -120.0,
+                "geometry_wkt": "LINESTRING(-120.0 10.0, -119.0 11.0, -118.0 12.0)"
             },
             "geometry": {
                 "type": "LineString",
@@ -52,18 +53,18 @@ SAMPLE_GEOJSON_NO_TAGS = {
 }
 
 
-def test_geojson_to_geopandas():
-    gdf = geojson_to_geopandas(copy.deepcopy(SAMPLE_GEOJSON))
-    assert isinstance(gdf, gpd.GeoDataFrame)
-    assert not gdf.empty
-    assert "geometry" in gdf.columns
+def test_geojson_to_pandas():
+    df = geojson_to_pandas(copy.deepcopy(SAMPLE_GEOJSON))
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty
+    assert "geometry_wkt" in df.columns
 
 
-def test_geojson_to_geopandas_empty():
+def test_geojson_to_pandas_empty():
     empty_geojson = {"type": "FeatureCollection", "features": []}
-    gdf = geojson_to_geopandas(empty_geojson)
-    assert isinstance(gdf, gpd.GeoDataFrame)
-    assert gdf.empty
+    df = geojson_to_pandas(empty_geojson)
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty
 
 
 def test_create_feature_toolip():
@@ -109,6 +110,7 @@ def test_process_output_csv_no_features():
                             },
                             "latitude": 40.0,
                             "longitude": -120.0,
+                            "geometry_wkt": "POINT(-120.0, 40.0)"
                         },
                         "geometry": {"type": "Point", "coordinates": [-120.0, 40.0]},
                     },
@@ -121,6 +123,7 @@ def test_process_output_csv_no_features():
                             },
                             "latitude": 45.0,
                             "longitude": -120.0,
+                            "geometry_wkt": "LINESTRING(-120.0 10.0, -119.0 11.0, -118.0 12.0)"
                         },
                         "geometry": {"type": "Point", "coordinates": [-120.0, 45.0]},
                     },
@@ -142,6 +145,7 @@ def test_process_output_csv_no_features():
                             },
                             "latitude": 40.0,
                             "longitude": -120.0,
+                            "geometry_wkt": "POINT(-120.0, 40.0)"
                         },
                         "geometry": {"type": "Point", "coordinates": [-120.0, 40.0]},
                     },
@@ -154,6 +158,7 @@ def test_process_output_csv_no_features():
                             },
                             "latitude": 45.0,
                             "longitude": -120.0,
+                            "geometry_wkt": "LINESTRING(-120.0 10.0, -119.0 11.0, -118.0 12.0)"
                         },
                         "geometry": {
                             "type": "LineString",

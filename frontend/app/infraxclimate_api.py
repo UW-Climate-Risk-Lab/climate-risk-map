@@ -208,6 +208,13 @@ class infraXclimateAPI:
                 column=sql.Identifier(self.osm_column_geom),
             ),
             sql.SQL(
+                "ST_AsText(ST_Transform({schema}.{table}.{column}, %s), 3) AS geometry_wkt"
+            ).format(
+                schema=sql.Identifier(self.osm_schema),
+                table=sql.Identifier(primary_table),
+                column=sql.Identifier(self.osm_column_geom),
+            ),
+            sql.SQL(
                 "ST_X(ST_Centroid(ST_Transform({schema}.{table}.{column}, %s))) AS longitude"
             ).format(
                 schema=sql.Identifier(self.osm_schema),
@@ -223,7 +230,7 @@ class infraXclimateAPI:
             )
             
         ]
-        params.extend([epsg_code] * 3)
+        params.extend([epsg_code] * 4)
         
 
         # Add extra where clause for subtypes if they are specified

@@ -128,6 +128,18 @@ def test_get_data_invalid_category(mock_conn):
                             SQL(", "),
                             Composed(
                                 [
+                                    SQL("ST_AsText(ST_Transform("),
+                                    Identifier("osm"),
+                                    SQL("."),
+                                    Identifier("infrastructure"),
+                                    SQL("."),
+                                    Identifier("geom"),
+                                    SQL(", %s), 3) AS geometry_wkt"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [
                                     SQL("ST_X(ST_Centroid(ST_Transform("),
                                     Identifier("osm"),
                                     SQL("."),
@@ -185,7 +197,7 @@ def test_get_data_invalid_category(mock_conn):
                     ),
                 ]
             ),
-            [4326, 4326, 4326],
+            [4326, 4326, 4326, 4326],
         ),
         # Climate query test case 1 - Any climate argument that is None will result in no climate columns returned
         (
@@ -227,6 +239,18 @@ def test_get_data_invalid_category(mock_conn):
                             SQL(", "),
                             Composed(
                                 [
+                                    SQL("ST_AsText(ST_Transform("),
+                                    Identifier("osm"),
+                                    SQL("."),
+                                    Identifier("infrastructure"),
+                                    SQL("."),
+                                    Identifier("geom"),
+                                    SQL(", %s), 3) AS geometry_wkt"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [
                                     SQL("ST_X(ST_Centroid(ST_Transform("),
                                     Identifier("osm"),
                                     SQL("."),
@@ -258,14 +282,12 @@ def test_get_data_invalid_category(mock_conn):
                                 ]
                             ),
                             SQL(", "),
-                            Composed(
-                                [Identifier("city"), SQL(".name AS city_name")]
-                            ),
+                            Composed([Identifier("city"), SQL(".name AS city_name")]),
                         ]
                     ),
                 ]
             ),
-            [4326, 4326, 4326],
+            [4326, 4326, 4326, 4326],
         ),
     ],
 )

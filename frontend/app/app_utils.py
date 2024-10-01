@@ -1,8 +1,6 @@
 import httpx
 import math
-import geopandas as gpd
 import pandas as pd
-from shapely.geometry import shape
 from dash_extensions.javascript import assign
 
 from typing import List, Dict
@@ -38,24 +36,22 @@ def get_tilejson_url(
     return r["tiles"][0]
 
 
-def geojson_to_geopandas(geojson: dict) -> gpd.GeoDataFrame:
+def geojson_to_pandas(geojson: dict) -> pd.DataFrame:
     """
-    Convert a GeoJSON object to a GeoPandas DataFrame.
+    Convert a GeoJSON object to a Pandas DataFrame.
 
     Args:
         geojson (dict): GeoJSON object.
 
     Returns:
-        gpd.GeoDataFrame: GeoPandas DataFrame.
+        pd.DataFrame: GeoPandas DataFrame.
     """
     # Convert GeoJSON features into a list of dictionaries with geometry and properties
-    features = geojson["features"]
-    geometries = [shape(feature["geometry"]) for feature in features]
-    properties = [feature["properties"] for feature in features]
+    properties = [feature["properties"] for feature in geojson["features"]]
 
     # Create a GeoPandas DataFrame
-    gdf = gpd.GeoDataFrame(properties, geometry=geometries)
-    return gdf
+    df = pd.DataFrame(properties)
+    return df
 
 
 def create_feature_toolip(geojson: dict):
@@ -90,10 +86,7 @@ def process_output_csv(data: dict) -> pd.DataFrame:
     if data["features"] is None:
         return pd.DataFrame()
 
-    gdf = geojson_to_geopandas(geojson=data)
-
-    gdf["latitude"] = gdf.geometry.centroid.y
-    gdf["longitude"] = gdf.geometry.centroid.x
+    gdf = geojson_to_pandas(geojson=data)
 
     df = pd.DataFrame(gdf)
     return df
@@ -140,7 +133,7 @@ def convert_geojson_feature_collection_to_points(
                 "properties": feature.get("properties", {}),
             }
 
-        # Only update if the geometry is not already a Point. If we preserve lines, checks as well
+        # Only update if the geometry is not already a Point.
         if (feature["geometry"]["type"] != "Point") and (
             feature["geometry"]["type"] not in preserve_types
         ):
