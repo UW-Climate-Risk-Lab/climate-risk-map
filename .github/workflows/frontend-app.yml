@@ -11,8 +11,30 @@ on:
 
 jobs:
 
-  build:
+  test:
+    runs-on: ubuntu-latest
 
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "export PATH=$HOME/.local/bin:$PATH" >> $HOME/.bashrc
+          source $HOME/.bashrc
+
+      - name: Install Dependencies with Poetry
+        run: |
+          cd frontend/app
+          poetry install
+
+      - name: Run Unit Tests
+        run: |
+          cd frontend/app
+          poetry run pytest
+
+  build:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
