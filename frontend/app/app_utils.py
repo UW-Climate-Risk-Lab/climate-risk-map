@@ -11,14 +11,6 @@ from concurrent.futures import ProcessPoolExecutor
 
 from typing import List, Dict
 
-
-TITILER_BASE_ENDPOINT = os.environ["TITILER_BASE_ENDPOINT"]
-PG_DBNAME = os.environ["PG_DBNAME"]
-PG_USER = os.environ["PG_USER"]
-PG_HOST = os.environ["PG_HOST"]
-PG_PASSWORD = os.environ["PG_PASSWORD"]
-
-
 def query_titiler(endpoint: str, params):
     try:
         r = httpx.get(url=endpoint, params=params)
@@ -31,26 +23,15 @@ def query_titiler(endpoint: str, params):
     return r.json()
 
 
-def get_climate_min_max(file_url: str):
-    endpoint = f"{TITILER_BASE_ENDPOINT}/cog/statistics"
-    params = {"url": file_url, "bidx": [1]}
-    r = query_titiler(endpoint, params)
-
-    # b1 refers to "band 1". Currently the test data is a single band
-    min_climate_value = r["b1"]["min"]
-    max_climate_value = r["b1"]["max"]
-
-    return min_climate_value, max_climate_value
-
-
 def get_tilejson_url(
+    titiler_endpoint: str,
     file_url: str,
     min_climate_value: str,
     max_climate_value: str,
     colormap: str,
 ):
 
-    endpoint = f"{TITILER_BASE_ENDPOINT}/cog/WebMercatorQuad/tilejson.json"
+    endpoint = f"{titiler_endpoint}/cog/WebMercatorQuad/tilejson.json"
     params = {
         "tileMatrixSetId": "WebMercatorQuad",
         "url": file_url,

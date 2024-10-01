@@ -15,7 +15,7 @@ import app_map
 import app_control_panel
 import app_config
 
-
+TITILER_ENDPOINT = os.environ["TITILER_ENDPOINT"]
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]
@@ -195,8 +195,8 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
     file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{climatology_mean_method}/{file}"
 
     tile_url = app_utils.get_tilejson_url(
+        titiler_endpoint=TITILER_ENDPOINT,
         file_url=file_url,
-        climate_variable=climate_variable,
         min_climate_value=min_climate_value,
         max_climate_value=max_climate_value,
         colormap=colormap,

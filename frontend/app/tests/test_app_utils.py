@@ -1,4 +1,5 @@
 import pytest
+import copy
 import geopandas as gpd
 import pandas as pd
 
@@ -52,7 +53,7 @@ SAMPLE_GEOJSON_NO_TAGS = {
 
 
 def test_geojson_to_geopandas():
-    gdf = geojson_to_geopandas(SAMPLE_GEOJSON)
+    gdf = geojson_to_geopandas(copy.deepcopy(SAMPLE_GEOJSON))
     assert isinstance(gdf, gpd.GeoDataFrame)
     assert not gdf.empty
     assert "geometry" in gdf.columns
@@ -66,18 +67,18 @@ def test_geojson_to_geopandas_empty():
 
 
 def test_create_feature_toolip():
-    geojson_with_tooltip = create_feature_toolip(SAMPLE_GEOJSON.copy())
+    geojson_with_tooltip = create_feature_toolip(copy.deepcopy(SAMPLE_GEOJSON))
     tooltip = geojson_with_tooltip["features"][0]["properties"]["tooltip"]
     assert "<b>name<b>: Sample Point<br><b>type<b>: Point of Interest<br>" == tooltip
 
 
 def test_create_feature_toolip_no_tags():
     with pytest.raises(ValueError):
-        create_feature_toolip(SAMPLE_GEOJSON_NO_TAGS.copy())
+        create_feature_toolip(copy.deepcopy(SAMPLE_GEOJSON_NO_TAGS))
 
 
 def test_process_output_csv():
-    df = process_output_csv(SAMPLE_GEOJSON)
+    df = process_output_csv(copy.deepcopy(SAMPLE_GEOJSON))
     assert isinstance(df, pd.DataFrame)
     assert "latitude" in df.columns
     assert "longitude" in df.columns
@@ -94,7 +95,7 @@ def test_process_output_csv_no_features():
     "geojson, preserve_types, expected_output",
     [
         (
-            SAMPLE_GEOJSON.copy(),
+            copy.deepcopy(SAMPLE_GEOJSON),
             [],
             {
                 "type": "FeatureCollection",
@@ -127,7 +128,7 @@ def test_process_output_csv_no_features():
             },
         ),
         (
-            SAMPLE_GEOJSON.copy(),
+            copy.deepcopy(SAMPLE_GEOJSON),
             ["LineString"],
             {
                 "type": "FeatureCollection",
@@ -193,7 +194,7 @@ def test_calc_bbox_area():
     expected_area = (
         111**2
     )  # Calculated manually for sample coordinates assuming 1 deg lat ~= 111km
-    
+
     assert pytest.approx(area, 0.1) == expected_area
 
 
