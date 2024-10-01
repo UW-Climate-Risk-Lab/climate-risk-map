@@ -22,7 +22,7 @@ TITLE_BAR = html.Div(
                 ),
                 dbc.Col(
                     html.Div(
-                        "UW Climate Risk Lab",
+                        "UW Climate Risk Map",
                         style={
                             "color": "#39275B",
                             "font-size": "2vw",  # Scale text size based on viewport width

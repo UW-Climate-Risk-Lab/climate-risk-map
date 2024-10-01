@@ -1,4 +1,3 @@
-import os
 import dash_leaflet as dl
 import psycopg2 as pg
 
@@ -8,14 +7,7 @@ import app_config
 import app_utils
 import infraxclimate_api
 
-from dash_extensions.javascript import assign
 from dash import html
-
-PG_DBNAME = os.environ["PG_DBNAME"]
-PG_USER = os.environ["PG_USER"]
-PG_HOST = os.environ["PG_HOST"]
-PG_PASSWORD = os.environ["PG_PASSWORD"]
-PG_PORT = os.environ["PG_PORT"]
 
 
 def get_state_overlay(state: str, z_index: int) -> dl.Pane:

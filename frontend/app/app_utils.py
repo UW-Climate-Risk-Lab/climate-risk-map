@@ -1,13 +1,9 @@
-import psycopg2
 import httpx
-import os
 import math
 import geopandas as gpd
 import pandas as pd
 from shapely.geometry import shape
-from geojson_pydantic import FeatureCollection
 from dash_extensions.javascript import assign
-from concurrent.futures import ProcessPoolExecutor
 
 from typing import List, Dict
 
