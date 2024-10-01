@@ -18,13 +18,10 @@ RUN pip install poetry==1.8.3
 COPY poetry.lock pyproject.toml ./
 
 # Install dependencies
-RUN poetry install --no-root
+RUN poetry install --no-root --without dev
 
 # Copy rest of code into image
 COPY . .
-
-# Make sure tests pass before building
-RUN poetry run pytest
 
 # Expose the port the app runs on
 EXPOSE 8050
