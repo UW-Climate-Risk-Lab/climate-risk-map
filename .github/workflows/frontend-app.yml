@@ -1,4 +1,4 @@
-name: frontend/app Docker Build
+name: frontend/app CI-CD
 
 on:
   push:
@@ -11,8 +11,34 @@ on:
 
 jobs:
 
-  build:
+  test:
+    runs-on: ubuntu-latest
 
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:  
+          python-version: '3.12'
+
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.3 python3 -
+          echo "export PATH=$HOME/.local/bin:$PATH" >> $HOME/.bashrc
+          source $HOME/.bashrc
+
+      - name: Install Dependencies with Poetry
+        run: |
+          cd frontend/app
+          poetry install
+
+      - name: Run Unit Tests
+        run: |
+          cd frontend/app
+          poetry run pytest
+
+  build:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:

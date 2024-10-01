@@ -7,9 +7,6 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-pytest = "^8.3.3"
-
-[tool.poetry.group.dev.dependencies]
 psycopg2-binary = "^2.9.9"
 dash = "2.17"
 dash-leaflet = "1.0.15"
@@ -19,6 +16,9 @@ pandas = "2.2"
 dash-bootstrap-components = "1.6"
 gunicorn = "^23.0.0"
 geojson-pydantic = "^1.1.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
 
 [build-system]
 requires = ["poetry-core"]
