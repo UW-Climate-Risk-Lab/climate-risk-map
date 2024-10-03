@@ -8,13 +8,16 @@ from typing import List, Dict
 def query_titiler(endpoint: str, params):
     try:
         r = httpx.get(url=endpoint, params=params)
-    except Exception as e:
-        # TODO: Add logging
-        print(str(e))
-        raise ConnectionError("Unable to connect to Titiler Endpoint!")
+        r.raise_for_status()  # Raise an exception for HTTP errors
+    except httpx.RequestError as e:
+        raise ConnectionError("Unable to connect to Titiler Endpoint!") from e
+    except httpx.HTTPStatusError as e:
+        raise ConnectionError(f"Error response {e.response.status_code} from Titiler Endpoint!") from e
 
-    r.raise_for_status()
-    return r.json()
+    try:
+        return r.json()
+    except ValueError as e:
+        raise ValueError("Invalid JSON response from Titiler Endpoint!") from e
 
 
 def get_tilejson_url(
