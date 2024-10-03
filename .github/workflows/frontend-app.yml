@@ -40,6 +40,7 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
     steps:
     - uses: actions/checkout@v4
@@ -47,6 +48,7 @@ jobs:
       run: docker build --tag frontend/app:$(date +%s) ./frontend/app
   
   deploy:
+    needs: build
     name: deploy
     runs-on: ubuntu-latest
     env:
