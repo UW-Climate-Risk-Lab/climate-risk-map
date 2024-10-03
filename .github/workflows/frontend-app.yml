@@ -80,6 +80,9 @@ jobs:
           script: |
             set -e
             cd /home/${{ secrets.EC2_CLIMATE_RISK_MAP_FRONTEND_DEV_USERNAME }}/climate-risk-map/frontend
+            sudo git fetch origin
+            sudo git checkout main
+            sudo git pull origin main
             sudo docker compose down
             sudo docker system prune -af
             sudo docker compose up --build -d
