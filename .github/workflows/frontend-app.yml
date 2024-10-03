@@ -79,6 +79,7 @@ jobs:
           port: 22
           script: |
             set -e
+            sudo systemctl stop apache2
             cd /home/${{ secrets.EC2_CLIMATE_RISK_MAP_FRONTEND_DEV_USERNAME }}/climate-risk-map/frontend
             sudo git fetch origin
             sudo git checkout main

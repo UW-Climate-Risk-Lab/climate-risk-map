@@ -14,7 +14,7 @@ import app_utils
 import app_map
 import app_control_panel
 import app_config
-# TEST
+
 TITILER_ENDPOINT = os.environ["TITILER_ENDPOINT"]
 PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
