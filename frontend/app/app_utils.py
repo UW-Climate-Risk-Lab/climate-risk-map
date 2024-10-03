@@ -27,7 +27,6 @@ def get_tilejson_url(
 
     endpoint = f"{titiler_endpoint}/cog/WebMercatorQuad/tilejson.json"
     params = {
-        "tileMatrixSetId": "WebMercatorQuad",
         "url": file_url,
         "rescale": f"{min_climate_value},{max_climate_value}",
         "colormap_name": colormap,
