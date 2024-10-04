@@ -20,7 +20,7 @@ CLIMATE_DATA = {
 MAP_COMPONENT = {
     "id": "map",
     "center": {"lat": 47.0902, "lng": -120.7129},
-    "zoom": 8,
+    "zoom": 7,
     "style": {"height": "100vh"},
     "preferCanvas": True,
     "base_map": {
