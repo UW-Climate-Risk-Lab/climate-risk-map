@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "vectorgrid"
+version = "0.1.0"
+description = ""
+authors = ["eric <collinseric321@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+dash-leaflet = "1.0.17rc1"
+dash-extensions = "^1.0.18"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
