@@ -263,12 +263,12 @@ files = [
 
 [[package]]
 name = "dash-leaflet"
-version = "1.0.17rc1"
+version = "1.0.17rc2"
 description = "Dash Leaflet is a light wrapper around React-Leaflet. The syntax is similar to other Dash components, with naming conventions following the React-Leaflet API."
 optional = false
 python-versions = "*"
 files = [
-    {file = "dash_leaflet-1.0.17rc1.tar.gz", hash = "sha256:44137da364207777c6ddd5a775e5507c74a6d11c8b2f92b6638348fee8a8a2b3"},
+    {file = "dash_leaflet-1.0.17rc2.tar.gz", hash = "sha256:328f7913acbc498005a457c5401df9eb22872bf04fffd752fe55024115675e24"},
 ]
 
 [package.dependencies]
@@ -845,4 +845,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.13"
-content-hash = "7ff2f3da0bdcc9b9f5cab5f33a07b25467acca7c0e2909a780a3f5de83394876"
+content-hash = "e4a08cb662824f5338d7fbaacddb8f10ace261ccbd143340ab739fd6d39444f0"

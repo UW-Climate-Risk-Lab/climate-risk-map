@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.13"
-dash-leaflet = "1.0.17rc1"
+dash-leaflet = "1.0.17rc2"
 dash-extensions = "^1.0.18"
 
 
