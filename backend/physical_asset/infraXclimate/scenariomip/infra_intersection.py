@@ -12,7 +12,7 @@ import xarray as xr
 import xvec
 from shapely import wkt
 
-import utils
+import scenariomip.utils as utils
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -139,7 +139,7 @@ def zonal_aggregation(
     )
 
     # The following parallelizes the zonal aggregation of non-point geometry features
-    workers = os.cpu_count()
+    workers = min(os.cpu_count(),len(non_point_infra.geometry))
     futures = []
     results = []
     geometry_chunks = np.array_split(non_point_infra.geometry, workers)
