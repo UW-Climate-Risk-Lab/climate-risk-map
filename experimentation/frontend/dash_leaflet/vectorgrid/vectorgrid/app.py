@@ -12,7 +12,7 @@ eventHandlers = dict(
         "function(e, ctx){ctx.setProps({clickData: e.layer.feature.properties})}"
     )
 )
-
+dl.GeoJSON
 # Define style for each vector layer
 vector_tile_layer_styles = {
     "osm_line": {"color": "red", "weight": 1},
