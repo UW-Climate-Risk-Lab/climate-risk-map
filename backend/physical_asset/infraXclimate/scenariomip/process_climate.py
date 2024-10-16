@@ -5,7 +5,9 @@ from pathlib import Path
 import rioxarray
 import xarray as xr
 
-import utils
+import scenariomip.utils as utils
+
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,26 @@ def climate_calc(ds: xr.Dataset, time_dim: str, time_agg_method: str) -> xr.Data
 
     return ds
 
+def read_data(file_directory: str, xarray_engine: str) -> xr.Dataset:
+    data = []
+    for file in os.listdir(file_directory):
+        path = Path(file_directory) / file
+        _ds = xr.open_dataset(
+            filename_or_obj=str(path),
+            engine=xarray_engine,
+            decode_times=True,
+            use_cftime=True,
+            decode_coords=True,
+            mask_and_scale=True,
+        )
+        data.append(_ds)
+    
+    # Dropping conflicts because the creation_date between
+    # datasets was slightly different (a few mintues apart).
+    # All other attributes should be the same.
+    # TODO: Better handle conflicting attribute values
+    ds = xr.merge(data, combine_attrs="drop_conflicts")
+    return ds
 
 def main(
     file_directory: str,
@@ -93,24 +115,8 @@ def main(
 
     # For the initial dataset (burntFractionAll CESM2), each SSP
     # contained 2 files, with 2 chunks of years. These can be simply merged
-    data = []
-    for file in os.listdir(file_directory):
-        path = Path(file_directory) / file
-        _ds = xr.open_dataset(
-            filename_or_obj=str(path),
-            engine=xarray_engine,
-            decode_times=True,
-            use_cftime=True,
-            decode_coords=True,
-            mask_and_scale=True,
-        )
-        data.append(_ds)
+    ds = read_data(file_directory=file_directory, xarray_engine=xarray_engine)
 
-    # Dropping conflicts because the creation_date between
-    # datasets was slightly different (a few mintues apart).
-    # All other attributes should be the same.
-    # TODO: Better handle conflicting attribute values
-    ds = xr.merge(data, combine_attrs="drop_conflicts")
     logger.info("Xarray dataset created")
 
     if convert_360_lon:
