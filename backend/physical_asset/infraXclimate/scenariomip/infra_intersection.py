@@ -10,9 +10,9 @@ import psycopg2 as pg
 import psycopg2.sql as sql
 import xarray as xr
 import xvec
-from shapely import wkt
+from shapely import wkt, Point
 
-import utils
+import scenariomip.utils as utils
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +43,7 @@ def convert_da_to_df(da: xr.DataArray, climatology_mean_method: str) -> pd.DataF
     df = (
         da.stack(id_dim=(GEOMETRY_COLUMN, climatology_mean_method))
         .to_dataframe()
-        .reset_index(drop=True)[[ID_COLUMN, climatology_mean_method, VALUE_COLUMN]]
+        .reset_index(drop=True)[[ID_COLUMN, climatology_mean_method, VALUE_COLUMN, GEOMETRY_COLUMN]]
     )
 
     if climatology_mean_method == "decade_month":
@@ -69,7 +69,7 @@ def task_xvec_zonal_stats(
     """Used for running xvec.zonal_stats in parallel process pool. Param types are the same
     as xvec.zonal_stats().
 
-    Note, there may be a warning that spatial references systems between 
+    Note, there may be a warning that spatial references systems between
     input features do not match. Under the hood, xvec uses exeactextract,
     which does a simple check on the CRS attribute of each dataset.
     If the attributes are not identical, it gives an error.
@@ -97,6 +97,106 @@ def task_xvec_zonal_stats(
     return df
 
 
+def zonal_aggregation_point(
+    climate: xr.DataArray,
+    infra: gpd.GeoDataFrame,
+    x_dim: str,
+    y_dim: str,
+    climatology_mean_method: str,
+) -> pd.DataFrame:
+
+    da = climate.xvec.extract_points(
+        infra.geometry, x_coords=x_dim, y_coords=y_dim, index=True
+    )
+
+    df = convert_da_to_df(da=da, climatology_mean_method=climatology_mean_method)
+    return df
+
+
+def zonal_aggregation_linestring(
+    climate: xr.DataArray,
+    infra: gpd.GeoDataFrame,
+    x_dim: str,
+    y_dim: str,
+    zonal_agg_method: str,
+    climatology_mean_method: str,
+) -> pd.DataFrame:
+    """Linestring cannot be zonally aggreated, so must be broken into points"""
+
+    sampled_points = []
+    for idx, row in infra.iterrows():
+        line = row[GEOMETRY_COLUMN]  # type == shapely.LineString
+        points = list(line.coords)
+        sampled_points.extend([(idx, Point(point)) for point in points])
+
+    if sampled_points:
+        df_sampled_points = pd.DataFrame(
+            sampled_points, columns=[ID_COLUMN, GEOMETRY_COLUMN]
+        )
+        gdf_sampled_points = gpd.GeoDataFrame(
+            df_sampled_points, geometry=GEOMETRY_COLUMN, crs=infra.crs
+        ).set_index(ID_COLUMN)
+        da_linestring_points = climate.xvec.extract_points(
+            gdf_sampled_points.geometry, x_coords=x_dim, y_coords=y_dim, index=True
+        )
+        df_linestring = convert_da_to_df(
+            da=da_linestring_points,
+            climatology_mean_method=climatology_mean_method,
+        )
+        # Aggregate statistics per linestring. ASSUMES DECADE_MONTH climatology mean method
+        df_linestring = (
+            df_linestring.drop_duplicates()
+            .groupby([ID_COLUMN, "decade", "month"])
+            .agg({VALUE_COLUMN: zonal_agg_method})
+            .reset_index()
+        )
+    else:
+        df_linestring = pd.DataFrame()
+    return df_linestring
+
+
+def zonal_aggregation_polygon(
+    climate: xr.DataArray,
+    infra: gpd.GeoDataFrame,
+    x_dim: str,
+    y_dim: str,
+    zonal_agg_method: str,
+    climatology_mean_method: str,
+) -> pd.DataFrame:
+
+    # The following parallelizes the zonal aggregation of polygon geometry features
+    workers = min(os.cpu_count(), len(infra.geometry))
+    futures = []
+    results = []
+    geometry_chunks = np.array_split(infra.geometry, workers)
+    with cf.ProcessPoolExecutor(max_workers=workers) as executor:
+        for i in range(workers):
+            futures.append(
+                executor.submit(
+                    task_xvec_zonal_stats,
+                    climate,
+                    geometry_chunks[i],
+                    x_dim,
+                    y_dim,
+                    zonal_agg_method,
+                    "exactextract",
+                    True,
+                    climatology_mean_method,
+                )
+            )
+        cf.as_completed(futures)
+        for future in futures:
+            try:
+                results.append(future.result())
+            except:
+                logger.info(
+                    "Future result in zonal agg process pool could not be appended"
+                )
+
+    df_polygon = pd.concat(results)
+    return df_polygon
+
+
 def zonal_aggregation(
     climate: xr.DataArray,
     infra: gpd.GeoDataFrame,
@@ -104,6 +204,7 @@ def zonal_aggregation(
     climatology_mean_method: str,
     x_dim: str,
     y_dim: str,
+    crs: str,
 ) -> pd.DataFrame:
     """Performs zonal aggregation on climate data and infrastructure data.
 
@@ -130,55 +231,48 @@ def zonal_aggregation(
     """
 
     point_geom_types = ["Point", "MultiPoint"]
+    line_geom_types = ["LineString", "MultiLineString"]
+    polygon_geom_types = ["Polygon", "MultiPolygon"]
 
-    non_point_infra = infra.loc[~infra.geom_type.isin(point_geom_types)]
+    line_infra = infra.loc[infra.geom_type.isin(line_geom_types)]
+    polygon_infra = infra.loc[infra.geom_type.isin(polygon_geom_types)]
     point_infra = infra.loc[infra.geom_type.isin(point_geom_types)]
 
-    da_point = climate.xvec.extract_points(
-        point_infra.geometry, x_coords=x_dim, y_coords=y_dim, index=True
+    df_point = zonal_aggregation_point(
+        climate=climate,
+        infra=point_infra,
+        x_dim=x_dim,
+        y_dim=y_dim,
+        climatology_mean_method=climatology_mean_method,
     )
 
-    # The following parallelizes the zonal aggregation of non-point geometry features
-    workers = os.cpu_count()
-    futures = []
-    results = []
-    geometry_chunks = np.array_split(non_point_infra.geometry, workers)
-    with cf.ProcessPoolExecutor(max_workers=workers) as executor:
-        for i in range(workers):
-            futures.append(
-                executor.submit(
-                    task_xvec_zonal_stats,
-                    climate,
-                    geometry_chunks[i],
-                    x_dim,
-                    y_dim,
-                    zonal_agg_method,
-                    'exactextract',
-                    True,
-                    climatology_mean_method,
-                )
-            )
-        cf.as_completed(futures)
-        for future in futures:
-            try:
-                results.append(future.result())
-            except:
-                logger.info('Future result in zonal agg process pool could not be appended')
+    df_linestring = zonal_aggregation_linestring(
+        climate=climate,
+        infra=line_infra,
+        x_dim=x_dim,
+        y_dim=y_dim,
+        zonal_agg_method=zonal_agg_method,
+        climatology_mean_method=climatology_mean_method,
+    )
 
-    df_non_point = pd.concat(results)
+    df_polygon = zonal_aggregation_polygon(
+        climate=climate,
+        infra=polygon_infra,
+        x_dim=x_dim,
+        y_dim=y_dim,
+        zonal_agg_method=zonal_agg_method,
+        climatology_mean_method=climatology_mean_method,
+    )
 
     # Applies the same method for converting from DataArray to DataFrame, and
     # combines the data back together.
     df = pd.concat(
-        [
-            convert_da_to_df(
-                da=da_point,
-                climatology_mean_method=climatology_mean_method,
-            ),
-            df_non_point,
-        ],
+        [df_point, df_linestring, df_polygon],
         ignore_index=True,
     )
+
+    if GEOMETRY_COLUMN in df.columns:
+        df.drop(GEOMETRY_COLUMN, inplace=True, axis=1)
 
     return df
 
@@ -262,10 +356,13 @@ def main(
         climatology_mean_method=climatology_mean_method,
         x_dim=x_dim,
         y_dim=y_dim,
+        crs=crs,
     )
     logger.info("Zonal Aggregation Computed")
 
     failed_aggregations = df.loc[df["value"].isna(), ID_COLUMN].nunique()
-    logger.warning(f"{str(failed_aggregations)} osm_ids were unable to be zonally aggregated")
+    logger.warning(
+        f"{str(failed_aggregations)} osm_ids were unable to be zonally aggregated"
+    )
     df = df.dropna()
     return df
