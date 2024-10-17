@@ -120,16 +120,8 @@ def zonal_aggregation_linestring(
     y_dim: str,
     zonal_agg_method: str,
     climatology_mean_method: str,
-    crs: str,
 ) -> pd.DataFrame:
     """Linestring cannot be zonally aggreated, so must be broken into points"""
-
-    if crs == "4326":
-        distance = 0.25  # units of CRS (for 4326, degrees)
-    else:
-        raise ValueError(
-            f"Zonal Aggregations of Linestring for CRS {crs} not supported!"
-        )
 
     sampled_points = []
     for idx, row in infra.iterrows():
@@ -261,7 +253,6 @@ def zonal_aggregation(
         y_dim=y_dim,
         zonal_agg_method=zonal_agg_method,
         climatology_mean_method=climatology_mean_method,
-        crs=crs,
     )
 
     df_polygon = zonal_aggregation_polygon(
