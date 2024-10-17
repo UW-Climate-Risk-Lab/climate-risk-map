@@ -66,7 +66,7 @@ def sample_infra_data():
         Point(1, 1),
         Point(4, 4),
         Polygon([(2, 2), (2, 3), (3, 3), (3, 2)]),
-        LineString([(0, 0), (1, 1), (2, 2)]),
+        LineString([(0, 0), (1, 1), (2, 2), (3, 3)]),
     ]
     df = pd.DataFrame({ID_COLUMN: [1, 2, 3, 4], GEOMETRY_COLUMN: geometries})
     gdf = gpd.GeoDataFrame(df, geometry=GEOMETRY_COLUMN).set_index(ID_COLUMN)
@@ -75,7 +75,7 @@ def sample_infra_data():
 
 
 
-def test_zonal_aggregation(sample_climate_data, sample_infra_data):
+def test_zonal_aggregation_max(sample_climate_data, sample_infra_data):
 
     expected_df = pd.DataFrame(
         data={
@@ -99,3 +99,26 @@ def test_zonal_aggregation(sample_climate_data, sample_infra_data):
     # Check that the DataFrame contains expected data
     assert_frame_equal(df, expected_df)
 
+def test_zonal_aggregation_mean(sample_climate_data, sample_infra_data):
+
+    expected_df = pd.DataFrame(
+        data={
+            "osm_id": [1, 2, 3, 4],
+            "value": [200., 17., 1755.25, 3000.],
+            "decade": [2020, 2020, 2020, 2020],
+            "month": [1, 1, 1, 1],
+        }
+    )
+
+    # Call the function
+    df = zonal_aggregation(
+        climate=sample_climate_data,
+        infra=sample_infra_data,
+        zonal_agg_method="mean",
+        climatology_mean_method="decade_month",
+        x_dim="x",
+        y_dim="y",
+    )
+
+    # Check that the DataFrame contains expected data
+    assert_frame_equal(df, expected_df)
