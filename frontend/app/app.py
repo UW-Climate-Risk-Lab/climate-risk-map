@@ -347,7 +347,7 @@ def download_csv(
 
         # Increment download counter, reset error message
         download_counter += 1
-        download_message = 'Download in progress!'
+        download_message = 'Download is in progress!'
         is_open = True
         download_message_color = "success"
         
