@@ -8,7 +8,7 @@ CLIMATE_DATA = {
         "label": r"% of Area that is Covered by Burnt Vegetation",
         "geotiff": {
             "format": "cogs",
-            "s3_bucket": "uw-climaterisklab",
+            "s3_bucket": "uw-crl",
             "s3_base_prefix": "climate-risk-map/backend/climate/scenariomip/burntFractionAll",
             "colormap": "ylorbr",
             "layer_opacity": 0.6,
