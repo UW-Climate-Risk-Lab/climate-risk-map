@@ -1,0 +1,38 @@
+name: api/v1/ CI-CD
+
+on:
+  push:
+    branches: [ "main" ]
+    paths: [ "api/v1/**" ]
+  
+  pull_request:
+    branches: [ "main" ]
+    paths: [ "api/v1/**" ]
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:  
+          python-version: '3.12'
+
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.3 python3 -
+          echo "export PATH=$HOME/.local/bin:$PATH" >> $HOME/.bashrc
+          source $HOME/.bashrc
+
+      - name: Install Dependencies with Poetry
+        run: |
+          cd api/v1
+          poetry install
+
+      - name: Run Unit Tests
+        run: |
+          cd api/v1
+          poetry run pytest
