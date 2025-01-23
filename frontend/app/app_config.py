@@ -1,15 +1,15 @@
 from dash_extensions.javascript import arrow_function
 from dash_extensions.javascript import assign
 
-DEFAULT_CLIMATE_VARIABLE = "burntFractionAll"  # Climate data to load on app start up
+DEFAULT_CLIMATE_VARIABLE = "fwi"  # Climate data to load on app start up
 
 CLIMATE_DATA = {
-    "burntFractionAll": {
-        "label": r"% of Area that is Covered by Burnt Vegetation",
+    "fwi": {
+        "label": r"Fire Weather Index (NASA NEX GDDP)",
         "geotiff": {
             "format": "cogs",
             "s3_bucket": "uw-crl",
-            "s3_base_prefix": "climate-risk-map/backend/climate/scenariomip/burntFractionAll",
+            "s3_base_prefix": "climate-risk-map/frontend/NEX-GDDP-CMIP6/fwi",
             "colormap": "ylorbr",
             "layer_opacity": 0.6,
         },

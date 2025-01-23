@@ -121,6 +121,7 @@ def get_power_grid_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
 
         overlays.append(overlay)
 
+    del api
     return overlays
 
 
