@@ -179,19 +179,54 @@ def test_get_data_invalid_category(mock_conn):
                             Composed(
                                 [
                                     Identifier("climate_data"),
-                                    SQL(".variable AS climate_variable"),
+                                    SQL(".ensemble_mean"),
                                 ]
                             ),
                             SQL(", "),
                             Composed(
                                 [
                                     Identifier("climate_data"),
-                                    SQL(".value AS climate_exposure"),
+                                    SQL(".ensemble_median"),
                                 ]
                             ),
                             SQL(", "),
                             Composed(
-                                [Identifier("climate_data"), SQL(".climate_metadata")]
+                                [
+                                    Identifier("climate_data"),
+                                    SQL(".ensemble_stddev"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [
+                                    Identifier("climate_data"),
+                                    SQL(".ensemble_min"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [
+                                    Identifier("climate_data"),
+                                    SQL(".ensemble_max"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [
+                                    Identifier("climate_data"),
+                                    SQL(".ensemble_q1"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [
+                                    Identifier("climate_data"),
+                                    SQL(".ensemble_q3"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [Identifier("climate_data"), SQL(".metadata")]
                             ),
                         ]
                     ),
@@ -450,31 +485,21 @@ def test_create_from_statement(input_params, expected_from_statement, mock_conn)
                     SQL(" "),
                     Composed(
                         [
-                            SQL("LEFT JOIN ("),
+                            SQL("INNER JOIN ("),
                             SQL(
-                                "SELECT s.osm_id, v.ssp, v.variable, s.month, s.decade, s.value, v.metadata AS climate_metadata "
+                                "SELECT s.osm_id, s.ssp, s.month, s.decade, s.value_mean AS ensemble_mean, s.value_median AS ensemble_median, s.value_stddev AS ensemble_stddev, s.value_min AS ensemble_min, s.value_max AS ensemble_max, s.value_q1 AS ensemble_q1, s.value_q3 AS ensemble_q3 "
                             ),
                             Composed(
                                 [
                                     SQL("FROM "),
                                     Identifier("climate"),
                                     SQL("."),
-                                    Identifier("scenariomip"),
+                                    Identifier("nasa_nex_burntFractionAll"),
                                     SQL(" s "),
                                 ]
                             ),
-                            Composed(
-                                [
-                                    SQL("LEFT JOIN "),
-                                    Identifier("climate"),
-                                    SQL("."),
-                                    Identifier("scenariomip_variables"),
-                                    SQL(" v "),
-                                ]
-                            ),
-                            SQL("ON s.variable_id = v.id "),
                             SQL(
-                                "WHERE v.ssp = %s AND v.variable = %s AND s.decade IN %s AND s.month IN %s"
+                                "WHERE s.ssp = %s AND s.decade IN %s AND s.month IN %s"
                             ),
                             Composed(
                                 [
@@ -498,7 +523,7 @@ def test_create_from_statement(input_params, expected_from_statement, mock_conn)
                     ),
                 ]
             ),
-            [6, 8, 126, "burntFractionAll", (2060, 2070), (8, 9)],
+            [6, 8, 126, (2060, 2070), (8, 9)],
         ),
         # Test case with no city and no count
         (
@@ -537,31 +562,21 @@ def test_create_from_statement(input_params, expected_from_statement, mock_conn)
                     SQL(" "),
                     Composed(
                         [
-                            SQL("LEFT JOIN ("),
+                            SQL("INNER JOIN ("),
                             SQL(
-                                "SELECT s.osm_id, v.ssp, v.variable, s.month, s.decade, s.value, v.metadata AS climate_metadata "
+                                "SELECT s.osm_id, s.ssp, s.month, s.decade, s.value_mean AS ensemble_mean, s.value_median AS ensemble_median, s.value_stddev AS ensemble_stddev, s.value_min AS ensemble_min, s.value_max AS ensemble_max, s.value_q1 AS ensemble_q1, s.value_q3 AS ensemble_q3 "
                             ),
                             Composed(
                                 [
                                     SQL("FROM "),
                                     Identifier("climate"),
                                     SQL("."),
-                                    Identifier("scenariomip"),
+                                    Identifier("nasa_nex_burntFractionAll"),
                                     SQL(" s "),
                                 ]
                             ),
-                            Composed(
-                                [
-                                    SQL("LEFT JOIN "),
-                                    Identifier("climate"),
-                                    SQL("."),
-                                    Identifier("scenariomip_variables"),
-                                    SQL(" v "),
-                                ]
-                            ),
-                            SQL("ON s.variable_id = v.id "),
                             SQL(
-                                "WHERE v.ssp = %s AND v.variable = %s AND s.decade IN %s AND s.month IN %s"
+                                "WHERE s.ssp = %s AND s.decade IN %s AND s.month IN %s"
                             ),
                             Composed(
                                 [
@@ -585,7 +600,7 @@ def test_create_from_statement(input_params, expected_from_statement, mock_conn)
                     ),
                 ]
             ),
-            [126, "burntFractionAll", (2060, 2070), (8, 9)],
+            [126, (2060, 2070), (8, 9)],
         ),
         # Test case no climate
         (
