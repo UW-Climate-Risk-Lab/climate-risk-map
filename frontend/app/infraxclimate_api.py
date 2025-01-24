@@ -489,10 +489,10 @@ class infraXclimateAPI:
         Returns:
             Dict: JSON blob of climate metadata
         """
-        table = f"nasa_nex_{climate_variable}"
+        table = f"nasa_nex_{climate_variable}_metadata"
 
         query = sql.SQL(
-            "SELECT MIN(value_mean), MAX(value_mean) FROM {schema}.{table} LIMIT 1;"
+            "SELECT min_value, max_value FROM {schema}.{table};"
         ).format(
             schema=sql.Identifier(self.climate_schema),
             table=sql.Identifier(table),
