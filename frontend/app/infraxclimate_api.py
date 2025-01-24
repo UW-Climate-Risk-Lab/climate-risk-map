@@ -15,6 +15,7 @@ from typing import List, Dict, Tuple, Optional, Any
 
 # TEST CHANGE, DELETE THIS COMMENT
 
+
 class infraXclimateInput(BaseModel):
     """Used to validate input parameters
 
@@ -108,8 +109,6 @@ class infraXclimateAPI:
         self.available_categories = ["infrastructure", self.osm_table_places]
 
         self.climate_schema = "climate"
-        self.scenariomip_table = "scenariomip"
-        self.scenariomip_variable_table = "scenariomip_variables"
         self.climate_table_alias = "climate_data"  # Table alias from nested join between scenariomip and scenariomip variables
 
     def __enter__(self):
@@ -188,21 +187,18 @@ class infraXclimateAPI:
         """Bulids a dynamic SQL SELECT statement for the get_osm_data method"""
 
         # NOTE, we use ST_Centroid() to get lat/lon values for non-point shapes.
-        # The lat/lon returned is not guarenteed to be on the shape itself, and represents the 
+        # The lat/lon returned is not guarenteed to be on the shape itself, and represents the
         # geometric center of mass of the shape. This should be fine for polygons and points,
-        # but may be meaningless for long linestrings. 
+        # but may be meaningless for long linestrings.
         # Aleternative methods may be ST_PointOnSurface() or ST_LineInterpolatePoint(), however
         # these are more computationally expensive and for now not worth the implementation.
-        
 
         # Initial list of fields that are always returned
         select_fields = [
             sql.Identifier(self.osm_schema, primary_table, "osm_id"),
             sql.Identifier(self.osm_schema, primary_table, "osm_type"),
             sql.Identifier(self.osm_schema, self.osm_table_tags, "tags"),
-            sql.SQL(
-                "ST_Transform({schema}.{table}.{column}, %s) AS geometry"
-            ).format(
+            sql.SQL("ST_Transform({schema}.{table}.{column}, %s) AS geometry").format(
                 schema=sql.Identifier(self.osm_schema),
                 table=sql.Identifier(primary_table),
                 column=sql.Identifier(self.osm_column_geom),
@@ -227,11 +223,9 @@ class infraXclimateAPI:
                 schema=sql.Identifier(self.osm_schema),
                 table=sql.Identifier(primary_table),
                 column=sql.Identifier(self.osm_column_geom),
-            )
-            
+            ),
         ]
         params.extend([epsg_code] * 4)
-        
 
         # Add extra where clause for subtypes if they are specified
         if osm_subtypes:
@@ -276,20 +270,50 @@ class infraXclimateAPI:
                 )
             )
             select_fields.append(
-                sql.SQL("{climate_table_alias}.variable AS climate_variable").format(
+                sql.SQL("{climate_table_alias}.ensemble_mean").format(
                     climate_schema=sql.Identifier(self.climate_schema),
                     climate_table_alias=sql.Identifier(self.climate_table_alias),
                 )
             )
             select_fields.append(
-                sql.SQL("{climate_table_alias}.value AS climate_exposure").format(
+                sql.SQL("{climate_table_alias}.ensemble_median").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias),
+                )
+            )
+            select_fields.append(
+                sql.SQL("{climate_table_alias}.ensemble_stddev").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias),
+                )
+            )
+            select_fields.append(
+                sql.SQL("{climate_table_alias}.ensemble_min").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias),
+                )
+            )
+            select_fields.append(
+                sql.SQL("{climate_table_alias}.ensemble_max").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias),
+                )
+            )
+            select_fields.append(
+                sql.SQL("{climate_table_alias}.ensemble_q1").format(
+                    climate_schema=sql.Identifier(self.climate_schema),
+                    climate_table_alias=sql.Identifier(self.climate_table_alias),
+                )
+            )
+            select_fields.append(
+                sql.SQL("{climate_table_alias}.ensemble_q3").format(
                     climate_schema=sql.Identifier(self.climate_schema),
                     climate_table_alias=sql.Identifier(self.climate_table_alias),
                 )
             )
             if climate_metadata:
                 select_fields.append(
-                    sql.SQL("{climate_table_alias}.climate_metadata").format(
+                    sql.SQL("{climate_table_alias}.metadata").format(
                         climate_schema=sql.Identifier(self.climate_schema),
                         climate_table_alias=sql.Identifier(self.climate_table_alias),
                     )
@@ -352,31 +376,32 @@ class infraXclimateAPI:
             join_statement = sql.SQL(" ").join([join_statement, admin_join])
 
         if climate_variable and climate_ssp and climate_month and climate_decade:
-            climate_join = sql.Composed([
-                sql.SQL("LEFT JOIN ("),
-                sql.SQL("SELECT s.osm_id, v.ssp, v.variable, s.month, s.decade, s.value, v.metadata AS climate_metadata "),
-                sql.SQL("FROM {climate_schema}.{scenariomip} s ").format(
-                    climate_schema=sql.Identifier(self.climate_schema),
-                    scenariomip=sql.Identifier(self.scenariomip_table)
-                ),
-                sql.SQL("LEFT JOIN {climate_schema}.{scenariomip_variable} v ").format(
-                    climate_schema=sql.Identifier(self.climate_schema),
-                    scenariomip_variable=sql.Identifier(self.scenariomip_variable_table)
-                ),
-                sql.SQL("ON s.variable_id = v.id "),
-                sql.SQL("WHERE v.ssp = %s AND v.variable = %s AND s.decade IN %s AND s.month IN %s"),
-                sql.SQL(") AS {climate_table_alias} ").format(
-                    climate_table_alias=sql.Identifier(self.climate_table_alias)
-                ),
-                sql.SQL("ON {schema}.{primary_table}.osm_id = {climate_table_alias}.osm_id").format(
-                    schema=sql.Identifier(self.osm_schema),
-                    primary_table=sql.Identifier(primary_table),
-                    climate_table_alias=sql.Identifier(self.climate_table_alias)
-                )
-            ])
+            climate_table = f"nasa_nex_{climate_variable}"
+            climate_join = sql.Composed(
+                [
+                    sql.SQL("INNER JOIN ("),
+                    sql.SQL(
+                        "SELECT s.osm_id, s.ssp, s.month, s.decade, s.value_mean AS ensemble_mean, s.value_median AS ensemble_median, s.value_stddev AS ensemble_stddev, s.value_min AS ensemble_min, s.value_max AS ensemble_max, s.value_q1 AS ensemble_q1, s.value_q3 AS ensemble_q3 "
+                    ),
+                    sql.SQL("FROM {climate_schema}.{climate_table} s ").format(
+                        climate_schema=sql.Identifier(self.climate_schema),
+                        climate_table=sql.Identifier(climate_table),
+                    ),
+                    sql.SQL("WHERE s.ssp = %s AND s.decade IN %s AND s.month IN %s"),
+                    sql.SQL(") AS {climate_table_alias} ").format(
+                        climate_table_alias=sql.Identifier(self.climate_table_alias)
+                    ),
+                    sql.SQL(
+                        "ON {schema}.{primary_table}.osm_id = {climate_table_alias}.osm_id"
+                    ).format(
+                        schema=sql.Identifier(self.osm_schema),
+                        primary_table=sql.Identifier(primary_table),
+                        climate_table_alias=sql.Identifier(self.climate_table_alias),
+                    ),
+                ]
+            )
             params += [
                 climate_ssp,
-                climate_variable,
                 tuple(set(climate_decade)),
                 tuple(set(climate_month)),
             ]
@@ -464,17 +489,26 @@ class infraXclimateAPI:
         Returns:
             Dict: JSON blob of climate metadata
         """
+        table = f"nasa_nex_{climate_variable}"
 
         query = sql.SQL(
-            "SELECT metadata FROM {schema}.{scenariomip_variable} WHERE variable = %s AND ssp = %s"
+            "SELECT MIN(value_mean), MAX(value_mean) FROM {schema}.{table} LIMIT 1;"
         ).format(
             schema=sql.Identifier(self.climate_schema),
-            scenariomip_variable=sql.Identifier(self.scenariomip_variable_table),
+            table=sql.Identifier(table),
         )
 
-        result = self._execute_postgis(query=query, params=(climate_variable, ssp))
+        result = self._execute_postgis(query=query, params=(ssp,))
 
-        return result[0][0]
+        metadata = {
+            "UW_CRL_DERIVED": {
+                "min_climate_variable_value": result[0][0],
+                "max_climate_variable_value": result[0][1],
+                "units": ''
+            }
+        }
+
+        return metadata
 
     def get_data(self, input_params: infraXclimateInput) -> Dict:
         """
@@ -488,9 +522,9 @@ class infraXclimateAPI:
 
 
         If multiple months/decades are passed in, a feature will be returned for each time step.
-        
+
         Latitude and Longitude are returned as properties separate from the geometry. These
-        represent the geometric center of mass of the given feature, 
+        represent the geometric center of mass of the given feature,
         and are not guarenteed to actually intersect with the feature itself.
 
         Example SQL query created from all params:

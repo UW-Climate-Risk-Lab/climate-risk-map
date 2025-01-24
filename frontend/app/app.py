@@ -122,16 +122,12 @@ def load_climate_metadata(climate_variable, ssp):
 
     min_value = metadata["UW_CRL_DERIVED"]["min_climate_variable_value"]
     max_value = metadata["UW_CRL_DERIVED"]["max_climate_variable_value"]
-    unit = metadata[climate_variable]["units"]
-    climatology_mean_method = metadata["UW_CRL_DERIVED"]["climatology_mean_method"]
+    unit = metadata["UW_CRL_DERIVED"]["units"]
 
     colormap = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["colormap"]
     layer_opacity = app_config.CLIMATE_DATA[climate_variable]["geotiff"][
         "layer_opacity"
     ]
-    
-    
-
 
     return {
         "min_value": min_value,
@@ -139,7 +135,6 @@ def load_climate_metadata(climate_variable, ssp):
         "colormap": colormap,
         "unit": unit,
         "layer_opacity": layer_opacity,
-        "climatology_mean_method": climatology_mean_method
     }
 
 
@@ -169,7 +164,6 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
         
         return app_config.MAP_COMPONENT["base_map"]["url"], 1, []
 
-    climatology_mean_method = climate_metadata["climatology_mean_method"]
     min_climate_value = climate_metadata["min_value"]
     max_climate_value = climate_metadata["max_value"]
     colormap = climate_metadata["colormap"]
@@ -192,8 +186,7 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
     bucket = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_bucket"]
     prefix = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_base_prefix"]
     file = f"{decade}-{month:02d}-{state}.tif"
-    file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{climatology_mean_method}/{file}"
-
+    file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{file}"
     tile_url = app_utils.get_tilejson_url(
         titiler_endpoint=TITILER_ENDPOINT,
         file_url=file_url,
