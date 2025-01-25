@@ -22,7 +22,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-SSM = boto3.client("ssm")
 
 def create_bbox(bboxes: List[schemas.BoundingBox]) -> FeatureCollection:
     """Creates GeoJSON spec. object from list of Bounding Boxes
@@ -198,7 +197,8 @@ def upload_to_s3_and_get_presigned_url(
         )
 
 def get_parameter(name):
-    return SSM.get_parameter(Name=name, WithDecryption=True)['Parameter']['Value']
+    ssm = boto3.client("ssm")
+    return ssm.get_parameter(Name=name, WithDecryption=True)['Parameter']['Value']
 
 def geojson_to_wkt(geojson):
     """
