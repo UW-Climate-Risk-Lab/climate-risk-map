@@ -1,4 +1,4 @@
-from ..app import utils
+from ..app.utils import geojson_to_wkt
 
 def test_point():
     geojson = {
@@ -6,7 +6,7 @@ def test_point():
         "coordinates": [30.0, 10.0]
     }
     expected_wkt = "POINT (30.0 10.0)"
-    assert utils.geojson_to_wkt(geojson) == expected_wkt
+    assert geojson_to_wkt(geojson) == expected_wkt
 
 def test_linestring():
     geojson = {
@@ -14,7 +14,7 @@ def test_linestring():
         "coordinates": [[30.0, 10.0], [10.0, 30.0], [40.0, 40.0]]
     }
     expected_wkt = "LINESTRING (30.0 10.0, 10.0 30.0, 40.0 40.0)"
-    assert utils.geojson_to_wkt(geojson) == expected_wkt
+    assert geojson_to_wkt(geojson) == expected_wkt
 
 def test_multilinestring():
     geojson = {
@@ -25,7 +25,7 @@ def test_multilinestring():
         ]
     }
     expected_wkt = "MULTILINESTRING ((10.0 10.0, 20.0 20.0, 10.0 40.0), (40.0 40.0, 30.0 30.0, 40.0 20.0, 30.0 10.0))"
-    assert utils.geojson_to_wkt(geojson) == expected_wkt
+    assert geojson_to_wkt(geojson) == expected_wkt
 
 def test_polygon():
     geojson = {
@@ -35,7 +35,7 @@ def test_polygon():
         ]
     }
     expected_wkt = "POLYGON ((30.0 10.0, 40.0 40.0, 20.0 40.0, 10.0 20.0, 30.0 10.0))"
-    assert utils.geojson_to_wkt(geojson) == expected_wkt
+    assert geojson_to_wkt(geojson) == expected_wkt
 
 def test_multipolygon():
     geojson = {
@@ -50,11 +50,11 @@ def test_multipolygon():
         ]
     }
     expected_wkt = "MULTIPOLYGON (((30.0 20.0, 45.0 40.0, 10.0 40.0, 30.0 20.0)), ((15.0 5.0, 40.0 10.0, 10.0 20.0, 5.0 10.0, 15.0 5.0)))"
-    assert utils.geojson_to_wkt(geojson) == expected_wkt
+    assert geojson_to_wkt(geojson) == expected_wkt
 
 def test_unsupported_geometry():
     geojson = {
         "type": "UnsupportedType",
         "coordinates": []
     }
-    assert utils.geojson_to_wkt(geojson) == ""
+    assert geojson_to_wkt(geojson) == ""
