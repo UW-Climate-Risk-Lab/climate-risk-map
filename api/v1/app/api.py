@@ -4,6 +4,7 @@ import json
 import os
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 from psycopg2 import sql
 
 from . import database
@@ -43,47 +44,35 @@ def get_data(
     limit: int | None = None,
 ) -> Dict:
 
-    # Public facing API will not allow users to input lists of types, months, and decades to limit data size
-    # Convert to single element tuple after request since query builder can handle lists
-    osm_types = (osm_type,)
-    if osm_subtype:
-        osm_subtype = tuple(osm_subtype)
-
-    if climate_month:
-        climate_month = (climate_month,)
-    if climate_decade:
-        climate_decade = (climate_decade,)
-
-    # TODO: Add CSV response format
-    if format.lower() not in ["geojson"]:
+    # Update format check first
+    if format.lower() not in ["geojson", "csv"]:
         raise HTTPException(
             status_code=422, detail=f"{format} response format not supported"
         )
 
+    # Convert input parameters
+    osm_types = (osm_type,)
+    if climate_month:
+        climate_month = (climate_month,)
+    if climate_decade:
+        climate_decade = (climate_decade,)
+    if osm_subtype:
+        osm_subtype = tuple(osm_subtype)
+
+    # Process bbox if provided
     if bbox:
         try:
             bbox_list = [schemas.BoundingBox(**json.loads(box)) for box in bbox]
-        except json.JSONDecodeError:
-            # User should input bbox(s) query parameter in this format
-            input_format = (
-                '{"xmin": -126.0, "xmax": -119.0, "ymin": 46.1, "ymax": 47.2}'
-            )
-            return {
-                "error": f"Invalid bounding box JSON format. Example: bbox={input_format}"
-            }
-        except ValueError as e:
-            return {"error": str(e)}
-
-        try:
             bbox = utils.create_bbox(bbox_list)
+        except json.JSONDecodeError:
+            input_format = '{"xmin": -126.0, "xmax": -119.0, "ymin": 46.1, "ymax": 47.2}'
+            return {"error": f"Invalid bounding box JSON format. Example: bbox={input_format}"}
         except Exception as e:
             logger.error(f"Error creating geojson from bounding box input: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail="There was an error parsing provided bounding boxes",
-            )
+            raise HTTPException(status_code=500, detail="Error parsing bounding boxes")
 
     try:
+        # Validate input parameters using schema
         input_params = schemas.GetDataInputParameters(
             osm_category=osm_category,
             osm_types=osm_types,
@@ -97,10 +86,10 @@ def get_data(
             climate_decade=climate_decade,
             limit=limit,
         )
-        print(input_params)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
+    # Continue with query if not cached
     query, query_params = GetDataQueryBuilder(input_params).build_query()
 
     result = database.execute_query(query=query, params=query_params)
@@ -114,7 +103,6 @@ def get_data(
     except KeyError as e:
         logger.error("Get GeoJSON database response has no key 'features'")
 
-
     try:
         schemas.GetGeoJsonOutput(geojson=result)
     except Exception as e:
@@ -126,14 +114,16 @@ def get_data(
             detail="Return GeoJSON format failed validation. Please contact us!",
         )
 
-    if utils.check_data_size(data=json.dumps(result), threshold=DATA_SIZE_RETURN_LIMIT_MB):
-
-        presigned_url = utils.upload_to_s3_and_get_presigned_url(
-            bucket_name=S3_BUCKET, prefix=S3_PREFIX_USER_DOWNLOADS, data=result
-        )
-        return {"presigned_url": presigned_url}
-
-    return result
+    # Always upload to S3 and return presigned URL
+    presigned_url = utils.upload_to_s3_and_get_presigned_url(
+        bucket_name=S3_BUCKET,
+        prefix=S3_PREFIX_USER_DOWNLOADS,
+        data=result,
+        input_params=input_params,
+        format=format.lower()
+    )
+    
+    return {"download_url": presigned_url}
 
 
 @router.get("/climate-metadata/{climate_variable}/{ssp}/")

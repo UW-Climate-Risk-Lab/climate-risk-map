@@ -167,3 +167,4 @@ cython_debug/
 .aws-sam/
 out.yml
 samconfig.toml
+test.ipynb
