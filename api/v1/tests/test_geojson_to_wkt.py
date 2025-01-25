@@ -1,5 +1,3 @@
-import pytest
-
 from ..app import utils
 
 def test_point():
