@@ -230,8 +230,6 @@ def geojson_to_wkt(geojson):
         return f"MULTILINESTRING ({', '.join(f'({format_coords(line)})' for line in coordinates)})"
     elif geometry_type == 'MultiPolygon':
         return f"MULTIPOLYGON ({', '.join(f'(({format_coords(polygon)}))' for polygon in coordinates)})"
-    elif geometry_type == 'GeometryCollection':
-        return f"GEOMETRYCOLLECTION ({', '.join(geojson_to_wkt(geom) for geom in geojson['geometries'])})"
     else:
         return ''
 
