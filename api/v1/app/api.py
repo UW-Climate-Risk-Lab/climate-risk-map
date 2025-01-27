@@ -15,7 +15,7 @@ from . import utils
 
 from .query import GetDataQueryBuilder
 
-router = APIRouter()
+router = APIRouter(prefix="/data")  # Add prefix to ensure all API routes are under /data
 
 S3_BUCKET = str(os.environ["S3_BUCKET"])
 S3_PREFIX_USER_DOWNLOADS = str(os.environ["S3_BASE_PREFIX_USER_DOWNLOADS"])
@@ -28,7 +28,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@router.get("/data/{format}/{osm_category}/{osm_type}/")
+@router.get("/{format}/{osm_category}/{osm_type}/")  # Was: "/data/{format}/{osm_category}/{osm_type}/"
 def get_data(
     format: str,  # TODO: configure to allow CSV or Geojson
     osm_category: str,

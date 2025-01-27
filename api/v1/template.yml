@@ -114,7 +114,7 @@ Resources:
         Properties:
             StageName: v1-dev
             Auth:
-              ApiKeyRequired: true
+              ApiKeyRequired: false  # Default to not requiring API key
             OpenApiVersion: '3.1.0'
             DefinitionBody:
               swagger: "2.0"
@@ -122,8 +122,18 @@ Resources:
                 title: "UW CRL API"
                 version: "1.0"
               paths:
-                /{proxy+}:
+                "/":  # Root path configuration
+                  get:
+                    x-amazon-apigateway-integration:
+                      uri:
+                        Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UWCRLApiv1.Arn}/invocations
+                      passthroughBehavior: when_no_match
+                      httpMethod: POST
+                      type: aws_proxy
+                "/data/{proxy+}":  # Protected data endpoints
                   x-amazon-apigateway-any-method:
+                    security:
+                      - api_key: []  # Requires API key
                     parameters:
                       - name: proxy
                         in: path
@@ -135,3 +145,23 @@ Resources:
                       passthroughBehavior: when_no_match
                       httpMethod: POST
                       type: aws_proxy
+                "/climate-metadata/{proxy+}":  # Protected metadata endpoints
+                  x-amazon-apigateway-any-method:
+                    security:
+                      - api_key: []  # Requires API key
+                    parameters:
+                      - name: proxy
+                        in: path
+                        required: true
+                        type: string
+                    x-amazon-apigateway-integration:
+                      uri:
+                        Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UWCRLApiv1.Arn}/invocations
+                      passthroughBehavior: when_no_match
+                      httpMethod: POST
+                      type: aws_proxy
+              securityDefinitions:
+                api_key:
+                  type: apiKey
+                  name: x-api-key
+                  in: header
