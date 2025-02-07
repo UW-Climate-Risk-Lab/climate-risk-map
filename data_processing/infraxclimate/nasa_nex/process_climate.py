@@ -13,6 +13,10 @@ from typing import List, Set
 
 logger = logging.getLogger(__name__)
 
+# Supresses info log when loading zarr data from s3:
+# INFO:botocore.httpchecksum:Skipping checksum validation. Response did not contain one of the following algorithms: ['crc32', 'sha1', 'sha256']
+logging.getLogger("botocore.httpchecksum").setLevel(logging.WARNING)
+
 # Add constants for validation. Models used must have all available scenarios and all available years
 HISTORICAL_YEARS = set(range(1950, 2015))  # 1950-2014
 FUTURE_YEARS = set(range(2015, 2101))  # 2015-2100

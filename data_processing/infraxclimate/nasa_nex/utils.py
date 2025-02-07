@@ -9,11 +9,19 @@ import pandas as pd
 import psycopg2 as pg
 import psycopg2.sql as sql
 import xarray as xr
+import geopandas as gpd
 
 import constants
 
 def str_to_bool(s):
     return s.lower() in ['true', '1', 't', 'y', 'yes']
+
+def get_state_geometry(state: str) -> gpd.GeoDataFrame:
+
+    url = f"https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/{state}.geojson"
+    gdf = gpd.read_file(url)
+    return gdf
+
 
 def get_state_bbox(state: str) -> Dict[str, float]:
     """Returns bbox of state
@@ -42,7 +50,7 @@ def get_state_bbox(state: str) -> Dict[str, float]:
         "washington": {
             "min_lon": -125.1,
             "min_lat": 45.5,
-            "max_lon": -116.9,
+            "max_lon": -115.9,
             "max_lat": 49.1,
         }
     }

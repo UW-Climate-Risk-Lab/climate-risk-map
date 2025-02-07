@@ -8,6 +8,7 @@ import rioxarray
 import xarray as xr
 
 import constants
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +23,19 @@ def main(
     output_dir: str,
     state: str,
     metadata: Dict,
-    max_workers: int = 8,
+    max_workers: int = 16,
 ) -> None:
     if not state:
         state = "global"
+    else:
+        gdf = utils.get_state_geometry(state=state)
 
     # Prepare all the data tuples for parallel processing
     save_tasks = []
     for decade_month in ds["decade_month"].data:
         # For visualizing climate grid, we just use the mean
         _da = ds[f"value_mean"].sel(decade_month=decade_month)
+        _da = _da.rio.clip(gdf.geometry.values, gdf.crs, drop=True, all_touched=False)
         file_name = f"{decade_month}-{state}.tif"
         output_path = Path(output_dir) / file_name
         save_tasks.append((_da, output_path))
