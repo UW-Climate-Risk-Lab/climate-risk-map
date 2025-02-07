@@ -21,7 +21,7 @@ def setup_args():
     parser.add_argument(
         "--zonal-agg-method", required=True, help="Zonal aggregation method"
     )
-    parser.add_argument("--state-bbox", help="State bounding box")
+    parser.add_argument("--state-bbox", help="State bounding box", required=False)
     parser.add_argument("--osm-category", required=True, help="OSM category")
     parser.add_argument("--osm-type", required=True, help="OSM type")
     return parser.parse_args()
