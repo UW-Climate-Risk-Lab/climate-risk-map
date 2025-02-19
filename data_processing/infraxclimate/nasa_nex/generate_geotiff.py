@@ -12,11 +12,12 @@ import utils
 
 logger = logging.getLogger(__name__)
 
-def save_geotiff(data: tuple) -> None:
-    """Helper function to save individual geotiff"""
+def save_geotiff(data: tuple) -> str:
+    """Helper function to save individual geotiff. Returns output path"""
     da, output_path = data
     da.rio.to_raster(str(output_path), driver="COG")
     logger.info(f"Saved {output_path}")
+    return output_path
 
 def main(
     ds: xr.Dataset,
@@ -24,7 +25,7 @@ def main(
     state: str,
     metadata: Dict,
     max_workers: int = 16,
-) -> None:
+) -> list:
     if not state:
         state = "global"
     else:
@@ -41,11 +42,13 @@ def main(
         save_tasks.append((_da, output_path))
 
     # Process files in parallel
+    tiff_files = []
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(save_geotiff, task) for task in save_tasks]
         for future in as_completed(futures):
             try:
                 future.result()
+                tiff_files.append(future.result())
             except Exception as e:
                 logger.error(f"Error saving geotiff: {str(e)}")
 
@@ -63,3 +66,5 @@ def main(
         json.dump(metadata, f, indent=4)
 
     logger.info("All geotiffs and metadata saved successfully")
+
+    return tiff_files

@@ -12,6 +12,8 @@ import process_climate
 import utils
 import constants
 
+import test_postgis_raster
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -72,13 +74,15 @@ def main(
 
     with tempfile.TemporaryDirectory() as geotiff_tmpdir:
         if LOAD_GEOTIFFS:
-            generate_geotiff.main(
+            tiff_files = generate_geotiff.main(
                 ds=ds,
                 output_dir=geotiff_tmpdir,
                 state=state_bbox,
                 metadata=metadata,
             )
             logger.info("Geotiffs created")
+
+            test_postgis_raster.load_geotiff_postgis(tiff_files=tiff_files, ssp=ssp)
 
             utils.upload_files(
                 s3_bucket=s3_bucket,

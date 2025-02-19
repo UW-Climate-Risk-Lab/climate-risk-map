@@ -142,7 +142,7 @@ def load_data(
     model_paths = fs.glob(pattern)
 
 
-    for model_path in model_paths:
+    for model_path in model_paths[:2]:
         model_name = model_path.rstrip("/").split("/")[-1]
         logger.info(f"Validating model: {model_name}")
 
