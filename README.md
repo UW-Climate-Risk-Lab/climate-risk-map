@@ -71,6 +71,14 @@ The application consists of several key components:
 - Docker containers for processing and deployment
 - Environment-based configuration management
 
+### CI/CD Workflows
+- GitHub Actions for automated testing and deployment
+- Separate workflows for frontend, API, and data processing components
+- Automated testing with Poetry and pytest
+- Docker image builds for containerized components
+- Automated deployment to AWS infrastructure
+- Security-focused deployment with dynamic IP whitelisting
+
 ## Technical Dependencies
 - Python 3.11+ (3.12 for some components)
 - PostgreSQL with PostGIS
