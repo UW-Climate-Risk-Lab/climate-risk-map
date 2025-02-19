@@ -61,6 +61,7 @@ docker run --rm wildfire/fwi/nasa_nex
     --lat_chunk 30 
     --lon_chunk 72 
     --threads 8 
+    --memory_available 16GB
     --x_min 230 --y_min 10 --x_max 300 --y_max 50
 ```
 
@@ -74,6 +75,7 @@ docker run --rm wildfire/fwi/nasa_nex
 | `--lat_chunk`       | int    | Latitude chunk size                         | No       |
 | `--lon_chunk`       | int    | Longitude chunk size                        | No       |
 | `--threads`         | int    | Threads per worker                          | No       |
+| `--memory_available`| string | Memory available per worker (e.g., `16GB`)  | No       |
 | `--x_min`, `--y_min`, `--x_max`, `--y_max` | float | Bounding box coordinates for data subset | No |
 
 ---
@@ -86,6 +88,7 @@ docker run --rm wildfire/fwi/nasa_nex
 4. **Calculation**: FWI components are computed using the Xclim library.
 5. **Zarr Output**: Results are written back to an S3 bucket in Zarr format.
 6. **Results Logging**: Execution details are logged to a CSV file in S3.
+7. **Cleanup**: Temporary files and data are cleaned up to free resources.
 
 ---
 
@@ -128,12 +131,6 @@ The pipeline writes the calculated results as Zarr files to the specified S3 out
 s3://uw-crl/climate-risk-map/backend/climate/scenariomip/{model}/{scenario}/{ensemble_member}/fwi_day_{year}.zarr
 ```
 
-Additionally, execution details are logged to a CSV file:
-
-```
-s3://uw-crl/scratch/dask_results.csv
-```
-
 ---
 
 ## Example Output
@@ -168,6 +165,58 @@ s3://.../fwi_day_2060.zarr,32,8,30,72,12.5,34.2,8.1
    ```bash
    python src/pipeline.py --model MIROC6 --scenario ssp126 --ensemble_member r1i1p1f1
    ```
+
+---
+
+## AWS Batch Processing
+
+The project includes an AWS Batch script (`aws_batch.py`) for parallel processing of multiple climate models and scenarios.
+
+### AWS Batch Script Overview
+
+The AWS Batch script automates the submission and monitoring of multiple pipeline jobs across different models and scenarios. It handles:
+
+- Job submission for all model/scenario combinations
+- Monitoring of job status
+- Error handling and retries
+- Resource management
+
+### Required Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `AWS_REGION` | AWS region for batch jobs |
+| `JOB_QUEUE` | AWS Batch job queue name |
+| `JOB_DEFINITION` | AWS Batch job definition name |
+| `LAT_CHUNK` | Latitude chunk size |
+| `LON_CHUNK` | Longitude chunk size |
+| `THREADS` | Threads per worker |
+| `MEMORY_AVAILABLE` | Memory limit per worker |
+| `X_MIN`, `Y_MIN`, `X_MAX`, `Y_MAX` | Bounding box coordinates |
+| `TEST` | Boolean flag for test mode |
+
+### Running Batch Jobs
+
+1. Set environment variables:
+   ```bash
+   export AWS_REGION=us-west-2
+   export JOB_QUEUE=your-queue
+   export JOB_DEFINITION=your-job-def
+   # ...set other required variables...
+   ```
+
+2. Run the batch script:
+   ```bash
+   python aws_batch.py
+   ```
+
+### Test Mode
+
+Set `TEST=True` to run a limited subset of jobs for testing:
+```bash
+export TEST=True
+python aws_batch.py
+```
 
 ---
 
