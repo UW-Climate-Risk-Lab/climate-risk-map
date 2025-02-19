@@ -95,43 +95,32 @@ Retrieve data based on various parameters.
 
 - **Parameters**
 
-  | Name               | Type     | Description                                                   |
-  | ------------------ | -------- | ------------------------------------------------------------- |
-  | `format`  | String   | Format of the response (`geojson` or `csv`).                 |
-  | `osm_category`         | String   | OSM Category to retrieve data from.                           |
-  | `osm_type`         | String   | OSM Type to filter on.                                        |
-  | `osm_subtypes`     | List&lt;String&gt; | (Optional) OSM Subtypes to filter on.                      |
-  | `bbox`             | List&lt;String&gt; | (Optional) Bounding box in JSON format (*bbox={"xmin": -126.0, "xmax": -119.0, "ymin": 46.1, "ymax": 47.2}*).                 |
-  | `county`           | Boolean  | (Optional) If true, includes county information.              |
-  | `city`             | Boolean  | (Optional) If true, includes city information.                |
-  | `epsg_code`        | Integer  | (Optional) Spatial reference ID. Default is `4326`.           |
-  | `geom_type`        | String   | (Optional) Filter by geometry type.                           |
-  | `climate_variable` | String   | (Optional) Climate variable to filter on.                     |
-  | `climate_ssp`      | Integer  | (Optional) Climate SSP to filter on.                           |
-  | `climate_month`    | List&lt;Integer&gt; | (Optional) List of months to filter on.                    |
-  | `climate_decade`   | List&lt;Integer&gt; | (Optional) List of decades to filter on.                   |
-  | `climate_metadata` | Boolean  | (Optional) If true, includes climate metadata.                |
-  | `limit`            | Integer  | (Optional) Limit the number of results.                        |
+  | Name               | Type                | Description                                                                                                        |
+  | ------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+  | `format`           | String              | Format of the response (`geojson` or `csv`).                                                                       |
+  | `osm_category`     | String              | OSM Category to retrieve data from.                                                                                |
+  | `osm_type`         | String              | OSM Type to filter on.                                                                                             |
+  | `osm_subtypes`     | List&lt;String&gt;   | (Optional) OSM Subtypes to filter on.                                                                              |
+  | `bbox`             | List&lt;String&gt;   | (Optional) Bounding box in JSON format (e.g., bbox={"xmin": -126.0, "xmax": -119.0, "ymin": 46.1, "ymax": 47.2}). |
+  | `epsg_code`        | Integer             | (Optional) Spatial reference ID. Default is `4326`.                                                               |
+  | `geom_type`        | String              | (Optional) Filter by geometry type.                                                                               |
+  | `climate_variable` | String              | (Optional) Climate variable to filter on.                                                                         |
+  | `climate_ssp`      | Integer             | (Optional) Climate SSP to filter on.                                                                               |
+  | `climate_month`    | Integer             | (Optional) Month to filter on.                                                                                     |
+  | `climate_decade`   | Integer             | (Optional) Decade to filter on.                                                                                    |
+  | `limit`            | Integer             | (Optional) Limit the number of results.                                                                            |
 
 - **Example Request**
 
   ```bash
-  curl -X GET http://127.0.0.1:8000/api/v1/data/geojson/infrastructure/power/?osm_subtypes=plant&osm_subtypes=line&bbox={"xmin":-126.0,"xmax":-119.0,"ymin":46.1,"ymax":47.2}
+  curl -X GET "http://127.0.0.1:8000/api/v1/data/geojson/infrastructure/power/?osm_subtypes=plant&osm_subtypes=line&bbox={\"xmin\":-126.0,\"xmax\":-119.0,\"ymin\":46.1,\"ymax\":47.2}&climate_variable=fwi&climate_ssp=126&climate_month=8&climate_decade=2010&limit=100"
   ```
 
 - **Example Response**
 
   ```json
   {
-      "type": "FeatureCollection",
-      "features": [
-          {
-              "type": "Feature",
-              "geometry": { ... },
-              "properties": { ... }
-          },
-          ...
-      ]
+      "download_url": "https://s3.amazonaws.com/your-bucket/your-generated-file.geojson"
   }
   ```
 
@@ -142,28 +131,28 @@ Retrieve metadata for a specific climate variable and SSP.
 - **Endpoint**
 
   ```
-  GET /api/v1/climate-metadata/{climate_variable}/{ssp}
+  GET /api/v1/climate-metadata/{climate_variable}/{ssp}/
   ```
 
 - **Parameters**
 
-  | Name              | Type   | Description                       |
-  | ----------------- | ------ | --------------------------------- |
-  | `climate_variable` | String | Name of the climate variable.     |
-  | `ssp`             | String | SSP number.                        |
+  | Name              | Type   | Description                           |
+  | ----------------- | ------ | ------------------------------------- |
+  | `climate_variable`| String | Name of the climate variable.         |
+  | `ssp`             | String | SSP number.                           |
 
 - **Example Request**
 
   ```bash
-  curl -X GET "http://127.0.0.1:8000/api/v1/climate-metadata/burntFractionAll/585"
+  curl -X GET "http://127.0.0.1:8000/api/v1/climate-metadata/fwi/126/"
   ```
 
 - **Example Response**
 
   ```json
   {
-      "variable": "temperature",
-      "ssp": "ssp5",
+      "climate_variable": "fwi",
+      "ssp": "126",
       "metadata": { ... }
   }
   ```
