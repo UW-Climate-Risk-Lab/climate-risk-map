@@ -1,7 +1,7 @@
 -- Creation of osminfra database
-CREATE DATABASE washington;
+CREATE DATABASE :"region_name";
 
-\connect washington;
+\connect :"region_name";
 
 CREATE EXTENSION postgis;
 
@@ -11,14 +11,14 @@ CREATE SCHEMA osm;
 
 ALTER SCHEMA osm OWNER TO pgosm_flex;
 
-GRANT CREATE ON DATABASE washington
+GRANT CREATE ON DATABASE :"region_name"
     TO pgosm_flex;
 GRANT CREATE ON SCHEMA public
     TO pgosm_flex;
 
 -- Creates a read only user for queries
 CREATE ROLE osm_ro_user WITH LOGIN PASSWORD 'mysecretpassword';
-GRANT CONNECT ON DATABASE washington TO osm_ro_user;
+GRANT CONNECT ON DATABASE :"region_name" TO osm_ro_user;
 GRANT USAGE ON SCHEMA osm to osm_ro_user;
 
 CREATE ROLE climate_user WITH LOGIN PASSWORD 'mysecretpassword';
@@ -30,7 +30,7 @@ CREATE SCHEMA climate;
 
 ALTER SCHEMA climate OWNER TO climate_user;
 
-GRANT CONNECT ON DATABASE washington TO climate_user;
+GRANT CONNECT ON DATABASE :"region_name" TO climate_user;
 
 -- Us pgosm_flex role to grant future table read privileges
 SET ROLE pgosm_flex;
