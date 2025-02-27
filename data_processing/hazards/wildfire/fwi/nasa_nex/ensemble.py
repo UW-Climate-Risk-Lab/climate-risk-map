@@ -24,11 +24,11 @@ FUTURE_YEARS = set(range(2015, 2101))  # 2015-2100
 
 def validate_model_ssp(fs: s3fs.S3FileSystem, model_path: str, ssp: str) -> bool:
     """Check if model has required SSP"""
-    
+
     # Handle historical case
-    if ssp == '-999':
+    if ssp == "-999":
         return fs.exists(f"{model_path}/historical")
-    
+
     # Handle regular SSP cases
     return fs.exists(f"{model_path}/ssp{ssp}")
 
@@ -118,8 +118,8 @@ def reduce_model_stats(da: xr.DataArray) -> xr.Dataset:
             "value_stddev": stddev,
             "value_min": min_val,
             "value_max": max_val,
-            "value_q1": q1,#quartiles.sel(quantile=0.25).drop("quantile"),
-            "value_q3": q3,#quartiles.sel(quantile=0.75).drop("quantile"),
+            "value_q1": q1,  # quartiles.sel(quantile=0.25).drop("quantile"),
+            "value_q3": q3,  # quartiles.sel(quantile=0.75).drop("quantile"),
         },
         attrs=da.attrs,  # Copy original attributes, if any
     )
@@ -140,7 +140,6 @@ def load_data(
     pattern = f"s3://{s3_bucket}/{s3_prefix}/*"
     model_paths = fs.glob(pattern)
 
-
     for model_path in model_paths:
         if "ENSEMBLE" in model_path:
             continue
@@ -153,7 +152,7 @@ def load_data(
             continue
 
         # Get all zarr stores for this model and SSP
-        if ssp == '-999':
+        if ssp == "-999":
             model_pattern = f"{model_path}/historical/*/{climate_variable}_day_*.zarr"
         else:
             model_pattern = f"{model_path}/ssp{ssp}/*/{climate_variable}_day_*.zarr"
@@ -185,15 +184,15 @@ def load_data(
         data.append(_da)
 
         logger.info(f"{model_name} loaded")
-    
+
     da = xr.combine_nested(data, concat_dim=["model"])
     da = da.assign_attrs(ensemble_members=da.model.values)
 
     chunks = {
-        "decade_month": 12,  # All in one chunk since it's usually small
+        "decade_month": 12, 
         "lon": "auto",
         "lat": "auto",
-        "model": -1  # All models in one chunk for ensemble calculations
+        "model": -1,  # All models in one chunk for ensemble calculations
     }
 
     da = da.chunk(chunks)
@@ -201,12 +200,7 @@ def load_data(
     return da
 
 
-def main(
-    ssp: str,
-    s3_bucket: str,
-    s3_prefix: str,
-    climate_variable: str
-) -> xr.Dataset:
+def main(ssp: str, s3_bucket: str, s3_prefix: str, climate_variable: str) -> xr.Dataset:
     """Processes climate data
 
     Args:
@@ -236,9 +230,9 @@ def main(
 
 
 if __name__ == "__main__":
-    
+
     ssps = [126, 245, 370, 585, -999]
-    climate_variable = 'fwi'
+    climate_variable = "fwi"
     s3_prefix = "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6"
     s3_bucket = os.environ["S3_BUCKET"]
 
@@ -250,9 +244,19 @@ if __name__ == "__main__":
             s3_prefix=s3_prefix,
             climate_variable=climate_variable,
         )
-        s3_output_uri = PurePosixPath(s3_bucket,s3_prefix,"DECADE_MONTH_ENSEMBLE",'historical' if ssp==-999 else f"ssp{ssp}",)
+        s3_output_path = PurePosixPath(
+            s3_bucket,
+            s3_prefix,
+            "DECADE_MONTH_ENSEMBLE",
+            "historical" if ssp == -999 else f"ssp{ssp}",
+        )
+        s3_output_zarr = f"fwi_decade_month_ssp{ssp}.zarr"
+        s3_output_uri = f"s3://{s3_output_path / s3_output_zarr}"
+
         try:
-            fs = s3fs.S3FileSystem(anon=False)
+            fs = s3fs.S3FileSystem(
+                anon=False,
+                )
             # Let to_zarr() handle the computation
             ds.to_zarr(
                 store=s3fs.S3Map(root=s3_output_uri, s3=fs),
