@@ -1,0 +1,1 @@
+This directory contains a script for an ensemble calculation. This takes the output from the index_calc FWI and creates a single dataset of the ensemble mean of all models, and aggregates it to the monthly data by decade. This dataset can be used in long term analysis.
