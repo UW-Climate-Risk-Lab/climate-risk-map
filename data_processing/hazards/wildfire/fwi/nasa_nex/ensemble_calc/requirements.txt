@@ -1,0 +1,7 @@
+xarray
+dask
+zarr
+s3fs
+fsspec
+boto3
+cftime
