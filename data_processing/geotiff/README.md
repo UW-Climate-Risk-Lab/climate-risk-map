@@ -58,5 +58,5 @@ Example: `temperature-2030-08-california.tif`
 - Python 3.11
 - [GDAL](https://gdal.org/)
 - [GEOS](https://libgeos.org/)
-- rioxarray, xarray, geopandas, psycopg2
+- rioxarray, xarray, geopandas
 - Poetry for dependency management

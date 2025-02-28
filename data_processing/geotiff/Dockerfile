@@ -6,14 +6,10 @@ RUN apt-get update && apt-get install -y \
     cmake \
     curl \
     libgdal-dev \
-    libgeos-dev \
     python3 \
     python3-venv \
     python3-pip \
     --fix-missing
-
-# Find the version of GDAL installed to ensure consistency
-RUN ldconfig -p | grep libgdal
 
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal \
     C_INCLUDE_PATH=/usr/include/gdal \
@@ -45,11 +41,7 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y \
     gdal-bin \
     libgdal-dev \
-    libgeos-c1v5 \
     --fix-missing
-
-# Show what GDAL library is installed
-RUN ldconfig -p | grep libgdal
 
 # Copy the virtual environment from the builder stage to the runtime stage
 COPY --from=builder /app/.venv /app/.venv
