@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     --fix-missing
 
+# Find the version of GDAL installed to ensure consistency
+RUN ldconfig -p | grep libgdal
+
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal \
     C_INCLUDE_PATH=/usr/include/gdal \
     CMAKE_PREFIX_PATH='/usr/include/gdal;/usr/include/geos'
@@ -36,21 +39,22 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry install --no-root --without dev && rm -rf $POETRY_CACHE_DIR
 
 # The runtime image, used to just run the code provided its virtual environment
-FROM python:3.11-slim-bullseye AS runtime
+FROM debian:bookworm-slim AS runtime
 
-# Install GDAL runtime libraries
+# Install GDAL runtime libraries - use the same version as the builder
 RUN apt-get update && apt-get install -y \
     gdal-bin \
-    libgdal28 \
+    libgdal-dev \
     libgeos-c1v5 \
     --fix-missing
+
+# Show what GDAL library is installed
+RUN ldconfig -p | grep libgdal
 
 # Copy the virtual environment from the builder stage to the runtime stage
 COPY --from=builder /app/.venv /app/.venv
 
-ENV CPLUS_INCLUDE_PATH=/usr/include/gdal \
-    C_INCLUDE_PATH=/usr/include/gdal \
-    PATH="/app/.venv/bin:$PATH" \
+ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH="/app/.venv/lib/python3.11/site-packages"
 
 # Set working directory
@@ -59,5 +63,4 @@ WORKDIR /app
 COPY src/main.py  ./
 COPY src/assets ./assets
     
-
-ENTRYPOINT ["/bin/bash", "-c", "source /app/.venv/bin/activate && exec python src/main.py \"$@\"", "--"]
+ENTRYPOINT ["/bin/bash", "-c", "source /app/.venv/bin/activate && exec python main.py \"$@\"", "--"]

@@ -36,3 +36,27 @@ python src/main.py \
 Files are named using the pattern: `{variable}-{decade_month}-{state}.tif`
 
 Example: `temperature-2030-08-california.tif`
+
+## Build & Run
+
+1. Build the Docker image (ensuring compatibility with geospatial dependencies):
+   ```bash
+   docker build --platform linux/amd64 -t data_processing/geotiff .
+   ```
+2. Execute the Docker container:
+   ```bash
+    docker run -v ~/.aws/credentials:/root/.aws/credentials:ro \
+    data_processing/geotiff \
+    --s3-bucket="my-bucket" \
+    --s3-uri-input="s3://path/to/data/data.zarr" \
+    --s3-prefix-geotiff="processed/data/geotiffs" \
+    --state="washington"
+    ```
+
+## Dependencies
+
+- Python 3.11
+- [GDAL](https://gdal.org/)
+- [GEOS](https://libgeos.org/)
+- rioxarray, xarray, geopandas, psycopg2
+- Poetry for dependency management
