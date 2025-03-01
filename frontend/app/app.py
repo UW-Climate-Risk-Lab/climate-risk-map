@@ -77,6 +77,8 @@ app.layout = dbc.Container(
                     children=[
                         app_control_panel.TITLE_BAR,
                         html.Br(),
+                        app_control_panel.STATE_SELECTOR,
+                        html.Br(),
                         app_control_panel.CLIMATE_VARIABLE_SELECTOR,
                         html.Br(),
                         app_control_panel.CLIMATE_SCENARIO_SELECTOR,

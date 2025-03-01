@@ -48,6 +48,37 @@ TITLE_BAR = html.Div(
     },  # Add a subtle shadow for effect},  # Add padding to the Div
 )
 
+STATE_SELECTOR = html.Div(
+    children=[
+        dbc.Row(
+            align="center",
+            class_name="g-0",
+            children=[
+                html.Div(
+                    children=[
+                        html.H6(
+                            "Select a State", style={"color": "white"}
+                        ),
+                        dcc.Dropdown(
+                            [
+                                {
+                                    "label": properties["label"],
+                                    "value": state,
+                                }
+                                for state, properties in app_config.STATES['available_states'].items()
+                            ],
+                            id="state-select-dropdown",
+                            placeholder="Select a State",
+                            
+                        ),
+                    ]
+                )
+            ],
+        )
+    ],
+    style={"padding": "15px"},
+)
+
 # TODO: As we add more climate variables, need to make this update the map baseLayer selection
 CLIMATE_VARIABLE_SELECTOR = html.Div(
     children=[

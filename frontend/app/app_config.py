@@ -17,6 +17,21 @@ CLIMATE_DATA = {
     }
 }
 
+STATES = {
+    "available_states": {
+        "washington": {
+            "map_center": {"lat": 47.0902, "lng": -120.7129},
+            "label": "Washington",
+        },
+        "new_york": {
+            "map_center": {"lat": 40.7118, "lng": -74.0071},
+            "label": "New York",
+        },
+    
+    },
+    "default_state": "washington"
+}
+
 MAP_COMPONENT = {
     "id": "map",
     "center": {"lat": 47.0902, "lng": -120.7129},
@@ -47,9 +62,6 @@ MAP_COMPONENT = {
         "position": "bottomleft",
     },
 }
-
-# Pull from open source repo for now
-WASHINGTON_STATE_BOUNDARY_GEOJSON_URL = "https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/washington.geojson"
 
 SUPERCLUSTER = {"radius": 500}
 DEFAULT_POINT_ICON_URL = "assets/black-dot.svg"
