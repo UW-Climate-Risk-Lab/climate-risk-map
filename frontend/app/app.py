@@ -3,8 +3,10 @@ import os
 import dash_leaflet as dl
 import dash_bootstrap_components as dbc
 
+import psycopg2 as pg
+
 from psycopg2 import pool
-from dash import Dash, Input, Output, State, html, dcc, no_update
+from dash import Dash, Input, Output, State, html, dcc, no_update, callback_context
 from dash.exceptions import PreventUpdate
 from typing import List
 import pandas as pd
@@ -24,7 +26,9 @@ PG_PORT = os.environ["PG_PORT"]
 PG_MAX_CONN = os.environ["PG_MAX_CONN"]
 
 MAX_DOWNLOADS = int(os.environ["MAX_DOWNLOADS"])  # Maximum downloads per session
-MAX_DOWNLOAD_AREA = float(os.environ["MAX_DOWNLOAD_AREA"])    # Maximum area in square kilometers the user can download at once
+MAX_DOWNLOAD_AREA = float(
+    os.environ["MAX_DOWNLOAD_AREA"]
+)  # Maximum area in square kilometers the user can download at once
 
 CONNECTION_POOL = pool.SimpleConnectionPool(
     minconn=1,
@@ -54,7 +58,7 @@ def close_all_connections():
 
 try:
     map_conn = get_connection()
-    MAP = app_map.get_map(conn=map_conn)
+    MAP = app_map.get_map()
 except Exception as e:
     raise ValueError("Could not generate map component")
 finally:
@@ -91,14 +95,18 @@ app.layout = dbc.Container(
                 dbc.Col(
                     id="map-col",
                     children=[
-                        html.Div([MAP]),
+                        dcc.Loading(
+                            id="loading-map",
+                            type="default",
+                            children=html.Div(children=[MAP], id="map-div"),
+                        ),
                     ],
                 ),
             ],
         ),
         dcc.Store("climate-metadata-store"),
         dcc.Store(id="download-counter", data=0, storage_type="session"),
-        
+        dcc.Store("prev-selected-state-outline", storage_type="memory"),
     ],
 )
 
@@ -163,7 +171,7 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
         or (decade is None)
         or (month is None)
     ):
-        
+
         return app_config.MAP_COMPONENT["base_map"]["url"], 1, []
 
     min_climate_value = climate_metadata["min_value"]
@@ -174,16 +182,16 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
 
     # Generate Colorbar to match tiles
     color_bar = dl.Colorbar(
-                id=app_config.MAP_COMPONENT["color_bar"]["id"],
-                width=app_config.MAP_COMPONENT["color_bar"]["width"],
-                colorscale=colormap,
-                height=app_config.MAP_COMPONENT["color_bar"]["height"],
-                position=app_config.MAP_COMPONENT["color_bar"]["position"],
-                min=min_climate_value,
-                max=max_climate_value,
-                unit=unit
-            )
-    
+        id=app_config.MAP_COMPONENT["color_bar"]["id"],
+        width=app_config.MAP_COMPONENT["color_bar"]["width"],
+        colorscale=colormap,
+        height=app_config.MAP_COMPONENT["color_bar"]["height"],
+        position=app_config.MAP_COMPONENT["color_bar"]["position"],
+        min=min_climate_value,
+        max=max_climate_value,
+        unit=unit,
+    )
+
     # Generate S3 URI to COG File
     bucket = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_bucket"]
     prefix = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_base_prefix"]
@@ -197,12 +205,47 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
         colormap=colormap,
     )
 
-    return_values = (
-        tile_url,
-        layer_opacity,
-        [color_bar]
-    )
+    return_values = (tile_url, layer_opacity, [color_bar])
     return return_values
+
+
+@app.callback(
+    Output("state-outline-geojson", "url"),
+    Output(app_config.MAP_COMPONENT['id'], 'viewport'),
+    Input("state-select-dropdown", "value"),
+    prevent_initial_call=True,
+)
+def handle_state_outline(selected_state):
+    if not selected_state:
+        return no_update
+    url = f"assets/{selected_state}.geojson"
+    viewport = {
+            "center": app_config.STATES["available_states"][selected_state]["map_center"],
+            "zoom": app_config.STATES["available_states"][selected_state]["map_zoom"],
+            "transition": "setView",
+        }
+    return url, viewport
+
+
+@app.callback(
+    Output("layers-control", "children"),
+    Input("state-select-dropdown", "value"),
+    prevent_initial_call=True,
+)
+def handle_state_features(selected_state):
+    if not selected_state:
+        return no_update
+    if selected_state == "usa":
+        return list()
+    conn = pg.connect(
+        database=selected_state.replace("_", "-"),
+        user=PG_USER,
+        password=PG_PASSWORD,
+        port=PG_PORT,
+    )
+    feature_overlays = app_map.get_feature_overlays(conn=conn)
+    conn.close()
+    return feature_overlays
 
 
 @app.callback(
@@ -244,13 +287,19 @@ def update_ssp_dropdown(climate_variable: str) -> List[str]:
     State("download-counter", "data"),
 )
 def download_csv(
-    n_clicks, shapes, selected_overlays, climate_variable, ssp, decade, month, download_counter
+    n_clicks,
+    shapes,
+    selected_overlays,
+    climate_variable,
+    ssp,
+    decade,
+    month,
+    download_counter,
 ):
     # TODO: Create function to package return values tuple
     # TODO: Add return value checking (Pydantic)
-    
 
-    download_message = ''
+    download_message = ""
     is_open = False
     download_message_color = None
 
@@ -261,7 +310,14 @@ def download_csv(
         download_message = "Please select an area on the map (Hint: Click the black square in the upper right of the map)."
         is_open = True
         download_message_color = "warning"
-        return no_update, 0, download_counter, download_message, is_open, download_message_color
+        return (
+            no_update,
+            0,
+            download_counter,
+            download_message,
+            is_open,
+            download_message_color,
+        )
 
     # Initialize download counter if None
     if download_counter is None:
@@ -269,16 +325,32 @@ def download_csv(
 
     # Check download limit
     if download_counter >= MAX_DOWNLOADS:
-        download_message = f"You have reached the maximum of {MAX_DOWNLOADS} downloads per session."
+        download_message = (
+            f"You have reached the maximum of {MAX_DOWNLOADS} downloads per session."
+        )
         is_open = True
         download_message_color = "danger"
-        return no_update, 0, download_counter, download_message, is_open, download_message_color
-    
+        return (
+            no_update,
+            0,
+            download_counter,
+            download_message,
+            is_open,
+            download_message_color,
+        )
+
     if app_utils.calc_bbox_area(features=shapes["features"]) > MAX_DOWNLOAD_AREA:
         download_message = f"Your selected area is too large to download"
         is_open = True
         download_message_color = "danger"
-        return no_update, 0, download_counter, download_message, is_open, download_message_color
+        return (
+            no_update,
+            0,
+            download_counter,
+            download_message,
+            is_open,
+            download_message_color,
+        )
 
     # Only want to return climate data if user has selected all relevant criteria
     if None in [climate_variable, ssp, decade, month]:
@@ -333,7 +405,7 @@ def download_csv(
             data = api.get_data(input_params=params)
             df = app_utils.process_output_csv(data=data)
             del api
-            
+
         except Exception as e:
             print(e)
             df = pd.DataFrame()
@@ -342,13 +414,20 @@ def download_csv(
 
         # Increment download counter, reset error message
         download_counter += 1
-        download_message = 'Download is in progress!'
+        download_message = "Download is in progress!"
         is_open = True
         download_message_color = "success"
-        
-        return dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"), 0, download_counter, download_message, is_open, download_message_color
-    return no_update, 0
+
+        return (
+            dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv"),
+            0,
+            download_counter,
+            download_message,
+            is_open,
+            download_message_color,
+        )
+    return no_update, 0, download_counter, no_update, no_update, no_update
 
 
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8050, debug=bool(os.environ["DEBUG"]))
+    app.run_server(host="0.0.0.0", port=8050, debug=False)

@@ -26,7 +26,7 @@ def get_state_overlay(state: str, z_index: int) -> dl.Pane:
     Returns:
         dl.Pane: Returns Pane component, which is added to the Map as it's own layer
     """
-    url = f"https://raw.githubusercontent.com/glynnbird/usstatesgeojson/master/{state}.geojson"
+    url = f"assets/{state}.geojson"
     layer = dl.Pane(
         dl.GeoJSON(
             url=url,
@@ -36,9 +36,10 @@ def get_state_overlay(state: str, z_index: int) -> dl.Pane:
                 "fillOpacity": 0,
             },
             zoomToBoundsOnClick=True,
+            id="state-outline-geojson"
         ),
-        id=f"{state}-outline-pane",
-        name=f"{state}",
+        id="state-outline-pane",
+        name="state_pane",
         # pointer-events as none ensures there is not interactivtity, and it is just a state outline
         # style={"pointer-events": "none"},
         style=dict(zIndex=z_index),
@@ -142,7 +143,7 @@ def get_feature_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
     return features
 
 
-def get_map(conn: pg.extensions.connection):
+def get_map(feature_overlays: List = list(), state: str = "usa"):
 
     config = app_config.MAP_COMPONENT
 
@@ -166,10 +167,13 @@ def get_map(conn: pg.extensions.connection):
         url=config["base_map"]["url"], opacity=1, id="climate-tile-layer"
     )
 
-    feature_layers = get_feature_overlays(conn=conn)
+    layers_control = dl.LayersControl(
+        id="layers-control",
+        children=feature_overlays,  # Empty list instead of None
+    )
 
-    # TODO: Make state outline dynamic, hardcoded for washington as of 08/26/2024
-    state_outline_overlay = get_state_overlay(state="washington", z_index=300)
+    # Default
+    state_outline_overlay = get_state_overlay(state=state, z_index=300)
 
     # Default colorscale transparent while callbacks load
     color_bar = html.Div(
@@ -181,15 +185,12 @@ def get_map(conn: pg.extensions.connection):
             base_map_layer,
             drawn_shapes_component,
             climate_layer,
-            dl.LayersControl(
-                id="layers-control",
-                children=feature_layers,
-            ),
+            layers_control,
             state_outline_overlay,
             color_bar,
         ],
-        center=config["center"],
-        zoom=config["zoom"],
+        center=app_config.STATES['available_states'][state]["map_center"],
+        zoom=app_config.STATES['available_states'][state]["map_zoom"],
         style=config["style"],
         id=config["id"],
         preferCanvas=config["preferCanvas"],

@@ -21,21 +21,29 @@ STATES = {
     "available_states": {
         "washington": {
             "map_center": {"lat": 47.0902, "lng": -120.7129},
+            "map_zoom": 7,
             "label": "Washington",
         },
         "new_york": {
-            "map_center": {"lat": 40.7118, "lng": -74.0071},
+            "map_center": {"lat": 42.7118, "lng": -75.0071},
+            "map_zoom": 7,
             "label": "New York",
         },
+        "usa": {
+            "map_center": {"lat": 39.8283, "lng": -98.5795},
+            "map_zoom": 4,
+            "label": "USA"
+
+        }
     
     },
-    "default_state": "washington"
+    "default_state": "usa"
 }
 
 MAP_COMPONENT = {
     "id": "map",
-    "center": {"lat": 47.0902, "lng": -120.7129},
-    "zoom": 7,
+    "center": {"lat": 39.8283, "lng": -98.5795},
+    "zoom": 4,
     "style": {"height": "100vh"},
     "preferCanvas": True,
     "base_map": {
