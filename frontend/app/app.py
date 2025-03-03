@@ -18,55 +18,34 @@ import app_control_panel
 import app_config
 
 TITILER_ENDPOINT = os.environ["TITILER_ENDPOINT"]
-PG_DBNAME = os.environ["PG_DBNAME"]
 PG_USER = os.environ["PG_USER"]
 PG_HOST = os.environ["PG_HOST"]
 PG_PASSWORD = os.environ["PG_PASSWORD"]
 PG_PORT = os.environ["PG_PORT"]
-PG_MAX_CONN = os.environ["PG_MAX_CONN"]
 
 MAX_DOWNLOADS = int(os.environ["MAX_DOWNLOADS"])  # Maximum downloads per session
 MAX_DOWNLOAD_AREA = float(
     os.environ["MAX_DOWNLOAD_AREA"]
 )  # Maximum area in square kilometers the user can download at once
 
-CONNECTION_POOL = pool.SimpleConnectionPool(
-    minconn=1,
-    maxconn=PG_MAX_CONN,
-    dbname=PG_DBNAME,
-    user=PG_USER,
-    password=PG_PASSWORD,
-    host=PG_HOST,
-    port=PG_PORT,
-)
+
+def get_db_connection(dbname: str):
+    """Get a database connection."""
+
+    conn = pg.connect(
+        database=dbname,
+        user=PG_USER,
+        password=PG_PASSWORD,
+        port=PG_PORT,
+    )
+    return conn
 
 
-def get_connection():
-    """Get a connection from the pool."""
-    return CONNECTION_POOL.getconn()
+MAP = app_map.get_base_map()
 
 
-def release_connection(conn):
-    """Return a connection to the pool."""
-    CONNECTION_POOL.putconn(conn)
-
-
-def close_all_connections():
-    """Close all connections in the pool."""
-    CONNECTION_POOL.closeall()
-
-
-try:
-    map_conn = get_connection()
-    MAP = app_map.get_map()
-except Exception as e:
-    raise ValueError("Could not generate map component")
-finally:
-    release_connection(conn=map_conn)
-
-
-icon_url = "/assets/icon.css"
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+assets_path = os.getcwd() + "/assets"
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], assets_folder=assets_path)
 server = app.server
 
 app.layout = dbc.Container(
@@ -94,58 +73,14 @@ app.layout = dbc.Container(
                 ),
                 dbc.Col(
                     id="map-col",
-                    children=[
-                        dcc.Loading(
-                            id="loading-map",
-                            type="default",
-                            children=html.Div(children=[MAP], id="map-div"),
-                        ),
-                    ],
+                    children=[html.Div(children=[MAP], id="map-div")],
                 ),
             ],
         ),
-        dcc.Store("climate-metadata-store"),
         dcc.Store(id="download-counter", data=0, storage_type="session"),
         dcc.Store("prev-selected-state-outline", storage_type="memory"),
     ],
 )
-
-
-@app.callback(
-    Output("climate-metadata-store", "data"),
-    [
-        Input("climate-variable-dropdown", "value"),
-        Input("ssp-dropdown", "value"),
-    ],
-)
-def load_climate_metadata(climate_variable, ssp):
-    """Stores select metadata for use in app"""
-    if (ssp is None) or (climate_variable is None):
-        raise PreventUpdate
-
-    conn = get_connection()
-    api = infraxclimate_api.infraXclimateAPI(conn=conn)
-    ssp = int(ssp[3:])  # Quickfix to get the ssp int value
-    metadata = api.get_climate_metadata(climate_variable=climate_variable, ssp=ssp)
-    del api
-    release_connection(conn=conn)
-
-    min_value = metadata["UW_CRL_DERIVED"]["min_climate_variable_value"]
-    max_value = metadata["UW_CRL_DERIVED"]["max_climate_variable_value"]
-    unit = metadata["UW_CRL_DERIVED"]["units"]
-
-    colormap = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["colormap"]
-    layer_opacity = app_config.CLIMATE_DATA[climate_variable]["geotiff"][
-        "layer_opacity"
-    ]
-
-    return {
-        "min_value": min_value,
-        "max_value": max_value,
-        "colormap": colormap,
-        "unit": unit,
-        "layer_opacity": layer_opacity,
-    }
 
 
 @app.callback(
@@ -159,12 +94,13 @@ def load_climate_metadata(climate_variable, ssp):
         Input("ssp-dropdown", "value"),
         Input("decade-slider", "value"),
         Input("month-slider", "value"),
-        Input("climate-metadata-store", "data"),
+        Input("state-select-dropdown", "value"),
     ],
 )
-def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata):
+def update_climate_tiles(climate_variable, ssp, decade, month, selected_state):
     # TODO: Make state selection dynamic
-    state = "washington"
+    if not selected_state:
+        selected_state = "usa"
     if (
         (ssp is None)
         or (climate_variable is None)
@@ -174,11 +110,11 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
 
         return app_config.MAP_COMPONENT["base_map"]["url"], 1, []
 
-    min_climate_value = climate_metadata["min_value"]
-    max_climate_value = climate_metadata["max_value"]
-    colormap = climate_metadata["colormap"]
-    unit = climate_metadata["unit"]
-    layer_opacity = climate_metadata["layer_opacity"]
+    min_climate_value = app_config.CLIMATE_DATA[climate_variable]["min_value"]
+    max_climate_value = app_config.CLIMATE_DATA[climate_variable]["max_value"]
+    colormap = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["colormap"]
+    unit = app_config.CLIMATE_DATA[climate_variable]["unit"]
+    layer_opacity = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["layer_opacity"]
 
     # Generate Colorbar to match tiles
     color_bar = dl.Colorbar(
@@ -195,7 +131,8 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
     # Generate S3 URI to COG File
     bucket = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_bucket"]
     prefix = app_config.CLIMATE_DATA[climate_variable]["geotiff"]["s3_base_prefix"]
-    file = f"{decade}-{month:02d}-{state}.tif"
+    stat = app_config.CLIMATE_DATA[climate_variable]['statistical_measure']
+    file = f"{climate_variable}_{stat}-{decade}-{month:02d}-usa.tif"
     file_url = f"s3://{bucket}/{prefix}/{str(ssp)}/cogs/{file}"
     tile_url = app_utils.get_tilejson_url(
         titiler_endpoint=TITILER_ENDPOINT,
@@ -211,19 +148,19 @@ def update_climate_tiles(climate_variable, ssp, decade, month, climate_metadata)
 
 @app.callback(
     Output("state-outline-geojson", "url"),
-    Output(app_config.MAP_COMPONENT['id'], 'viewport'),
+    Output(app_config.MAP_COMPONENT["id"], "viewport"),
     Input("state-select-dropdown", "value"),
     prevent_initial_call=True,
 )
 def handle_state_outline(selected_state):
     if not selected_state:
         return no_update
-    url = f"assets/{selected_state}.geojson"
+    url = f"assets/geojsons/{selected_state}.geojson"
     viewport = {
-            "center": app_config.STATES["available_states"][selected_state]["map_center"],
-            "zoom": app_config.STATES["available_states"][selected_state]["map_zoom"],
-            "transition": "setView",
-        }
+        "center": app_config.STATES["available_states"][selected_state]["map_center"],
+        "zoom": app_config.STATES["available_states"][selected_state]["map_zoom"],
+        "transition": "flyTo",
+    }
     return url, viewport
 
 
@@ -238,7 +175,7 @@ def handle_state_features(selected_state):
     if selected_state == "usa":
         return list()
     conn = pg.connect(
-        database=selected_state.replace("_", "-"),
+        database=selected_state,
         user=PG_USER,
         password=PG_PASSWORD,
         port=PG_PORT,
@@ -283,6 +220,7 @@ def update_ssp_dropdown(climate_variable: str) -> List[str]:
         Input("ssp-dropdown", "value"),
         Input("decade-slider", "value"),
         Input("month-slider", "value"),
+        Input("state-select-dropdown", "value"),
     ],
     State("download-counter", "data"),
 )
@@ -295,6 +233,7 @@ def download_csv(
     decade,
     month,
     download_counter,
+    selected_state
 ):
     # TODO: Create function to package return values tuple
     # TODO: Add return value checking (Pydantic)
@@ -384,7 +323,7 @@ def download_csv(
                 + app_config.POWER_GRID_LAYERS[overlay]["GeoJSON"]["osm_subtypes"]
             )
 
-        conn = get_connection()
+        conn = get_db_connection(dbname=selected_state)
         try:
             params = infraxclimate_api.infraXclimateInput(
                 category=category,
@@ -410,7 +349,7 @@ def download_csv(
             print(e)
             df = pd.DataFrame()
 
-        release_connection(conn=conn)
+        conn.close()
 
         # Increment download counter, reset error message
         download_counter += 1
@@ -430,4 +369,4 @@ def download_csv(
 
 
 if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8050, debug=False)
+    app.run_server(host="0.0.0.0", port=8050, debug=True, dev_tools_hot_reload=False)

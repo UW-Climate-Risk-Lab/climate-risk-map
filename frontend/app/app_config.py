@@ -5,7 +5,11 @@ DEFAULT_CLIMATE_VARIABLE = "fwi"  # Climate data to load on app start up
 
 CLIMATE_DATA = {
     "fwi": {
-        "label": r"Fire Weather Index (NASA NEX GDDP)",
+        "label": r"Fire Weather Index (NASA NEX GDDP Ensemble Mean)",
+        "statistical_measure": "ensemble_mean",
+        "unit": "",
+        "min_value": 0,
+        "max_value": 50,
         "geotiff": {
             "format": "cogs",
             "s3_bucket": "uw-crl",
@@ -24,20 +28,12 @@ STATES = {
             "map_zoom": 7,
             "label": "Washington",
         },
-        "new_york": {
+        "new-york": {
             "map_center": {"lat": 42.7118, "lng": -75.0071},
             "map_zoom": 7,
             "label": "New York",
         },
-        "usa": {
-            "map_center": {"lat": 39.8283, "lng": -98.5795},
-            "map_zoom": 4,
-            "label": "USA"
-
-        }
-    
     },
-    "default_state": "usa"
 }
 
 MAP_COMPONENT = {
@@ -69,10 +65,11 @@ MAP_COMPONENT = {
         "height": 150,
         "position": "bottomleft",
     },
+    "default_state": "usa",
 }
 
 SUPERCLUSTER = {"radius": 500}
-DEFAULT_POINT_ICON_URL = "assets/black-dot.svg"
+DEFAULT_POINT_ICON_URL = "assets/icons/black-dot.svg"
 
 # Main keys should be the same as [Overlay][name]!
 POWER_GRID_LAYERS = {
@@ -98,7 +95,14 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": {"radius": 50},
         },
         "geom_types": ["MultiPolygon"],
-        "icon": {"url": "assets/electric.svg"},
+        "icon": assign(
+            """
+            function(feature, latlng){
+                const custom_icon = L.icon({iconUrl: `assets/icons/power-plant.svg`, iconSize: [15, 15]});
+                return L.marker(latlng, {icon: custom_icon});
+            }
+            """
+        ),
     },
     "Power Lines": {
         "Overlay": {
@@ -170,7 +174,14 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon", "Point"],
-        "icon": {"url": DEFAULT_POINT_ICON_URL},
+        "icon": assign(
+            """
+            function(feature, latlng){
+                const custom_icon = L.icon({iconUrl: `assets/icons/black-dot.svg`, iconSize: [15, 15]});
+                return L.marker(latlng, {icon: custom_icon});
+            }
+            """,
+        )
     },
     "Power Transformers": {
         "Overlay": {
@@ -194,7 +205,14 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon", "Point"],
-        "icon": {"url": DEFAULT_POINT_ICON_URL},
+        "icon": assign(
+            """
+            function(feature, latlng){
+                const custom_icon = L.icon({iconUrl: `assets/icons/black-dot.svg`, iconSize: [15, 15]});
+                return L.marker(latlng, {icon: custom_icon});
+            }
+            """,
+        ),
     },
     "Power Substations": {
         "Overlay": {
@@ -218,7 +236,14 @@ POWER_GRID_LAYERS = {
             "superClusterOptions": SUPERCLUSTER,
         },
         "geom_types": ["MultiPolygon", "Point"],
-        "icon": {"url": DEFAULT_POINT_ICON_URL},
+        "icon": assign(
+            """
+            function(feature, latlng){
+                const custom_icon = L.icon({iconUrl: `assets/icons/black-dot.svg`, iconSize: [15, 15]});
+                return L.marker(latlng, {icon: custom_icon});
+            }
+            """,
+        ),
     },
 }
 
@@ -239,12 +264,5 @@ TRANSPARENT_MARKER_CLUSTER = assign(
         iconSize: L.point(40, 40),
     });
     return L.marker(latlng, {icon : icon})
-}"""
-)
-
-CUSTOM_ICON_TEST = assign(
-    """function(feature, latlng){
-const custom_icon = L.icon({iconUrl: `assets/power-plant.svg`, iconSize: [15, 15]});
-return L.marker(latlng, {icon: custom_icon});
 }"""
 )

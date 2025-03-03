@@ -26,7 +26,7 @@ def get_state_overlay(state: str, z_index: int) -> dl.Pane:
     Returns:
         dl.Pane: Returns Pane component, which is added to the Map as it's own layer
     """
-    url = f"assets/{state}.geojson"
+    url = f"assets/geojsons/{state}.geojson"
     layer = dl.Pane(
         dl.GeoJSON(
             url=url,
@@ -96,7 +96,7 @@ def get_power_grid_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
             superClusterOptions = False
 
         if subtype_config["icon"] is not None:
-            pointToLayer = app_utils.create_custom_icon(subtype_config["icon"]["url"])
+            pointToLayer = subtype_config["icon"]
         else:
             pointToLayer = None
 
@@ -143,7 +143,12 @@ def get_feature_overlays(conn: pg.extensions.connection) -> List[dl.Overlay]:
     return features
 
 
-def get_map(feature_overlays: List = list(), state: str = "usa"):
+def get_base_map() -> dl.Map:
+    """This generates a map component, the primary component of dash-leaflet
+
+    Returns:
+        dl.Map: A dash leaflet map component setup 
+    """
 
     config = app_config.MAP_COMPONENT
 
@@ -163,17 +168,20 @@ def get_map(feature_overlays: List = list(), state: str = "usa"):
         ]
     )
 
+    # Generate a placeholder TileLayer for climate raster data, can be dynamically updated
     climate_layer = dl.TileLayer(
         url=config["base_map"]["url"], opacity=1, id="climate-tile-layer"
     )
 
+
+    # Generate a placeholder for geojson features
     layers_control = dl.LayersControl(
         id="layers-control",
-        children=feature_overlays,  # Empty list instead of None
+        children=list(),  # Empty list instead of None
     )
 
-    # Default
-    state_outline_overlay = get_state_overlay(state=state, z_index=300)
+    # Default 
+    state_outline_overlay = get_state_overlay(state=config["default_state"], z_index=300)
 
     # Default colorscale transparent while callbacks load
     color_bar = html.Div(
@@ -189,8 +197,8 @@ def get_map(feature_overlays: List = list(), state: str = "usa"):
             state_outline_overlay,
             color_bar,
         ],
-        center=app_config.STATES['available_states'][state]["map_center"],
-        zoom=app_config.STATES['available_states'][state]["map_zoom"],
+        center=config["center"],
+        zoom=config["zoom"],
         style=config["style"],
         id=config["id"],
         preferCanvas=config["preferCanvas"],

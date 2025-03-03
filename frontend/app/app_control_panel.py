@@ -10,7 +10,7 @@ TITLE_BAR = html.Div(
             children=[
                 dbc.Col(
                     html.Img(
-                        src="/assets/CRL-Logo.png",
+                        src="/assets/icons/CRL-Logo.png",
                         style={
                             "width": "10vw",  # Set the width relative to viewport width
                             "max-width": "50px",  # Limit the max size of the image
