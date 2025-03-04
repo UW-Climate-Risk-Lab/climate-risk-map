@@ -34,6 +34,7 @@ def get_db_connection(dbname: str):
 
     conn = pg.connect(
         database=dbname,
+        host=PG_HOST,
         user=PG_USER,
         password=PG_PASSWORD,
         port=PG_PORT,
@@ -174,12 +175,7 @@ def handle_state_features(selected_state):
         return no_update
     if selected_state == "usa":
         return list()
-    conn = pg.connect(
-        database=selected_state,
-        user=PG_USER,
-        password=PG_PASSWORD,
-        port=PG_PORT,
-    )
+    conn = get_db_connection(dbname=selected_state)
     feature_overlays = app_map.get_feature_overlays(conn=conn)
     conn.close()
     return feature_overlays
