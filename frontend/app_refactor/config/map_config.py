@@ -1,0 +1,117 @@
+"""
+Map Configuration for the Climate Risk map
+
+This module adds the configuration for the Map component of the dash-leaflet app.
+This also defines the available regions that can be selected for the map. By centralizing
+this configuration, we can add additional regions and update the map setings all in one place.
+
+"""
+
+from dataclasses import dataclass
+
+
+from dash_extensions.javascript import arrow_function
+from dash_extensions.javascript import assign
+
+from typing import List
+
+from settings import ASSETS_PATH
+from asset_config import AssetConfig, Asset
+
+
+
+@dataclass
+class Region:
+    name: str
+    label: str  # Used for display in the UI
+    dbname: str  # database name where region asset data lives
+    map_center_lat: float
+    map_center_lon: float
+    map_zoom: int
+    geojson: str  # path to geojson with region shape
+    available_assets: List[Asset]  # flag if region should be available on the map
+
+
+class MapConfig:
+    """Map-specific configuration"""
+
+    # Base map settings for dash-leaflet component
+    # Decided to keep as separate config dictionary
+    BASE_MAP_COMPONENT = {
+        "id": "map",
+        "center": {"lat": 39.8283, "lng": -98.5795},
+        "zoom": 4,
+        "style": {"height": "100vh"},
+        "preferCanvas": True,
+        "default_region_overlay_path": "assets/geojsons/usa.geojson",
+        "base_map_layer": {
+            "id": "base-map-layer",
+            "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+            "attribution": '&copy; <a href="https://carto.com/attributions">CARTO</a>',
+        },
+        "drawn_shapes_layer": {
+            "id": "drawn-shapes-layer",
+            "draw": {
+                "rectangle": True,
+                "circle": False,
+                "polygon": False,
+                "circlemarker": False,
+                "polyline": False,
+                "marker": False,
+            },
+            "edit": False,
+        },
+        "color_bar_layer": {
+            "id": "color-bar-layer",
+            "width": 20,
+            "height": 150,
+            "position": "bottomleft",
+        },
+        "hazard_tile_layer": {
+            "id": "hazard-tile-layer",
+            "placeholder_url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+            "placeholder_opacity": 1,
+        },
+        "asset_layer": {"id": "asset-layer"},
+        "viewport": {"transition": "flyTo"}
+    }
+
+    REGIONS = [
+        Region(
+            name="washington",
+            label="Washington",
+            dbname="washington",
+            map_center_lat=47.0902,
+            map_center_lon=-120.7129,
+            map_zoom=7,
+            geojson=ASSETS_PATH + "/geojsons/washington.geojson",
+            available_assets=[
+                AssetConfig.get_asset("power-plant"),
+                AssetConfig.get_asset("power-transmission-line"),
+                AssetConfig.get_asset("power-distribution-line"),
+                AssetConfig.get_asset("power-substation"),
+            ],
+        ),
+        Region(
+            name="new-york",
+            label="New York",
+            dbname="new-york",
+            map_center_lat=42.7118,
+            map_center_lon=-75.0071,
+            map_zoom=7,
+            geojson=ASSETS_PATH + "/geojsons/new-york.geojson",
+            available_assets=[
+                AssetConfig.get_asset("power-plant"),
+                AssetConfig.get_asset("power-transmission-line"),
+                AssetConfig.get_asset("power-distribution-line"),
+                AssetConfig.get_asset("power-substation"),
+            ],
+        ),
+    ]
+
+    @classmethod
+    def get_region(cls, name: str) -> Region:
+        for region in cls.REGIONS:
+            if region.name == name:
+                return region
+        return None
