@@ -1,5 +1,7 @@
 import math
 
+import pandas as pd
+
 from typing import Dict, List
 
 def convert_geojson_feature_collection_to_points(
@@ -111,3 +113,15 @@ def create_feature_toolip(geojson: dict):
 
         geojson["features"][i]["properties"]["tooltip"] = tooltip_str
     return geojson
+
+
+def geojson_to_pandas(data: dict) -> pd.DataFrame:
+
+    if data["features"] is None:
+        return pd.DataFrame()
+
+    properties = [feature["properties"] for feature in data["features"]]
+
+    df = pd.DataFrame(properties)
+    
+    return df

@@ -6,6 +6,7 @@ This also defines the available regions that can be selected for the map. By cen
 this configuration, we can add additional regions and update the map setings all in one place.
 
 """
+import logging
 
 from dataclasses import dataclass
 
@@ -15,10 +16,10 @@ from dash_extensions.javascript import assign
 
 from typing import List
 
-from settings import ASSETS_PATH
-from asset_config import AssetConfig, Asset
+from config.settings import ASSETS_PATH
+from config.asset_config import AssetConfig, Asset
 
-
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Region:
@@ -43,7 +44,7 @@ class MapConfig:
         "zoom": 4,
         "style": {"height": "100vh"},
         "preferCanvas": True,
-        "default_region_overlay_path": "assets/geojsons/usa.geojson",
+        "default_region_name": "usa",
         "base_map_layer": {
             "id": "base-map-layer",
             "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
@@ -63,6 +64,7 @@ class MapConfig:
         },
         "color_bar_layer": {
             "id": "color-bar-layer",
+            "parent_div_id": "color-bar-layer-div",
             "width": 20,
             "height": 150,
             "position": "bottomleft",
@@ -107,11 +109,22 @@ class MapConfig:
                 AssetConfig.get_asset("power-substation"),
             ],
         ),
+        Region(
+            name="usa",
+            label="United States",
+            dbname=None,
+            map_center_lon=-98.5795,
+            map_center_lat=39.8283,
+            map_zoom=4,
+            geojson=ASSETS_PATH + "/geojsons/usa.geojson",
+            available_assets=[]
+        )
     ]
 
     @classmethod
-    def get_region(cls, name: str) -> Region:
+    def get_region(cls, region_name: str) -> Region:
         for region in cls.REGIONS:
-            if region.name == name:
+            if region.name == region_name:
                 return region
+        logger.error(f"Region '{region_name}' that was requested is not configured")
         return None

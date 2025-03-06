@@ -1,11 +1,11 @@
 import os
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 # Load environment variables from .env file if it exists
-load_dotenv()
+#load_dotenv()
 
 # App settings
-ASSETS_PATH = os.path.join(os.getcwd(), "assets")`
+ASSETS_PATH = "assets"
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 # TiTiler settings

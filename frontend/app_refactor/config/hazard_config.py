@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 from typing import List, Dict
 
-from settings import S3_BUCKET
+from config.settings import S3_BUCKET
+from config.map_config import Region
 
 import logging
 
@@ -23,6 +24,7 @@ class Hazard:
     name: str
     label: str
     available_measures: List[str]
+    display_measure: str
     unit: str
     min_value: float  # Min and max values used for colorbar
     max_value: float
@@ -30,7 +32,7 @@ class Hazard:
     geotiff: Geotiff
 
     def get_hazard_geotiff_s3_uri(
-        self, measure: str, ssp: int, decade: int, month: int, region_name: str
+        self, measure: str, ssp: int, decade: int, month: int, region: Region
     ) -> str:
         """Geotiffs live in S3 and are segmented by time step (for now decade and month),
         aggregation measure, and SSP scenario. This method takes a hazard and the given inputs
@@ -48,12 +50,11 @@ class Hazard:
 
         if ssp not in self.available_ssp:
             logger.error(f"SSP{str(ssp)} is not available for {self.name}")
-            raise
+            return None
         if measure not in self.available_measures:
             logger.error(f"{measure} is not available for {self.name}")
-            raise
-
-        file = f"{self.name}_{measure}-{decade}-{month:02d}-{region_name}.tif"
+            return None
+        file = f"{self.name}_{measure}-{decade}-{month:02d}-{region.name}.tif"
         uri = f"s3://{self.geotiff.s3_bucket}/{self.geotiff.s3_prefix}/ssp{str(ssp)}/{self.geotiff.format}/{file}"
         return uri
 
@@ -73,6 +74,7 @@ class HazardConfig:
                 "ensemble_q1",
                 "ensemble_q3",
             ],
+            display_measure="ensemble_mean",
             unit="",
             min_value=0,
             max_value=50,
@@ -88,13 +90,14 @@ class HazardConfig:
     ]
 
     @classmethod
-    def get_hazard(cls, name: str) -> Hazard:
+    def get_hazard(cls, hazard_name: str) -> Hazard:
         """Returns hazard object
 
         Args:
-            name (str): Name of hazard indicator
+            hazard_name (str): Name of hazard indicator
         """
         for hazard in cls.HAZARDS:
-            if hazard.name == name:
+            if hazard.name == hazard_name:
                 return hazard
+        logger.error(f"Hazard '{hazard_name}' that was requested is not configured")
         return None

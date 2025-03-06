@@ -3,6 +3,7 @@ import psycopg2 as pg
 from psycopg2 import pool
 from contextlib import contextmanager
 import logging
+
 from config.settings import PG_USER, PG_PASSWORD, PG_HOST, PG_PORT
 
 logger = logging.getLogger(__name__)

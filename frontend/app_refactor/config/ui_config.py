@@ -7,7 +7,7 @@ these settings, we can maintain a consistent look and feel throughout
 the application and make global style changes easily.
 """
 
-from settings import ASSETS_PATH
+from config.settings import ASSETS_PATH
 
 
 class UIConfig:

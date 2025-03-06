@@ -228,8 +228,8 @@ def download_csv(
     ssp,
     decade,
     month,
+    selected_state,
     download_counter,
-    selected_state
 ):
     # TODO: Create function to package return values tuple
     # TODO: Add return value checking (Pydantic)

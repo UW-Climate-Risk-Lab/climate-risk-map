@@ -66,6 +66,7 @@ def create_region_selector():
                                 ],
                                 id="region-select-dropdown",
                                 placeholder="Select a Region",
+                                value=MapConfig.BASE_MAP_COMPONENT["default_region_name"]
                             ),
                         ]
                     )
@@ -213,7 +214,7 @@ def create_download_section():
                                 n_clicks=0,
                                 style=UIConfig.BUTTON_STYLE,
                             ),
-                            dcc.Download(id="csv-download"),
+                            dcc.Download(id="data-download"),
                         ],
                     )
                 ],

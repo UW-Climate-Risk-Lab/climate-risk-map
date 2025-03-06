@@ -3,7 +3,9 @@ import logging
 import httpx
 
 from config.settings import TITILER_ENDPOINT
+from config.map_config import MapConfig
 from config.hazard_config import Hazard
+from config.map_config import Region
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +32,13 @@ class HazardRasterDAO:
     """
     
     @staticmethod
-    def get_hazard_tilejson(
+    def get_hazard_tilejson_url(
         hazard: Hazard,
         measure: str,
         decade: int,
         month: int,
-        ssp: int
+        ssp: int,
+        region: Region
     ):
         """For requested hazard indicator, queries TiTiler for specific geotiff
         and returns tiles
@@ -52,9 +55,11 @@ class HazardRasterDAO:
         """
 
         endpoint = f"{TITILER_ENDPOINT}/cog/WebMercatorQuad/tilejson.json"
-
+        file_uri = hazard.get_hazard_geotiff_s3_uri(measure=measure, ssp=ssp, decade=decade, month=month, region=region)
+        if not file_uri:
+            return None
         params = {
-            "url": hazard.get_hazard_geotiff_s3_uri(measure=measure, ssp=ssp, decade=decade, month=month),
+            "url": file_uri,
             "rescale": f"{hazard.min_value},{hazard.max_value}",
             "colormap_name": hazard.geotiff.colormap,
         }

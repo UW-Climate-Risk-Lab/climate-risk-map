@@ -1,80 +1,178 @@
 import logging
 from dash import Input, Output, no_update
-from dash.exceptions import PreventUpdate
 
 from config.map_config import MapConfig
+
 from services.map_service import MapService
+from services.hazard_service import HazardService
+
 from utils.error_utils import handle_callback_error
 
 logger = logging.getLogger(__name__)
 
+
 def register_map_callbacks(app):
     """Register all map-related callbacks
-    
+
     Args:
         app: Dash application instance
     """
-    
+
     @app.callback(
         Output("region-outline-geojson", "url"),
         Output(MapConfig.BASE_MAP_COMPONENT["id"], "viewport"),
         Input("region-select-dropdown", "value"),
         prevent_initial_call=True,
     )
-    @handle_callback_error
-    def handle_region_outline(selected_region):
-        """Update state outline and map viewport when state selection changes
-        
+    @handle_callback_error(output_count=2)
+    def update_region_outline(selected_region: str):
+        """Update region outline and map viewport when region selection changes
+
         Args:
-            selected_state (str): Selected state
-            
+            selected_region (str): Selected region
+
         Returns:
             tuple: GeoJSON URL and viewport settings
         """
         if not selected_region:
-            raise no_update
-        
-        region = MapConfig.get_region(name=selected_region)
+            return no_update
+
+        region = MapConfig.get_region(region_name=selected_region)
 
         if not region:
-            logger.error(f"{selected_region} from region select dropdown is not configured")
+            logger.error(
+                f"{selected_region} from region select dropdown is not configured"
+            )
             return no_update
-            
+
         geojson_path = region.geojson
         viewport = {
             "center": {"lat": region.map_center_lat, "lng": region.map_center_lon},
             "zoom": region.map_zoom,
             "transition": MapConfig.BASE_MAP_COMPONENT["viewport"]["transition"],
         }
-            
+
         # Get state outline URL and viewport settings
         return geojson_path, viewport
-    
+
     @app.callback(
         Output(MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"], "children"),
         Input("region-select-dropdown", "value"),
         prevent_initial_call=True,
     )
-    @handle_callback_error
-    def handle_region_features(selected_region):
+    @handle_callback_error(output_count=1)
+    def update_region_features(selected_region):
         """Update map overlays when region selection changes. This queries
-        database and loads vector features. 
-        
+        database and loads vector features.
+
         Args:
-            selected_state (str): Selected state
-            
+            selected_region (str): Selected region
+
         Returns:
             list: List of map overlays
         """
         if not selected_region:
-            raise no_update
-            
-        region = MapConfig.get_region(name=selected_region)
-
-        if region:
-            return MapService.get_asset_overlays(region)
-        else:
-            logger.error(f"{selected_region} from region select dropdown is not configured")
             return no_update
 
+        overlays = MapService.get_asset_overlays(region_name=selected_region)
+
+        return overlays
+
+    @app.callback(
+        [
+            Output(MapConfig.BASE_MAP_COMPONENT["hazard_tile_layer"]["id"], "url"),
+            Output(MapConfig.BASE_MAP_COMPONENT["hazard_tile_layer"]["id"], "opacity"),
+        ],
+        [
+            Input("hazard-indicator-dropdown", "value"),
+            Input("ssp-dropdown", "value"),
+            Input("decade-slider", "value"),
+            Input("month-slider", "value"),
+            Input("region-select-dropdown", "value"),
+        ],
+    )
+    @handle_callback_error(output_count=2)
+    def update_hazard_tiles(
+        selected_hazard: str, ssp: int, decade: int, month: int, selected_region: str
+    ):
+        """Update climate tiles based on user selections
+
+        Args:
+            selected_hazard (str): Selected hazard indicator variable
+            ssp (str): Selected emissions scenario
+            decade (int): Selected decade
+            month (int): Selected month
+            selected_region (str): Selected region name
+
+        Returns:
+            tuple: Tile URL, opacity
+        """
+        logger.debug(
+            f"Updating hazard tiles: var={selected_hazard}, ssp={ssp}, decade={str(decade)}, month={str(month)}"
+        )
+
+        # If any required inputs are missing, return default values
+        if (
+            (ssp is None)
+            or (selected_hazard is None)
+            or (decade is None)
+            or (month is None)
+        ):
+            return no_update
+
+        url, opacity = HazardService.get_hazard_tilejson_url(
+            hazard_name=selected_hazard,
+            ssp=int(ssp),
+            month=int(month),
+            decade=int(decade),
+            region_name=selected_region,
+        )
+
+        # Get climate tile data from service
+        return url, opacity
+    
+    @app.callback(
+        [
+            Output(MapConfig.BASE_MAP_COMPONENT["color_bar_layer"]["parent_div_id"], "children")
+        ],
+        [
+            Input("hazard-indicator-dropdown", "value"),
+            Input("ssp-dropdown", "value"),
+            Input("decade-slider", "value"),
+            Input("month-slider", "value"),
+        ],
+    )
+    @handle_callback_error(output_count=1)
+    def update_color_bar(selected_hazard, ssp, decade, month):
+        if (
+            (ssp is None)
+            or (selected_hazard is None)
+            or (decade is None)
+            or (month is None)
+        ):
+            return no_update
         
+        color_bar = MapService.get_color_bar(hazard_name=selected_hazard)
+
+        return [color_bar]
+
+    @app.callback(
+        [Output("ssp-dropdown", "options")],
+        [Input("hazard-indicator-dropdown", "value")]
+    )
+    @handle_callback_error(output_count=1)
+    def update_ssp_dropdown(hazard_name: str):
+        """Update SSP dropdown options based on selected climate variable
+        
+        Args:
+            hazard_name (str): Selected climate variable
+            
+        Returns:
+            list: List of available SSP options
+        """
+        if not hazard_name:
+            return no_update
+        
+        ssp_options = HazardService.get_available_ssp(hazard_name=hazard_name)
+            
+        return [ssp_options]

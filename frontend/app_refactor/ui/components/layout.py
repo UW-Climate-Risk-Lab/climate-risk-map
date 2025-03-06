@@ -33,7 +33,5 @@ def create_main_layout():
             ),
             # State for tracking downloads
             dcc.Store(id="download-counter", data=0, storage_type="session"),
-            # State for tracking previously selected state
-            dcc.Store("prev-selected-state-outline", storage_type="memory"),
         ],
     )

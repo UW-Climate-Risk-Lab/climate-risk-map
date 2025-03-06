@@ -1,4 +1,3 @@
-# app.py
 import os
 import logging
 import atexit
