@@ -68,27 +68,15 @@ def register_download_callbacks(app):
                 month=selected_month,
                 download_count=stored_download_count,
             )
-            if len(download.data) > 0:
 
-                return (
-                    dcc.send_data_frame(
-                        download.data.to_csv, "climate_risk_map_download.csv"
-                    ),
-                    download.n_clicks,
-                    download.download_count,
-                    download.download_message,
-                    download.download_message_is_open,
-                    download.download_message_color,
-                )
-            else:
-                return (
-                    no_update,
-                    download.n_clicks,
-                    download.download_count,
-                    "No results from selected area!",
-                    True,
-                    "danger",
-                )
+            return (
+                download.data_sender,
+                download.n_clicks,
+                download.download_count,
+                download.download_message,
+                download.download_message_is_open,
+                download.download_message_color,
+            )
 
 
         return no_update, 0, stored_download_count, no_update, no_update, no_update

@@ -7,8 +7,11 @@ import logging
 import dash_leaflet as dl
 import pandas as pd
 
+from dash import dcc
+
 from typing import List, Dict
 from dataclasses import dataclass
+
 
 from config.settings import MAX_DOWNLOADS, MAX_DOWNLOAD_AREA
 from config.hazard_config import HazardConfig, Hazard
@@ -21,10 +24,11 @@ from config.map_config import MapConfig, Region
 
 logger = logging.getLogger(__name__)
 
+dcc.send_data_frame
 
 @dataclass
 class DownloadConfig:
-    data: pd.DataFrame | None
+    data_sender: Dict | None # This will be a 
     hazard: Hazard | None
     assets: List[Asset]
     region: Region
@@ -93,6 +97,8 @@ class DownloadService:
         month: int,
         download_count: int,
     ):
+        
+        logger.info(f"Download requested: region={region_name}, hazard={hazard_name}, ssp={ssp}, month={month}, decade={decade}")
 
         hazard = HazardConfig.get_hazard(hazard_name=hazard_name)
         
@@ -108,7 +114,7 @@ class DownloadService:
             download_count = 0
 
         download = DownloadConfig(
-            data=pd.DataFrame(),
+            data_sender=None,
             hazard=hazard,
             assets=assets,
             region=region,
@@ -137,12 +143,21 @@ class DownloadService:
                 decade=[decade]
             )
             df = geojson_to_pandas(data=geojson)
-            download.data = df
-            download.download_count += 1
-            download.download_message = "Download is in progress!"
-            download.download_message_is_open = True
-            download.download_message_color = "success"
+
+            if len(df) == 0:
+                download.data_sender = None
+                download.download_message = "No data was found over the selected area"
+                download.download_message_is_open = True
+                download.download_message_color = "warning"
+            else:
+                download.data_sender = dcc.send_data_frame(df.to_csv, "climate_risk_map_download.csv")
+                download.download_count += 1
+                download.download_message = "Download is in progress!"
+                download.download_message_is_open = True
+                download.download_message_color = "success"
+                logger.info(f"Download completed: {len(df)} records, region={region_name}")
             return download
+
         else:
             return download
 

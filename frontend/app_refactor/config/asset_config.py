@@ -15,6 +15,8 @@ from dash_extensions.javascript import arrow_function
 from dash_extensions.javascript import assign
 
 
+
+
 @dataclass
 class Asset:
     name: str
@@ -31,6 +33,12 @@ class Asset:
     superClusterOptions: dict  # Used in superClusterOptions kwarg in leaflet GeoJSON component, example "superClusterOptions": {"radius": 50}
     geom_types: List[str]
     icon: Dict | None = None  # This should be initialized with the assign funcion
+
+@dataclass
+class OpenStreetMapAsset(Asset):
+    osm_category: str
+    osm_types: str
+    osm_subtypes: str
 
 class AssetConfig:
     ASSETS = [

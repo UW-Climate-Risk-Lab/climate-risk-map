@@ -1,6 +1,7 @@
 import logging
 
 import httpx
+import json
 
 from config.settings import TITILER_ENDPOINT
 from config.map_config import MapConfig
@@ -12,18 +13,39 @@ logger = logging.getLogger(__name__)
 def query_titiler(endpoint: str, params):
     try:
         r = httpx.get(url=endpoint, params=params)
+        
+        if r.content:
+            try:
+                detail = json.loads(r.content.decode('utf-8'))["detail"]
+            except json.JSONDecodeError:
+                logger.warning("Invalid JSON format in TiTiler content bytes data.")
+                detail = ""
+            except UnicodeDecodeError:
+                logger.warning("Unable to decode TiTiler content bytes data with utf-8.")
+                detail = ""
+            except Exception as e:
+                logger.warning("Unable to access TiTiler response detail")
+                detail = ""
+        else:
+            detail = ""
+        
         r.raise_for_status()  # Raise an exception for HTTP errors
+    
+    except httpx.TimeoutException as e:
+        logger.error(f"TiTiler Timeout Error: {str(e)}\nURL: {params['url']}")
+        # Return a specific response for timeout
+        return {"error": "timeout", "message": "Service timed out, please try again"}
 
     except httpx.RequestError as e:
-        raise ConnectionError("Unable to connect to Titiler Endpoint!") from e
+        logger.error(f"TiTiler Request Error: {str(e)}\nTiTiler Detail: {detail}\nURL: {params["url"]}")
     
     except httpx.HTTPStatusError as e:
-        raise ConnectionError(f"Error response {e.response.status_code} from Titiler Endpoint!") from e
+        logger.error(f"TiTiler Status Error: {str(e)}\nTiTiler Detail: {detail}\nURL: {params["url"]}")
     
     try:
         return r.json()
     except ValueError as e:
-        raise ValueError("Invalid JSON response from Titiler Endpoint!") from e
+        logger.error(f"TiTiler Value Error: {str(e)}\nTiTiler Detail: {detail}\nURL: {params["url"]}")
 
 class HazardRasterDAO:
     """
@@ -39,7 +61,7 @@ class HazardRasterDAO:
         month: int,
         ssp: int,
         region: Region
-    ):
+    ) -> str | None:
         """For requested hazard indicator, queries TiTiler for specific geotiff
         and returns tiles
 
@@ -64,7 +86,10 @@ class HazardRasterDAO:
             "colormap_name": hazard.geotiff.colormap,
         }
         r = query_titiler(endpoint=endpoint, params=params)
-        tiles = r["tiles"][0]
+        try:
+            tiles = r["tiles"][0]
+        except Exception as e:
+            tiles = None
         return tiles
 
     

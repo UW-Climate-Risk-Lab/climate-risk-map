@@ -676,6 +676,8 @@ class infraXclimateAPI:
         result = self._execute_postgis(query=query, params=tuple(query_params))
         geojson = result[0][0]
         try:
+            if geojson["features"] is None:
+                geojson["features"] = []
             infraXclimateOutput(geojson=geojson)
         except ValidationError as e:
             print(e)

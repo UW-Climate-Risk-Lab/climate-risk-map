@@ -222,7 +222,6 @@ def create_download_section():
                 class_name="g-0",
                 style={"border-radius": "25px"},
             ),
-            html.Br(),
             dbc.Row(
                 align="center",
                 children=[
