@@ -102,14 +102,16 @@ def create_feature_toolip(geojson: dict):
 
     for i, feature in enumerate(geojson["features"]):
 
-        # For now, our tooltip will depend on the OSM tags
-        if "tags" not in feature["properties"].keys():
-            raise ValueError("Tags arent available in GeoJSON!")
-
         tooltip_str = ""
+        
+        # "tags" is a special property that relates to OpenStreetMap features
 
-        for key, value in feature["properties"]["tags"].items():
-            tooltip_str = tooltip_str + f"<b>{key}<b>: {value}<br>"
+        if "tags" in feature["properties"].keys():
+            for key, value in feature["properties"]["tags"].items():
+                tooltip_str = tooltip_str + f"<b>{str(key)}<b>: {str(value)}<br>"
+        else:
+            for key, value in feature["properties"].items():
+                tooltip_str = tooltip_str + f"<b>{key}<b>: {value}<br>"
 
         geojson["features"][i]["properties"]["tooltip"] = tooltip_str
     return geojson

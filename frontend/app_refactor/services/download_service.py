@@ -48,6 +48,12 @@ class DownloadService:
     @staticmethod
     def _check_download_criteria(download_config: DownloadConfig) -> DownloadConfig:
 
+        if not download_config.region.available_download:
+            download_config.download_message = f"The region `{download_config.region.label}` is not yet available for download"
+            download_config.download_message_is_open = True
+            download_config.download_message_color = "warning"
+            return download_config
+
         if (
             download_config.shapes is None
             or len(download_config.shapes["features"]) == 0

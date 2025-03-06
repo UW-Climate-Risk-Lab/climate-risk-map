@@ -79,6 +79,28 @@ def register_map_callbacks(app):
         return overlays
 
     @app.callback(
+        Output(MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"], "children", allow_duplicate=True),
+        Input("region-select-dropdown", "value"),
+        prevent_initial_call=True,
+    )
+    @handle_callback_error(output_count=1)
+    def remove_region_features(selected_region):
+        """Remove map overlays when region selection changes. 
+
+        Args:
+            selected_region (str): Selected region
+
+        Returns:
+            list: List of map overlays
+        """
+        if not selected_region:
+            return no_update
+
+        overlays = []
+
+        return overlays
+
+    @app.callback(
         [
             Output(MapConfig.BASE_MAP_COMPONENT["hazard_tile_layer"]["id"], "url"),
             Output(MapConfig.BASE_MAP_COMPONENT["hazard_tile_layer"]["id"], "opacity"),

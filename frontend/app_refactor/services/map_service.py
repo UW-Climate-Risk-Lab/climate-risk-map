@@ -34,6 +34,7 @@ class MapService:
             dl.Map: Configured map component
         """
         config = MapConfig.BASE_MAP_COMPONENT
+        default_region = MapConfig.get_region(region_name=config["default_region_name"])
 
         # Base map layer
         base_map_layer = dl.TileLayer(
@@ -63,14 +64,15 @@ class MapService:
         )
 
         # Layer control for toggling asset/exposure features
+        default_assets = MapService.get_asset_overlays(region_name=default_region.name)
         asset_layer = dl.LayersControl(
             id=config["asset_layer"]["id"],
-            children=list(),  # Empty list initially
+            children=default_assets,
         )
 
         # State outline overlay
         state_outline_overlay = MapService.get_region_overlay(
-            region_name=config["default_region_name"], z_index=300
+            region_name=default_region.name, z_index=300
         )
 
         # Color bar (initially hidden)
@@ -90,8 +92,8 @@ class MapService:
                 state_outline_overlay,
                 color_bar_layer,
             ],
-            center=config["center"],
-            zoom=config["zoom"],
+            center={"lat": default_region.map_center_lat, "lng": default_region.map_center_lon},
+            zoom=default_region.map_zoom,
             style=config["style"],
             id=config["id"],
             preferCanvas=config["preferCanvas"],

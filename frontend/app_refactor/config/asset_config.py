@@ -14,6 +14,7 @@ from typing import List, Dict
 from dash_extensions.javascript import arrow_function
 from dash_extensions.javascript import assign
 
+from config.settings import ASSETS_PATH
 
 
 
@@ -21,9 +22,6 @@ from dash_extensions.javascript import assign
 class Asset:
     name: str
     label: str
-    osm_category: str
-    osm_types: List[str]
-    osm_subtypes: List[str]
     color: str
     weight: float
     fill_color: str
@@ -32,22 +30,26 @@ class Asset:
     cluster: bool
     superClusterOptions: dict  # Used in superClusterOptions kwarg in leaflet GeoJSON component, example "superClusterOptions": {"radius": 50}
     geom_types: List[str]
-    icon: Dict | None = None  # This should be initialized with the assign funcion
+    icon: Dict | None # This should be initialized with the assign funcion if icon is available
 
 @dataclass
 class OpenStreetMapAsset(Asset):
     osm_category: str
-    osm_types: str
-    osm_subtypes: str
+    osm_type: str
+    osm_subtype: str
+
+@dataclass
+class HifldAsset(Asset):
+    geojson_path: str
 
 class AssetConfig:
     ASSETS = [
-        Asset(
-            name="power-plant",
+        OpenStreetMapAsset(
+            name="osm-power-plant",
             label="Power Plants",
             osm_category="infrastructure",
-            osm_types=["power"],
-            osm_subtypes=["plant"],
+            osm_type="power",
+            osm_subtype="plant",
             color="#B0C4DE",
             weight=2.0,
             fill_color="#D3D3D3",
@@ -65,12 +67,12 @@ class AssetConfig:
                 """
             ),
         ),
-        Asset(
-            name="power-transmission-line",
+        OpenStreetMapAsset(
+            name="osm-power-transmission-line",
             label="Power Transmission Lines",
             osm_category="infrastructure",
-            osm_types=["power"],
-            osm_subtypes=["line"],
+            osm_type="power",
+            osm_subtype="line",
             color="#4682B4",
             weight=1.5,
             fill_color="#D3D3D3",
@@ -81,12 +83,12 @@ class AssetConfig:
             geom_types=["LineString"],
             icon=None,
         ),
-        Asset(
-            name="power-distribution-line",
+        OpenStreetMapAsset(
+            name="osm-power-distribution-line",
             label="Power Distribution Lines",
             osm_category="infrastructure",
-            osm_types=["power"],
-            osm_subtypes=["minor_line"],
+            osm_type="power",
+            osm_subtype="minor_line",
             color="#4682B4",
             weight=1,
             fill_color="#D3D3D3",
@@ -97,12 +99,12 @@ class AssetConfig:
             geom_types=["LineString"],
             icon=None,
         ),
-        Asset(
-            name="power-substation",
+        OpenStreetMapAsset(
+            name="osm-power-substation",
             label="Power Substations",
             osm_category="infrastructure",
-            osm_types=["power"],
-            osm_subtypes=["substation"],
+            osm_type="power",
+            osm_subtype="substation",
             color="#696969",
             weight=2,
             fill_color="#5F9EA0",
@@ -120,6 +122,20 @@ class AssetConfig:
                 """
             ),
         ),
+        HifldAsset(
+            geojson_path=ASSETS_PATH + "/geojsons/hifld/hifld-in-service-high-voltage-power-transmission-line.geojson",
+            name="hifld-power-transmission-line",
+            label="Power Transmission Lines (345+ kV)",
+            color="#4682B4",
+            weight=1.0,
+            fill_color="#D3D3D3",
+            fill_opacity=0.5,
+            hoverStyle=arrow_function(dict(weight=5, color="yellow", dashArray="")),
+            cluster=False,
+            superClusterOptions={"radius": 500},
+            geom_types=["LineString"],
+            icon=None,
+        )
     ]
 
     @classmethod

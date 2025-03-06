@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def query_titiler(endpoint: str, params):
     try:
-        r = httpx.get(url=endpoint, params=params)
+        r = httpx.get(url=endpoint, params=params, timeout=20)
         
         if r.content:
             try:
@@ -24,7 +24,7 @@ def query_titiler(endpoint: str, params):
                 logger.warning("Unable to decode TiTiler content bytes data with utf-8.")
                 detail = ""
             except Exception as e:
-                logger.warning("Unable to access TiTiler response detail")
+                logger.info("Unable to access TiTiler response detail")
                 detail = ""
         else:
             detail = ""
