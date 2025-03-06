@@ -74,7 +74,7 @@ class MapConfig:
             "placeholder_opacity": 1,
         },
         "asset_layer": {"id": "asset-layer"},
-        "viewport": {"transition": "fitBounds"}
+        "viewport": {"transition": "flyTo"}
     }
 
     REGIONS = [

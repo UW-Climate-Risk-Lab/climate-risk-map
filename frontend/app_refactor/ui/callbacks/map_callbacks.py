@@ -1,4 +1,5 @@
 import logging
+import time
 from dash import Input, Output, no_update
 
 from config.map_config import MapConfig
@@ -20,19 +21,22 @@ def register_map_callbacks(app):
 
     @app.callback(
         Output("region-outline-geojson", "url"),
-        Output(MapConfig.BASE_MAP_COMPONENT["id"], "viewport"),
-        Input("region-select-dropdown", "value"),
+        Input("region-outline-change-signal", "data"),
         prevent_initial_call=True,
     )
     @handle_callback_error(output_count=2)
     def update_region_outline(selected_region: str):
-        """Update region outline and map viewport when region selection changes
+        """Update region outline when selected region changes
+
+        Pull selected region from the region-outline-change-signal Store.
+        This allows the previous outline to be removed from the map before this one
+        is updated
 
         Args:
             selected_region (str): Selected region
 
         Returns:
-            tuple: GeoJSON URL and viewport settings
+            str: Path to GeoJSON of region outline
         """
         if not selected_region:
             return no_update
@@ -46,6 +50,61 @@ def register_map_callbacks(app):
             return no_update
 
         geojson_path = region.geojson
+
+        # Wait before returning path to allow map to fly to new region
+        time.sleep(1.5)
+
+        return geojson_path
+
+    @app.callback(
+        [
+            Output("region-outline-geojson", "url", allow_duplicate=True),
+            Output("region-outline-change-signal", "data"),
+        ],
+        Input("region-select-dropdown", "value"),
+        prevent_initial_call=True,
+    )
+    @handle_callback_error(output_count=2)
+    def remove_region_outline(selected_region: str):
+        """Remove region outline and 
+
+        Args:
+            selected_region (str): Selected region
+
+        Returns:
+            str: Path to GeoJSON of region outline
+        """
+        if not selected_region:
+            return no_update
+
+        return None, selected_region
+
+    @app.callback(
+        Output(MapConfig.BASE_MAP_COMPONENT["id"], "viewport"),
+        Input("region-select-dropdown", "value"),
+        prevent_initial_call=True,
+    )
+    @handle_callback_error(output_count=2)
+    def update_region_viewport(selected_region: str):
+        """Update map viewport when region selection changes
+
+        Args:
+            selected_region (str): Selected region
+
+        Returns:
+            tuple: Viewport Settings
+        """
+        if not selected_region:
+            return no_update
+
+        region = MapConfig.get_region(region_name=selected_region)
+
+        if not region:
+            logger.error(
+                f"{selected_region} from region select dropdown is not configured"
+            )
+            return no_update
+
         viewport = {
             "center": {"lat": region.map_center_lat, "lng": region.map_center_lon},
             "zoom": region.map_zoom,
@@ -53,17 +112,20 @@ def register_map_callbacks(app):
         }
 
         # Get state outline URL and viewport settings
-        return geojson_path, viewport
+        return viewport
 
     @app.callback(
         Output(MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"], "children"),
-        Input("region-select-dropdown", "value"),
+        Input("region-features-change-signal", "data"),
         prevent_initial_call=True,
     )
     @handle_callback_error(output_count=1)
     def update_region_features(selected_region):
         """Update map overlays when region selection changes. This queries
         database and loads vector features.
+
+        The selected region is pulled from the region-change-signal data store (in layout.py)
+        This ensures that the current asset overlays are removed before this callback fires
 
         Args:
             selected_region (str): Selected region
@@ -79,26 +141,37 @@ def register_map_callbacks(app):
         return overlays
 
     @app.callback(
-        Output(MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"], "children", allow_duplicate=True),
+        [
+            Output(
+                MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"],
+                "children",
+                allow_duplicate=True,
+            ),
+            Output("region-features-change-signal", "data"),
+        ],
         Input("region-select-dropdown", "value"),
         prevent_initial_call=True,
     )
     @handle_callback_error(output_count=1)
     def remove_region_features(selected_region):
-        """Remove map overlays when region selection changes. 
+        """Remove map asset overlays when region selection changes.
+
+        We output the selected region into the store. This ensures
+        that the current asset overlays are removed before the update_regions
+        callback fires and adds new assets.
 
         Args:
             selected_region (str): Selected region
 
         Returns:
-            list: List of map overlays
+            list, str: List of map overlays and selected region
         """
         if not selected_region:
-            return no_update
+            return no_update, no_update
 
         overlays = []
 
-        return overlays
+        return overlays, selected_region
 
     @app.callback(
         [
@@ -152,10 +225,13 @@ def register_map_callbacks(app):
 
         # Get climate tile data from service
         return url, opacity
-    
+
     @app.callback(
         [
-            Output(MapConfig.BASE_MAP_COMPONENT["color_bar_layer"]["parent_div_id"], "children")
+            Output(
+                MapConfig.BASE_MAP_COMPONENT["color_bar_layer"]["parent_div_id"],
+                "children",
+            )
         ],
         [
             Input("hazard-indicator-dropdown", "value"),
@@ -173,28 +249,28 @@ def register_map_callbacks(app):
             or (month is None)
         ):
             return no_update
-        
+
         color_bar = MapService.get_color_bar(hazard_name=selected_hazard)
 
         return [color_bar]
 
     @app.callback(
         [Output("ssp-dropdown", "options")],
-        [Input("hazard-indicator-dropdown", "value")]
+        [Input("hazard-indicator-dropdown", "value")],
     )
     @handle_callback_error(output_count=1)
     def update_ssp_dropdown(hazard_name: str):
         """Update SSP dropdown options based on selected climate variable
-        
+
         Args:
             hazard_name (str): Selected climate variable
-            
+
         Returns:
             list: List of available SSP options
         """
         if not hazard_name:
             return no_update
-        
+
         ssp_options = HazardService.get_available_ssp(hazard_name=hazard_name)
-            
+
         return [ssp_options]
