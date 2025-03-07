@@ -5,9 +5,10 @@ from config.ui_config import UIConfig
 from config.map_config import MapConfig
 from config.hazard_config import HazardConfig
 
+
 def create_title_bar():
     """Create the application title bar
-    
+
     Returns:
         html.Div: Title bar component
     """
@@ -39,9 +40,10 @@ def create_title_bar():
         style=UIConfig.TITLE_CONTAINER_STYLE,
     )
 
+
 def create_region_selector():
     """Create the region selection dropdown
-    
+
     Returns:
         html.Div: Region selector component
     """
@@ -53,9 +55,7 @@ def create_region_selector():
                 children=[
                     html.Div(
                         children=[
-                            html.H6(
-                                "Select a Region", style={"color": "white"}
-                            ),
+                            html.H6("Select a Region", style={"color": "white"}),
                             dcc.Dropdown(
                                 [
                                     {
@@ -66,19 +66,45 @@ def create_region_selector():
                                 ],
                                 id="region-select-dropdown",
                                 placeholder="Select a Region",
-                                value=MapConfig.BASE_MAP_COMPONENT["default_region_name"]
+                                value=MapConfig.BASE_MAP_COMPONENT[
+                                    "default_region_name"
+                                ],
                             ),
                         ]
                     )
                 ],
-            )
+            ),
+            html.Br(),
+            dbc.Row(
+                align="center",
+                children=[
+                    dbc.Col(
+                        align="center",
+                        width={"size": 15, "offset": 0},
+                        children=[
+                            dbc.Alert(
+                                id="region-select-message",
+                                color="success",
+                                is_open=False,
+                                duration=3000,
+                                children="Region loading!",
+                                fade=True
+                            )
+                        ],
+                    ),
+                ],
+                justify="center",
+                class_name="g-0",
+                style={"border-radius": "25px"},
+            ),
         ],
         style=UIConfig.PANEL_SECTION_STYLE,
     )
 
+
 def create_hazard_indicator_selector():
     """Create the climate variable indicator selection components
-    
+
     Returns:
         html.Div: Hazard indicator variable selector component
     """
@@ -91,8 +117,7 @@ def create_hazard_indicator_selector():
                     html.Div(
                         children=[
                             html.H6(
-                                "Select a Hazard Indicator", 
-                                style={"color": "white"}
+                                "Select a Hazard Indicator", style={"color": "white"}
                             ),
                             dcc.Dropdown(
                                 [
@@ -125,9 +150,10 @@ def create_hazard_indicator_selector():
         style=UIConfig.PANEL_SECTION_STYLE,
     )
 
+
 def create_timeframe_selector():
     """Create the timeframe selection components (month and decade)
-    
+
     Returns:
         html.Div: Timeframe selector component
     """
@@ -192,9 +218,10 @@ def create_timeframe_selector():
         style=UIConfig.PANEL_SECTION_STYLE,
     )
 
+
 def create_download_section():
     """Create the download buttons and status message area
-    
+
     Returns:
         html.Div: Download section component
     """
@@ -246,9 +273,10 @@ def create_download_section():
         style=UIConfig.PANEL_SECTION_STYLE,
     )
 
+
 def create_control_panel():
     """Create the complete control panel
-    
+
     Returns:
         dbc.Col: Control panel column
     """
@@ -258,7 +286,6 @@ def create_control_panel():
             create_title_bar(),
             html.Br(),
             create_region_selector(),
-            html.Br(),
             create_hazard_indicator_selector(),
             html.Br(),
             create_timeframe_selector(),
