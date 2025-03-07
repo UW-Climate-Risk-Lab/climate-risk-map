@@ -1,7 +1,7 @@
 # UW Climate Risk Map
 
 ![Screenshot of Map](./docs/screenshots/main.png)
-*Live app - 02-19-2025*
+*Live app - 03-06-2025*
 
 ## Vision & Goals
 The UW Climate Risk Map is an open-source mapping platform to support research, education, and policy in assessing the financial effects of climate change in the Pacific Northwest. 
