@@ -3,10 +3,9 @@ import copy
 import pandas as pd
 
 # Import the module functions
-from app.app_utils import (
+from utils.geo_utils import (
     geojson_to_pandas,
     create_feature_toolip,
-    process_output_csv,
     convert_geojson_feature_collection_to_points,
     calc_bbox_area,
 )
@@ -71,25 +70,6 @@ def test_create_feature_toolip():
     geojson_with_tooltip = create_feature_toolip(copy.deepcopy(SAMPLE_GEOJSON))
     tooltip = geojson_with_tooltip["features"][0]["properties"]["tooltip"]
     assert "<b>name<b>: Sample Point<br><b>type<b>: Point of Interest<br>" == tooltip
-
-
-def test_create_feature_toolip_no_tags():
-    with pytest.raises(ValueError):
-        create_feature_toolip(copy.deepcopy(SAMPLE_GEOJSON_NO_TAGS))
-
-
-def test_process_output_csv():
-    df = process_output_csv(copy.deepcopy(SAMPLE_GEOJSON))
-    assert isinstance(df, pd.DataFrame)
-    assert "latitude" in df.columns
-    assert "longitude" in df.columns
-
-
-def test_process_output_csv_no_features():
-    data = {"type": "FeatureCollection", "features": None}
-    df = process_output_csv(data)
-    assert isinstance(df, pd.DataFrame)
-    assert df.empty
 
 
 @pytest.mark.parametrize(

@@ -8,9 +8,6 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     --fix-missing
 
-ENV CPLUS_INCLUDE_PATH /usr/include/gdal
-ENV export C_INCLUDE_PATH /usr/include/gdal
-
 # Install dependencies
 RUN pip install poetry==1.8.3
 
