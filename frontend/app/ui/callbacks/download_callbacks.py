@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def register_download_callbacks(app):
-    """Register all map-related callbacks
+    """Register all map-related callbacks.
 
     Args:
         app: Dash application instance
