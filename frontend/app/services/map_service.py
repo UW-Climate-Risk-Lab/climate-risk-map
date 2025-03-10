@@ -6,7 +6,7 @@ The methods in the MapService class should return dash-leaflet component objects
 import logging
 import dash_leaflet as dl
 
-from typing import List
+from typing import List, Tuple
 from dash import html
 from dash_extensions.javascript import arrow_function, assign
 
@@ -64,10 +64,11 @@ class MapService:
         )
 
         # Layer control for toggling asset/exposure features
-        default_assets = MapService.get_asset_overlays(region_name=default_region.name)
+        default_assets, default_asset_labels = MapService.get_asset_overlays(region_name=default_region.name)
         asset_layer = dl.LayersControl(
             id=config["asset_layer"]["id"],
             children=default_assets,
+            overlays=default_asset_labels
         )
 
         # State outline overlay
@@ -137,16 +138,21 @@ class MapService:
         return layer
 
     @staticmethod
-    def get_asset_overlays(region_name: str) -> List[dl.Overlay]:
-        """Get asset overlays for the specified region
+    def get_asset_overlays(region_name: str) -> Tuple[List[dl.Overlay], List[str]]:
+        """Get asset overlays for the specified region, and return the overlay geojson
+        data and the labels that are checked. We default to checking all asset layers
+        when assets are loaded.
 
         Args:
             region (str): Region name
 
         Returns:
-            list: List of dl.Overlay components
+            Tuple[List[dl.Overlay], List[str]]: List of dl.Overlay components, which
+            contains the actual data to display. The list of strings contain the asset labels
+            that are currently checked. 
         """
         overlays = []
+        overlay_names = []
 
         region = MapConfig.get_region(region_name=region_name)
 
@@ -213,11 +219,12 @@ class MapService:
                 )
 
                 overlays.append(overlay)
+                overlay_names.append(asset.label)
 
             except Exception as e:
                 logger.error(f"Error creating overlay for {asset.name}: {str(e)}")
 
-        return overlays
+        return overlays, overlay_names
     
     @staticmethod
     def get_color_bar(hazard_name: str) -> dl.Colorbar:

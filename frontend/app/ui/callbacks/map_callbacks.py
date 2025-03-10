@@ -116,6 +116,7 @@ def register_map_callbacks(app):
 
     @app.callback(
         Output(MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"], "children"),
+        Output(MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"], "overlays"),
         Input("region-features-change-signal", "data"),
         prevent_initial_call=True,
     )
@@ -136,9 +137,9 @@ def register_map_callbacks(app):
         if not selected_region:
             return no_update
 
-        overlays = MapService.get_asset_overlays(region_name=selected_region)
+        overlays, overlay_names = MapService.get_asset_overlays(region_name=selected_region)
 
-        return overlays
+        return overlays, overlay_names
 
     @app.callback(
         [
@@ -169,7 +170,7 @@ def register_map_callbacks(app):
         if not selected_region:
             return no_update, no_update
 
-        overlays = []
+        overlays = list()
 
         return overlays, selected_region
     

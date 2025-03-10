@@ -34,6 +34,7 @@ def create_main_layout():
             # State for tracking downloads
             dcc.Store(id="download-counter", data=0, storage_type="session"),
             dcc.Store(id="region-features-change-signal", storage_type="memory"),
-            dcc.Store(id="region-outline-change-signal", storage_type="memory")
+            dcc.Store(id="region-outline-change-signal", storage_type="memory"),
+            dcc.Store(id="download-allowed", data=False, storage_type="memory")
         ],
     )
