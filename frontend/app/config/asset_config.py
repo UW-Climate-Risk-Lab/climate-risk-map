@@ -143,10 +143,10 @@ class AssetConfig:
         """Returns asset object 
 
         Args:
-            name (str): Name of asset
+            name (str): Name or label of asset
         """
         for asset in cls.ASSETS:
-            if asset.name == name:
+            if (asset.name == name) or (asset.label == name):
                 return asset
         return None
 
