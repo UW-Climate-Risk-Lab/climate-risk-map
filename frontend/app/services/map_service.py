@@ -18,7 +18,7 @@ from utils.geo_utils import (
 )
 
 from config.map_config import MapConfig, Region
-from config.asset_config import TRANSPARENT_MARKER_CLUSTER
+from config.asset_config import Asset, TRANSPARENT_MARKER_CLUSTER
 
 logger = logging.getLogger(__name__)
 
@@ -195,16 +195,24 @@ class MapService:
                 else:
                     pointToLayer = None
 
+                data = asset.apply_style_to_geojson(geojson=data)
+                # Create GeoJSON layer with style function to use the embedded styles
+                style_function = assign("""
+                function(feature) {
+                    return feature.style || {
+                        color: feature.properties.style.color,
+                        weight: feature.properties.style.weight,
+                        fillColor: feature.properties.style.fillColor,
+                        fillOpacity: feature.properties.style.fillOpacity
+                    };
+                }
+                """)
+
                 layergroup_child = dl.GeoJSON(
                     id=f"{asset.name}-geojson",
                     data=data,
                     hoverStyle=asset.hoverStyle,
-                    style={
-                        "color": asset.color,
-                        "weight": asset.weight,
-                        "fillColor": asset.fill_color,
-                        "fillOpacity": asset.fill_opacity,
-                    },
+                    style=style_function,
                     cluster=cluster,
                     clusterToLayer=clusterToLayer,
                     superClusterOptions=superClusterOptions,

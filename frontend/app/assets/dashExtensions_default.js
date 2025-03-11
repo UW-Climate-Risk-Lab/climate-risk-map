@@ -39,6 +39,15 @@ window.dashExtensions = Object.assign({}, window.dashExtensions, {
             return L.marker(latlng, {
                 icon: icon
             })
+        },
+        function3: function(feature) {
+            return feature.style || {
+                color: feature.properties.style.color,
+                weight: feature.properties.style.weight,
+                fillColor: feature.properties.style.fillColor,
+                fillOpacity: feature.properties.style.fillOpacity
+            };
         }
+
     }
 });
