@@ -14,11 +14,10 @@ from config.hazard_config import HazardConfig
 from data.exposure_dao import ExposureDAO
 from utils.geo_utils import (
     convert_geojson_feature_collection_to_points,
-    create_feature_toolip,
 )
 
 from config.map_config import MapConfig, Region
-from config.asset_config import Asset, TRANSPARENT_MARKER_CLUSTER
+from config.asset_config import Asset, OpenStreetMapAsset, TRANSPARENT_MARKER_CLUSTER
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +168,10 @@ class MapService:
                     assets=[asset]
                 )
 
-                data = create_feature_toolip(geojson=data)
+                data = asset.create_feature_toolip(geojson=data)
+
+                if isinstance(asset, OpenStreetMapAsset):
+                    data = asset.parse_tags(geojson=data)
 
                 # Process data for display
                 if asset.cluster:

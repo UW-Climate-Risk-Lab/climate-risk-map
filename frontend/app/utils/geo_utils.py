@@ -88,34 +88,6 @@ def calc_bbox_area(features: List) -> float:
 
     return total_area_sq_km
 
-def create_feature_toolip(geojson: dict):
-    """Creates a property called "tooltip"
-
-    The tooltip property is automatically displayed
-    by dash leaflet as a popup when the mouse hover over the feature
-
-    Args:
-        geojson (dict): Dict in GeoJSON Format
-    """
-
-    # TODO: Add check to confirm it is a valid geojson
-
-    for i, feature in enumerate(geojson["features"]):
-
-        tooltip_str = ""
-        
-        # "tags" is a special property that relates to OpenStreetMap features
-
-        if "tags" in feature["properties"].keys():
-            for key, value in feature["properties"]["tags"].items():
-                tooltip_str = tooltip_str + f"<b>{str(key)}<b>: {str(value)}<br>"
-        else:
-            for key, value in feature["properties"].items():
-                tooltip_str = tooltip_str + f"<b>{key}<b>: {value}<br>"
-
-        geojson["features"][i]["properties"]["tooltip"] = tooltip_str
-    return geojson
-
 
 def geojson_to_pandas(data: dict) -> pd.DataFrame:
 

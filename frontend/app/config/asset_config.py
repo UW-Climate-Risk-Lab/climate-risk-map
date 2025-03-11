@@ -97,6 +97,35 @@ class Asset:
             feature["style"]["fillOpacity"] = self.default_fillOpacity
 
         return geojson
+    
+    def create_feature_toolip(self, geojson: Dict):
+        """Creates a property called "tooltip". OSM data stores
+        the feature specific properties in a single object called "tags".
+
+        The tooltip property is automatically displayed
+        by dash leaflet as a popup when the mouse hover over the feature
+
+        Args:
+            geojson (dict): Dict in GeoJSON Format
+        """
+
+        # TODO: Add check to confirm it is a valid geojson
+
+        for i, feature in enumerate(geojson["features"]):
+
+            tooltip_str = ""
+
+            # "tags" is a special property that relates to OpenStreetMap features
+
+            if "tags" in feature["properties"].keys():
+                for key, value in feature["properties"]["tags"].items():
+                    tooltip_str = tooltip_str + f"<b>{str(key)}<b>: {str(value)}<br>"
+            else:
+                for key, value in feature["properties"].items():
+                    tooltip_str = tooltip_str + f"<b>{key}<b>: {value}<br>"
+
+            geojson["features"][i]["properties"]["tooltip"] = tooltip_str
+        return geojson
 
 
 @dataclass
@@ -104,6 +133,13 @@ class OpenStreetMapAsset(Asset):
     osm_category: str
     osm_type: str
     osm_subtype: str
+
+    def parse_tags(self, geojson: Dict):
+
+        for i, feature in enumerate(geojson.get("features", [])):
+            for key, value in feature["properties"].get("tags", []).items():
+                geojson["features"][i]["properties"][key] = value
+        return geojson
 
 
 @dataclass
