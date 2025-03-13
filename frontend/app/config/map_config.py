@@ -17,7 +17,7 @@ from dash_extensions.javascript import assign
 from typing import List
 
 from config.settings import ASSETS_PATH
-from config.asset.config import AssetConfig, Asset
+from config.exposure.asset import AssetConfig, Asset
 
 logger = logging.getLogger(__name__)
 

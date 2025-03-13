@@ -14,9 +14,8 @@ from typing import List, Dict, Optional
 from dash_extensions.javascript import arrow_function
 from dash_extensions.javascript import assign
 
-from config.asset.definitions import load_asset_definitions
-from config.asset.transformer import DataTransformer
-
+from config.exposure.definitions import load_asset_definitions
+from config.exposure.transformer import DataTransformer
 
 
 class AssetRegistry:
@@ -76,96 +75,94 @@ class Asset:
 
         # OpenStreetMap data has special property 'tags',
         # which is a json of the feature properties. This must be run first
-        if isinstance(self, OpenStreetMapAsset):
-            geojson = self.parse_tags(geojson=geojson)
 
-        # Apply data transformations
-        geojson = DataTransformer.apply(
-            data=geojson, transformations=self.data_transformations
-        )
+        for feature in geojson.get("features", []):
+            if isinstance(self, OpenStreetMapAsset):
+                feature = self._parse_tags(feature=feature)
 
-        # Apply styling
-        geojson = self._apply_custom_feature_colors(geojson=geojson)
+            # Apply data transformations
+            feature = DataTransformer.apply(
+                data=feature, transformations=self.data_transformations
+            )
 
-        # Apply icon url
-        geojson = self._add_icon_path(geojson=geojson)
+            # Apply styling
+            feature = self._apply_feature_colors(feature=feature)
 
-        # Create tooltips
-        geojson = self._create_feature_toolip(geojson=geojson)
+            # Apply icon url
+            feature = self._create_feature_icon_path(feature=feature)
+
+            # Create tooltips
+            feature = self._create_feature_toolip(feature=feature)
+
+            # Converts geometry to point for clustering 
+            # (this improves performance when displaying points on dash-leaflet)
+            if self.cluster:
+                feature = self._convert_feature_to_point(feature=feature)
 
         return geojson
 
-    def _add_icon_path(self, geojson: Dict):
+    def _create_feature_icon_path(self, feature: Dict):
         """Adds icon path to each feature
 
         Args:
-            geojson (Dict): GeoJSON with features
+            feature (Dict): GeoJSON feature
         """
-        if not self.icon_path:
-            return geojson
+        if self.icon_path is None:
+            return feature
 
-        for feature in geojson.get("features", []):
-            feature["icon_path"] = self.icon_path
+        feature["icon_path"] = self.icon_path
 
-        return geojson
+        return feature
 
-    def _apply_custom_feature_colors(self, geojson: Dict) -> Dict:
+    def _apply_feature_colors(self, feature: Dict) -> Dict:
         """
-        Preprocesses GeoJSON features to include style information for each feature based on property values.
+        Preprocesses a GeoJSON feature to include style information based on property values.
 
         Args:
-            geojson (Dict): GeoJSON feature collection
+            feature (Dict): GeoJSON feature collection
 
         Returns:
-            Dict: GeoJSON with style properties added to each feature
+            Dict: Feature with a style key added
         """
         # Make copy here to avoid pointing to instance-level property
         default_style = self.style.copy()
+        # Add style information to feature properties
+        if "style" not in feature.keys():
+            feature["style"] = default_style.copy()
 
         if not self.custom_color:
             # No dynamic coloring configuration, return original
-            for feature in geojson.get("features", []):
-                feature["style"] = default_style.copy()
+            return feature
 
-            return geojson
+        # Get property value
+        prop_value = feature.get("properties", {}).get(self.custom_color["property"])
+        if prop_value is None:
+            return feature
 
-        for feature in geojson.get("features", []):
-            # Get property value
-            prop_value = feature.get("properties", {}).get(
-                self.custom_color["property"]
+        # Determine color based on property value
+        custom_color_code = None
+
+        # For numeric properties with ranges
+        if self.custom_color["ranges"] and isinstance(prop_value, (int, float)):
+            for range_def in self.custom_color["ranges"]:
+                min_val = range_def.get("min", float("-inf"))
+                max_val = range_def.get("max", float("inf"))
+                if min_val <= prop_value < max_val:
+                    custom_color_code = range_def.get("color", self.style["color"])
+                    break
+
+        # For categorical properties
+        elif self.custom_color["categories"] and isinstance(prop_value, str):
+            custom_color_code = self.custom_color["categories"].get(
+                prop_value, self.style["color"]
             )
-            if prop_value is None:
-                feature["style"] = default_style.copy()
-                continue
-
-            # Determine color based on property value
-            custom_color_code = None
-
-            # For numeric properties with ranges
-            if self.custom_color["ranges"] and isinstance(prop_value, (int, float)):
-                for range_def in self.custom_color["ranges"]:
-                    min_val = range_def.get("min", float("-inf"))
-                    max_val = range_def.get("max", float("inf"))
-                    if min_val <= prop_value < max_val:
-                        custom_color_code = range_def.get("color", self.style["color"])
-                        break
-
-            # For categorical properties
-            elif self.custom_color["categories"] and isinstance(prop_value, str):
-                custom_color_code = self.custom_color["categories"].get(
-                    prop_value, self.style["color"]
-                )
-
-            # Add style information to feature properties
-            if "style" not in feature.keys():
-                feature["style"] = default_style.copy()
-
+        if custom_color_code:
             feature["style"]["color"] = custom_color_code
             feature["style"]["fillColor"] = custom_color_code
 
-        return geojson
+        return feature
 
-    def _create_feature_toolip(self, geojson: Dict):
+    def _create_feature_toolip(self, feature: Dict):
         """Creates a property called "tooltip". OSM data stores
         the feature specific properties in a single object called "tags".
 
@@ -173,26 +170,52 @@ class Asset:
         by dash leaflet as a popup when the mouse hover over the feature
 
         Args:
-            geojson (dict): Dict in GeoJSON Format
+            feature (dict): Dict of GeoJson feature
         """
 
-        # TODO: Add check to confirm it is a valid geojson
+        tooltip_str = ""
 
-        for i, feature in enumerate(geojson["features"]):
+        # "tags" is a special property that relates to OpenStreetMap features
 
-            tooltip_str = ""
+        if "tags" in feature["properties"].keys():
+            for key, value in feature["properties"]["tags"].items():
+                tooltip_str = tooltip_str + f"<b>{str(key)}<b>: {str(value)}<br>"
+        else:
+            for key, value in feature["properties"].items():
+                tooltip_str = tooltip_str + f"<b>{key}<b>: {value}<br>"
 
-            # "tags" is a special property that relates to OpenStreetMap features
+        feature["properties"]["tooltip"] = tooltip_str
+        return feature
 
-            if "tags" in feature["properties"].keys():
-                for key, value in feature["properties"]["tags"].items():
-                    tooltip_str = tooltip_str + f"<b>{str(key)}<b>: {str(value)}<br>"
-            else:
-                for key, value in feature["properties"].items():
-                    tooltip_str = tooltip_str + f"<b>{key}<b>: {value}<br>"
+    def _convert_feature_to_point(self, feature: Dict, preserve_types: List[str] = ["LineString"]) -> Dict:
+        """
+        This function processes a feature and converts each feature's geometry
+        to a Point. It assumes that the centroid latitude and longitude are present in the
+        feature's properties under the keys 'latitude' and 'longitude'. If a feature's geometry
+        is already a Point, it retains the original coordinates. Other properties and keys,
+        such as 'id', are preserved.
 
-            geojson["features"][i]["properties"]["tooltip"] = tooltip_str
-        return geojson
+        Args:
+            feature (Dict): A dictionary representing a GeoJSON Feature.
+            preserve_types (List[str], optional): Geometry types to skip converting to points, e.g, 'LineString'
+        Returns:
+            Dict: A GeoJSON feature with all features converted to Point geometries.
+        """
+
+        # Only update if the geometry is not already a Point.
+        if (
+            (feature["geometry"]["type"] != "Point")
+            and (feature["geometry"]["type"] not in preserve_types)
+            and ("longitude" in feature["properties"].keys())
+            and ("latitude" in feature["properties"].keys())
+        ):
+            feature["geometry"]["coordinates"] = [
+                feature["properties"].get("longitude"),
+                feature["properties"].get("latitude"),
+            ]
+            feature["geometry"]["type"] = "Point"
+
+        return feature
 
 
 @AssetRegistry.register("OpenStreetMap")
@@ -202,12 +225,11 @@ class OpenStreetMapAsset(Asset):
     osm_type: str
     osm_subtype: str
 
-    def parse_tags(self, geojson: Dict):
+    def _parse_tags(self, feature: Dict):
 
-        for i, feature in enumerate(geojson.get("features", [])):
-            for key, value in feature["properties"].get("tags", []).items():
-                geojson["features"][i]["properties"][key] = value
-        return geojson
+        for key, value in feature["properties"].get("tags", []).items():
+            feature["properties"][key] = value
+        return feature
 
 
 @AssetRegistry.register("HIFLD")

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from config.settings import MAX_DOWNLOADS, MAX_DOWNLOAD_AREA
 from config.hazard_config import HazardConfig, Hazard
-from config.asset.config import AssetConfig, Asset
+from config.exposure.asset import AssetConfig, Asset
 from config.map_config import MapConfig, Region
 from data.exposure_dao import ExposureDAO
 from utils.geo_utils import calc_bbox_area, geojson_to_pandas

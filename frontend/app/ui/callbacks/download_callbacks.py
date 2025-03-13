@@ -1,12 +1,8 @@
 import logging
-import pandas as pd
 from dash import Input, Output, no_update, State, dcc
-from dash.exceptions import PreventUpdate
 
 from config.map_config import MapConfig
 
-from services.map_service import MapService
-from services.hazard_service import HazardService
 from services.download_service import DownloadService
 
 from utils.error_utils import handle_callback_error
