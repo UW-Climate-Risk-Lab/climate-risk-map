@@ -9,13 +9,7 @@ POWER_LINE_CUSTOM_COLOR_RANGES = [
     {"min": 0, "max": 100, "color": "#5b8f22", "label": "< 100 kV"},
     {"min": 100, "max": 300, "color": "#0046AD", "label": "100-300 kV"},
     {"min": 300, "max": 500, "color": "#63B1E5", "label": "300-500 kV"},
-    {"min": 500, "max": 700, "color": "#EBB700", "label": "500-700 kV"},
-    {
-        "min": 700,
-        "max": float("inf"),
-        "color": " #C75B12",
-        "label": "> 700 kV",
-    },
+    {"min": 500, "max": float("inf"), "color": "#C75B12", "label": "> 500 kV"},
 ]
 
 ASSET_DEFINITIONS = {
