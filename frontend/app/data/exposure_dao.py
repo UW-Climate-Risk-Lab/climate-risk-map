@@ -4,7 +4,7 @@ import json
 from typing import List, Dict
 
 from config.map_config import Region
-from config.asset_config import Asset, OpenStreetMapAsset, HifldAsset
+from config.asset.config import Asset, OpenStreetMapAsset, HifldAsset
 from config.hazard_config import Hazard
 
 from data.database import DatabaseManager

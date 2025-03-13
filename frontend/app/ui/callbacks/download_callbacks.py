@@ -56,8 +56,8 @@ def register_download_callbacks(app):
         stored_download_count,
     ):
 
-        if n_clicks is None or n_clicks == 0:
-            raise PreventUpdate
+        #if n_clicks is None or n_clicks == 0:
+            #raise PreventUpdate
 
         if n_clicks > 0:
             download = DownloadService.create_download_config(

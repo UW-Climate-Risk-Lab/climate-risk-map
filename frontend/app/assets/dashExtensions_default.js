@@ -1,28 +1,6 @@
 window.dashExtensions = Object.assign({}, window.dashExtensions, {
     default: {
-        function0: function(feature, latlng) {
-                const custom_icon = L.icon({
-                    iconUrl: `assets/icons/power-plant.svg`,
-                    iconSize: [15, 15]
-                });
-                return L.marker(latlng, {
-                    icon: custom_icon
-                });
-            }
-
-            ,
-        function1: function(feature, latlng) {
-                const custom_icon = L.icon({
-                    iconUrl: `assets/icons/black-dot.svg`,
-                    iconSize: [15, 15]
-                });
-                return L.marker(latlng, {
-                    icon: custom_icon
-                });
-            }
-
-            ,
-        function2: function(feature, latlng, index, context) {
+        function0: function(feature, latlng, index, context) {
             const scatterIcon = L.DivIcon.extend({
                 createIcon: function(oldIcon) {
                     let icon = L.DivIcon.prototype.createIcon.call(this, oldIcon);
@@ -40,7 +18,18 @@ window.dashExtensions = Object.assign({}, window.dashExtensions, {
                 icon: icon
             })
         },
-        function3: function(feature) {
+        function1: function(feature, latlng) {
+                const custom_icon = L.icon({
+                    iconUrl: feature.icon_path,
+                    iconSize: [15, 15]
+                });
+                return L.marker(latlng, {
+                    icon: custom_icon
+                })
+            }
+
+            ,
+        function2: function(feature) {
             return feature.style || {
                 color: feature.properties.style.color,
                 weight: feature.properties.style.weight,

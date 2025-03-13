@@ -17,7 +17,7 @@ from utils.geo_utils import (
 )
 
 from config.map_config import MapConfig, Region
-from config.asset_config import Asset, OpenStreetMapAsset, TRANSPARENT_MARKER_CLUSTER
+from config.asset.config import TRANSPARENT_MARKER_CLUSTER, CREATE_FEATURE_ICON, CREATE_FEATURE_COLOR_STYLE
 
 logger = logging.getLogger(__name__)
 
@@ -168,10 +168,7 @@ class MapService:
                     assets=[asset]
                 )
 
-                data = asset.create_feature_toolip(geojson=data)
-
-                if isinstance(asset, OpenStreetMapAsset):
-                    data = asset.parse_tags(geojson=data)
+                data = asset.preprocess_geojson_for_display(geojson=data)
 
                 # Process data for display
                 if asset.cluster:
@@ -192,28 +189,21 @@ class MapService:
                     superClusterOptions = False
 
                 # Icon refers to the picture displayed on the map for the point
-                if asset.icon is not None:
-                    pointToLayer = asset.icon
+                if asset.icon_path is not None:
+                    pointToLayer = CREATE_FEATURE_ICON
                 else:
                     pointToLayer = None
 
-                data = asset.apply_style_to_geojson(geojson=data)
                 # Create GeoJSON layer with style function to use the embedded styles
-                style_function = assign("""
-                function(feature) {
-                    return feature.style || {
-                        color: feature.properties.style.color,
-                        weight: feature.properties.style.weight,
-                        fillColor: feature.properties.style.fillColor,
-                        fillOpacity: feature.properties.style.fillOpacity
-                    };
-                }
-                """)
+                style_function = CREATE_FEATURE_COLOR_STYLE
+                
+                # Hard code for now
+                hover_style_function = arrow_function(dict(weight=5, color="yellow", dashArray=""))
 
                 layergroup_child = dl.GeoJSON(
                     id=f"{asset.name}-geojson",
                     data=data,
-                    hoverStyle=asset.hoverStyle,
+                    hoverStyle=hover_style_function,
                     style=style_function,
                     cluster=cluster,
                     clusterToLayer=clusterToLayer,
