@@ -12,6 +12,7 @@ from dash import html
 from dash_extensions.javascript import arrow_function
 
 from config.hazard_config import HazardConfig
+from config.ui_config import UIConfig
 from data.exposure_dao import ExposureDAO
 
 from config.map_config import MapConfig
@@ -130,7 +131,7 @@ class MapService:
             dl.GeoJSON(
                 url=region.geojson,
                 style={
-                    "color": "#000080",
+                    "color": UIConfig.PRIMARY_COLOR,
                     "weight": 2,
                     "fillOpacity": 0,
                 },

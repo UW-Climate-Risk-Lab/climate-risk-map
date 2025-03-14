@@ -99,8 +99,7 @@ class ExposureDAO:
             except Exception as e:
                 logger.error(f"Error loading {asset.geojson_path}: {str(e)}")
                 continue
-                
-        logger.info(f"Combined {len(combined_geojson['features'])} total features from {len(assets)} assets")
+        
         return combined_geojson
 
     @staticmethod
