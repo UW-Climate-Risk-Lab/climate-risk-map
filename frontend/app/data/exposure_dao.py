@@ -4,7 +4,7 @@ import json
 from typing import List, Dict
 
 from config.map_config import Region
-from config.asset_config import Asset, OpenStreetMapAsset, HifldAsset
+from config.exposure.asset import Asset, OpenStreetMapAsset, HifldAsset
 from config.hazard_config import Hazard
 
 from data.database import DatabaseManager
@@ -99,8 +99,7 @@ class ExposureDAO:
             except Exception as e:
                 logger.error(f"Error loading {asset.geojson_path}: {str(e)}")
                 continue
-                
-        logger.info(f"Combined {len(combined_geojson['features'])} total features from {len(assets)} assets")
+        
         return combined_geojson
 
     @staticmethod

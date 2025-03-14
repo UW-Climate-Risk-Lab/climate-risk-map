@@ -83,7 +83,7 @@ class HazardConfig:
                 format="cogs",
                 s3_bucket=S3_BUCKET,
                 s3_prefix="climate-risk-map/frontend/NEX-GDDP-CMIP6/fwi",
-                colormap="ylorbr",
+                colormap="oranges",
                 opacity=0.6,
             ),
         )

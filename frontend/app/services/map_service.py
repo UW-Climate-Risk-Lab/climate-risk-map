@@ -3,22 +3,24 @@ This module contains a serice layer for updating map components.
 The methods in the MapService class should return dash-leaflet component objects
 
 """
+
 import logging
 import dash_leaflet as dl
 
 from typing import List, Tuple
 from dash import html
-from dash_extensions.javascript import arrow_function, assign
+from dash_extensions.javascript import arrow_function
 
 from config.hazard_config import HazardConfig
+from config.ui_config import UIConfig
 from data.exposure_dao import ExposureDAO
-from utils.geo_utils import (
-    convert_geojson_feature_collection_to_points,
-    create_feature_toolip,
-)
 
-from config.map_config import MapConfig, Region
-from config.asset_config import TRANSPARENT_MARKER_CLUSTER
+from config.map_config import MapConfig
+from config.exposure.asset import (
+    TRANSPARENT_MARKER_CLUSTER,
+    CREATE_FEATURE_ICON,
+    CREATE_FEATURE_COLOR_STYLE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,11 +66,13 @@ class MapService:
         )
 
         # Layer control for toggling asset/exposure features
-        default_assets, default_asset_labels = MapService.get_asset_overlays(region_name=default_region.name)
+        default_assets, default_asset_labels = MapService.get_asset_overlays(
+            region_name=default_region.name
+        )
         asset_layer = dl.LayersControl(
             id=config["asset_layer"]["id"],
             children=default_assets,
-            overlays=default_asset_labels
+            overlays=default_asset_labels,
         )
 
         # State outline overlay
@@ -93,7 +97,10 @@ class MapService:
                 state_outline_overlay,
                 color_bar_layer,
             ],
-            center={"lat": default_region.map_center_lat, "lng": default_region.map_center_lon},
+            center={
+                "lat": default_region.map_center_lat,
+                "lng": default_region.map_center_lon,
+            },
             zoom=default_region.map_zoom,
             style=config["style"],
             id=config["id"],
@@ -124,7 +131,7 @@ class MapService:
             dl.GeoJSON(
                 url=region.geojson,
                 style={
-                    "color": "#000080",
+                    "color": UIConfig.PRIMARY_COLOR,
                     "weight": 2,
                     "fillOpacity": 0,
                 },
@@ -149,7 +156,7 @@ class MapService:
         Returns:
             Tuple[List[dl.Overlay], List[str]]: List of dl.Overlay components, which
             contains the actual data to display. The list of strings contain the asset labels
-            that are currently checked. 
+            that are currently checked.
         """
         overlays = []
         overlay_names = []
@@ -164,22 +171,16 @@ class MapService:
         for asset in region.available_assets:
             try:
                 # Get raw data from DAO
-                data = ExposureDAO.get_exposure_data(
-                    region=region,
-                    assets=[asset]
-                )
+                data = ExposureDAO.get_exposure_data(region=region, assets=[asset])
 
-                data = create_feature_toolip(geojson=data)
+                data = asset.preprocess_geojson_for_display(geojson=data)
 
                 # Process data for display
                 if asset.cluster:
-                    # This logic is performed for performance. We 
+                    # This logic is performed for performance. We
                     # want to "cluster" certain assets (if there are a large number of them)
                     # so they don't all display at once. We first must convert all relevant features
-                    # to points so that they can be clustered. 
-                    data = convert_geojson_feature_collection_to_points(
-                        geojson=data, preserve_types=["LineString"]
-                    )
+                    # to points so that they can be clustered.
                     cluster = asset.cluster
                     clusterToLayer = TRANSPARENT_MARKER_CLUSTER
                     superClusterOptions = asset.superClusterOptions
@@ -190,21 +191,24 @@ class MapService:
                     superClusterOptions = False
 
                 # Icon refers to the picture displayed on the map for the point
-                if asset.icon is not None:
-                    pointToLayer = asset.icon
+                if asset.icon_path is not None:
+                    pointToLayer = CREATE_FEATURE_ICON
                 else:
                     pointToLayer = None
+
+                # Create GeoJSON layer with style function to use the embedded styles
+                style_function = CREATE_FEATURE_COLOR_STYLE
+
+                # Hard code for now
+                hover_style_function = arrow_function(
+                    dict(weight=5, color="yellow", dashArray="")
+                )
 
                 layergroup_child = dl.GeoJSON(
                     id=f"{asset.name}-geojson",
                     data=data,
-                    hoverStyle=asset.hoverStyle,
-                    style={
-                        "color": asset.color,
-                        "weight": asset.weight,
-                        "fillColor": asset.fill_color,
-                        "fillOpacity": asset.fill_opacity,
-                    },
+                    hoverStyle=hover_style_function,
+                    style=style_function,
                     cluster=cluster,
                     clusterToLayer=clusterToLayer,
                     superClusterOptions=superClusterOptions,
@@ -225,7 +229,7 @@ class MapService:
                 logger.error(f"Error creating overlay for {asset.name}: {str(e)}")
 
         return overlays, overlay_names
-    
+
     @staticmethod
     def get_color_bar(hazard_name: str) -> dl.Colorbar:
 
