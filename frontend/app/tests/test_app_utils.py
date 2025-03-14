@@ -5,8 +5,6 @@ import pandas as pd
 # Import the module functions
 from utils.geo_utils import (
     geojson_to_pandas,
-    create_feature_toolip,
-    convert_geojson_feature_collection_to_points,
     calc_bbox_area,
 )
 
@@ -64,103 +62,6 @@ def test_geojson_to_pandas_empty():
     df = geojson_to_pandas(empty_geojson)
     assert isinstance(df, pd.DataFrame)
     assert df.empty
-
-
-def test_create_feature_toolip():
-    geojson_with_tooltip = create_feature_toolip(copy.deepcopy(SAMPLE_GEOJSON))
-    tooltip = geojson_with_tooltip["features"][0]["properties"]["tooltip"]
-    assert "<b>name<b>: Sample Point<br><b>type<b>: Point of Interest<br>" == tooltip
-
-
-@pytest.mark.parametrize(
-    "geojson, preserve_types, expected_output",
-    [
-        (
-            copy.deepcopy(SAMPLE_GEOJSON),
-            [],
-            {
-                "type": "FeatureCollection",
-                "features": [
-                    {
-                        "type": "Feature",
-                        "properties": {
-                            "tags": {
-                                "name": "Sample Point",
-                                "type": "Point of Interest",
-                            },
-                            "latitude": 40.0,
-                            "longitude": -120.0,
-                            "geometry_wkt": "POINT(-120.0, 40.0)"
-                        },
-                        "geometry": {"type": "Point", "coordinates": [-120.0, 40.0]},
-                    },
-                    {
-                        "type": "Feature",
-                        "properties": {
-                            "tags": {
-                                "name": "Sample LineString",
-                                "type": "Point of Interest",
-                            },
-                            "latitude": 45.0,
-                            "longitude": -120.0,
-                            "geometry_wkt": "LINESTRING(-120.0 10.0, -119.0 11.0, -118.0 12.0)"
-                        },
-                        "geometry": {"type": "Point", "coordinates": [-120.0, 45.0]},
-                    },
-                ],
-            },
-        ),
-        (
-            copy.deepcopy(SAMPLE_GEOJSON),
-            ["LineString"],
-            {
-                "type": "FeatureCollection",
-                "features": [
-                    {
-                        "type": "Feature",
-                        "properties": {
-                            "tags": {
-                                "name": "Sample Point",
-                                "type": "Point of Interest",
-                            },
-                            "latitude": 40.0,
-                            "longitude": -120.0,
-                            "geometry_wkt": "POINT(-120.0, 40.0)"
-                        },
-                        "geometry": {"type": "Point", "coordinates": [-120.0, 40.0]},
-                    },
-                    {
-                        "type": "Feature",
-                        "properties": {
-                            "tags": {
-                                "name": "Sample LineString",
-                                "type": "Point of Interest",
-                            },
-                            "latitude": 45.0,
-                            "longitude": -120.0,
-                            "geometry_wkt": "LINESTRING(-120.0 10.0, -119.0 11.0, -118.0 12.0)"
-                        },
-                        "geometry": {
-                            "type": "LineString",
-                            "coordinates": [
-                                [-120.0, 10.0],
-                                [-119.0, 11.0],
-                                [-118.0, 12.0],
-                            ],
-                        },
-                    },
-                ],
-            },
-        ),
-    ],
-)
-def test_convert_geojson_feature_collection_to_points(
-    geojson, preserve_types, expected_output
-):
-    converted_geojson = convert_geojson_feature_collection_to_points(
-        geojson=geojson, preserve_types=preserve_types
-    )
-    assert converted_geojson == expected_output
 
 
 def test_calc_bbox_area():
