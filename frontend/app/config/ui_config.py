@@ -202,7 +202,7 @@ class UIConfig:
         "left": "50%",
         "transform": "translateX(-50%)",
         "zIndex": "1000",
-        "width": "55%",
+        "width": "70%",
         "maxWidth": "90%",
         "pointerEvents": "auto",  # Make sure it's clickable if needed
     }

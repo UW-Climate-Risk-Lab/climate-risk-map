@@ -191,7 +191,7 @@ class MapService:
                     superClusterOptions = False
 
                 # Icon refers to the picture displayed on the map for the point
-                if asset.icon_path is not None:
+                if asset.custom_icon is not None:
                     pointToLayer = CREATE_FEATURE_ICON
                 else:
                     pointToLayer = None
