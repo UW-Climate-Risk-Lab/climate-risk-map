@@ -14,7 +14,7 @@ from typing import List, Dict, Optional
 from dash_extensions.javascript import arrow_function
 from dash_extensions.javascript import assign
 
-from config.exposure.definitions import load_asset_definitions
+from config.exposure.definitions import load_asset_definitions, DEFAULT_ICON_PATH
 from config.exposure.transformer import DataTransformer
 
 
@@ -57,10 +57,10 @@ class Asset:
     label: str
     style: Dict
     custom_color: Dict | None
+    custom_icon: Dict | None
     cluster: bool
     superClusterOptions: Dict | bool
     geom_types: List[str]
-    icon_path: str | None
     data_transformations: List[str] | None
 
     def preprocess_geojson_for_display(self, geojson: Dict) -> Dict:
@@ -107,10 +107,21 @@ class Asset:
         Args:
             feature (Dict): GeoJSON feature
         """
-        if self.icon_path is None:
+        if (self.custom_icon is None):
             return feature
+        
+        prop_value = feature.get("properties", {}).get(self.custom_icon["property"])
+        if prop_value is None:
+            feature["icon_path"] = DEFAULT_ICON_PATH
+            return feature
+        
+        for category in self.custom_icon["categories"]:
+            if prop_value == category["property_value"]:
+                feature["icon_path"] = category["icon_path"]
+                return feature
 
-        feature["icon_path"] = self.icon_path
+        # If icon path is not found based on property, return the default
+        feature["icon_path"] = DEFAULT_ICON_PATH
 
         return feature
 

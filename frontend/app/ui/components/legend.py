@@ -121,7 +121,7 @@ def create_legend_bar(region_name=None):
             )
 
     # Add icon-based assets
-    icon_assets = [asset for asset in region.available_assets if asset.icon_path]
+    icon_assets = [asset for asset in region.available_assets if asset.custom_icon]
     if icon_assets:
         asset_icon_items.append(
             html.Div(
@@ -140,9 +140,10 @@ def create_legend_bar(region_name=None):
         )
 
         for asset in icon_assets:
-            asset_icon_items.append(
-                create_icon_legend_item(icon_path=asset.icon_path, label=asset.label)
-            )
+            for category in asset.custom_icon["categories"]:
+                asset_icon_items.append(
+                    create_icon_legend_item(icon_path=category["icon_path"], label=category["label"])
+                )
 
     # Create the two rows
     power_line_row = (

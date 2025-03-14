@@ -12,6 +12,8 @@ POWER_LINE_CUSTOM_COLOR_RANGES = [
     {"min": 500, "max": float("inf"), "color": "#C75B12", "label": "> 500 kV"},
 ]
 
+DEFAULT_ICON_PATH = ASSETS_PATH + "/icons/black-dot.svg"
+
 ASSET_DEFINITIONS = {
     "osm-power-plant": {
         "type": "OpenStreetMap",
@@ -29,7 +31,36 @@ ASSET_DEFINITIONS = {
         "cluster": True,
         "superClusterOptions": {"radius": 50},
         "custom_color": None,
-        "icon_path": ASSETS_PATH + "/icons/power-plant.svg",
+        "custom_icon": {
+            "property": "plant:source",
+            "categories": [
+                {
+                    "property_value": "wind",
+                    "icon_path": ASSETS_PATH + "/icons/wind.png",
+                    "label": "Wind Plant",
+                },
+                {
+                    "property_value": "solar",
+                    "icon_path": ASSETS_PATH + "/icons/solar.png",
+                    "label": "Solar Plant",
+                },
+                {
+                    "property_value": "nuclear",
+                    "icon_path": ASSETS_PATH + "/icons/nuclear.png",
+                    "label": "Nuclear Plant",
+                },
+                {
+                    "property_value": "gas",
+                    "icon_path": ASSETS_PATH + "/icons/gas.png",
+                    "label": "Gas Plant",
+                },
+                {
+                    "property_value": "hydro",
+                    "icon_path": ASSETS_PATH + "/icons/hydro.png",
+                    "label": "Hydro Plant",
+                },
+            ],
+        },
         "data_transformations": None,
     },
     "osm-power-transmission-line": {
@@ -52,7 +83,7 @@ ASSET_DEFINITIONS = {
             "ranges": POWER_LINE_CUSTOM_COLOR_RANGES,
             "categories": None,
         },
-        "icon_path": None,
+        "custom_icon": None,
         "data_transformations": ["osm_line_voltage"],
     },
     "osm-power-distribution-line": {
@@ -75,7 +106,7 @@ ASSET_DEFINITIONS = {
             "ranges": POWER_LINE_CUSTOM_COLOR_RANGES,
             "categories": None,
         },
-        "icon_path": None,
+        "custom_icon": None,
         "data_transformations": ["osm_line_voltage"],
     },
     "osm-power-substation": {
@@ -94,7 +125,16 @@ ASSET_DEFINITIONS = {
         "cluster": True,
         "superClusterOptions": {"radius": 500},
         "custom_color": None,
-        "icon_path": ASSETS_PATH + "/icons/black-dot.svg",
+        "custom_icon": {
+            "property": "power",
+            "categories": [
+                {
+                    "property_value": "substation",
+                    "icon_path": ASSETS_PATH + "/icons/electric.svg",
+                    "label": "Substation",
+                },
+            ],
+        },
         "data_transformations": None,
     },
     "hifld-power-transmission-line": {
@@ -116,7 +156,7 @@ ASSET_DEFINITIONS = {
             "ranges": POWER_LINE_CUSTOM_COLOR_RANGES,
             "categories": None,
         },
-        "icon_path": None,
+        "custom_icon": None,
         "data_transformations": None,
     },
 }
