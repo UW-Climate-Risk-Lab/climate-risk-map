@@ -3,7 +3,7 @@ from dash import html, dcc
 
 from ui.components.control_panel import create_control_panel
 from ui.components.legend import create_legend_bar, create_legend_toggle_button
-from ui.components.ai_popoup import create_ai_analysis_modal 
+from ui.components.ai_chat import create_ai_analysis_modal 
 from services.map_service import MapService
 from config.map_config import MapConfig
 from config.ui_config import UIConfig

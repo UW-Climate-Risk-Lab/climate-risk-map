@@ -12,7 +12,13 @@ def create_ai_analysis_modal():
         dbc.Modal: Modal component with chat interface
     """
     return dbc.Modal(
-        [
+        id="ai-analysis-modal",
+        is_open=False,
+        size="lg",
+        scrollable=True,
+        centered=True,
+        style={"zIndex": 1050},
+        children=[
             dbc.ModalHeader(
                 dbc.ModalTitle(
                     [html.I(className="fa fa-robot me-2"), "Climate Risk AI Assistant"],
@@ -24,6 +30,7 @@ def create_ai_analysis_modal():
             dbc.ModalBody(
                 [
                     # Chat message container with scrollable area for messages
+                    # We simulate a chat by appending new messages to 'ai-chat-messages' children
                     html.Div(
                         id="ai-chat-messages",
                         children=[
@@ -111,10 +118,4 @@ def create_ai_analysis_modal():
                 style={"backgroundColor": "#f8f9fa"},
             ),
         ],
-        id="ai-analysis-modal",
-        is_open=False,
-        size="lg",
-        scrollable=True,
-        centered=True,
-        style={"zIndex": 1050},
     )

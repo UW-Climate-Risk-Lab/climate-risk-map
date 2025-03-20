@@ -49,18 +49,11 @@ def register_ai_analysis_callbacks(app):
         ],
         [
             State("ai-user-input", "value"),
-            State("ai-chat-messages", "children"),
-            # Add other state variables needed for AI analysis
-            State("region-select-dropdown", "value"),
-            State("hazard-indicator-dropdown", "value"),
-            State("ssp-dropdown", "value"),
-            State("decade-slider", "value"),
-            State("month-slider", "value"),
+            State("ai-chat-messages", "children")
         ],
         prevent_initial_call=True,
     )
-    def send_message(send_clicks, enter_pressed, user_input, chat_messages, 
-                    region, hazard, ssp, decade, month):
+    def send_message(send_clicks, enter_pressed, user_input, chat_messages):
         """Handle sending user messages and receiving AI responses"""
 
         if not isinstance(chat_messages, list):
