@@ -104,7 +104,7 @@ def register_ai_analysis_callbacks(app):
     
     @app.callback(
         
-        Output("ai-chat-messages", "children"),
+        [Output("ai-chat-messages", "children"), Output("ai-loading-placeholder", "children")],
         [Input("ai-user-input", "value")],
         [State("ai-chat-messages", "children")],
         prevent_initial_call=True,
@@ -119,7 +119,7 @@ def register_ai_analysis_callbacks(app):
 
         if len(chat_messages) % 2 != 0:
             # Only add AI response if the last message was from the user
-            return chat_messages
+            return chat_messages, ""
         
         # Create a placeholder visualization
         fig = go.Figure(data=go.Scatter(x=[1, 2, 3, 4], y=[10, 11, 12, 13]))
@@ -171,4 +171,4 @@ def register_ai_analysis_callbacks(app):
         # Add the AI response to the chat messages
         chat_messages.append(ai_message_div)
         time.sleep(5)
-        return chat_messages
+        return chat_messages, ""

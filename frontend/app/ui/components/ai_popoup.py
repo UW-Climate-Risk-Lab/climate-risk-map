@@ -7,7 +7,7 @@ from config.ui_config import UIConfig
 
 def create_ai_analysis_modal():
     """Create the AI analysis modal with chat interface
-    
+
     Returns:
         dbc.Modal: Modal component with chat interface
     """
@@ -15,14 +15,11 @@ def create_ai_analysis_modal():
         [
             dbc.ModalHeader(
                 dbc.ModalTitle(
-                    [
-                        html.I(className="fa fa-robot me-2"),
-                        "Climate Risk AI Assistant"
-                    ],
-                    style={"color": UIConfig.PRIMARY_COLOR}
+                    [html.I(className="fa fa-robot me-2"), "Climate Risk AI Assistant"],
+                    style={"color": UIConfig.PRIMARY_COLOR},
                 ),
                 close_button=True,
-                style={"background-color": "white"}
+                style={"background-color": "white"},
             ),
             dbc.ModalBody(
                 [
@@ -52,17 +49,15 @@ def create_ai_analysis_modal():
                             "marginBottom": "15px",
                         },
                     ),
-                    
                     # Loading indicator for AI responses
                     dbc.Spinner(
                         html.Div(id="ai-loading-placeholder"),
                         id="ai-loading-spinner",
-                        type="grow",
+                        delay_show=100,
                         color=UIConfig.PRIMARY_COLOR,
-                        fullscreen=False,
+                        fullscreen=True,
                         fullscreen_style={"backgroundColor": "transparent"},
                     ),
-                    
                     # Input area for user messages
                     dbc.InputGroup(
                         [
@@ -73,7 +68,7 @@ def create_ai_analysis_modal():
                                 style={
                                     "resize": "none",
                                     "borderRadius": "10px 0 0 10px",
-                                }
+                                },
                             ),
                             dbc.InputGroupText(
                                 html.Button(
@@ -81,17 +76,17 @@ def create_ai_analysis_modal():
                                     id="ai-send-button",
                                     className="btn",
                                     style={
-                                        "border": "none", 
+                                        "border": "none",
                                         "backgroundColor": UIConfig.PRIMARY_COLOR,
                                         "color": "white",
-                                    }
+                                    },
                                 ),
                                 style={
                                     "backgroundColor": "white",
                                     "borderRadius": "0 10px 10px 0",
                                     "border": "1px solid #ced4da",
                                     "borderLeft": "none",
-                                }
+                                },
                             ),
                         ],
                     ),
@@ -100,8 +95,7 @@ def create_ai_analysis_modal():
             dbc.ModalFooter(
                 [
                     html.Small(
-                        "Powered by AWS Bedrock",
-                        className="text-muted me-auto"
+                        "Powered by AWS Bedrock", className="text-muted me-auto"
                     ),
                     dbc.Button(
                         "Close",
@@ -111,10 +105,10 @@ def create_ai_analysis_modal():
                             "backgroundColor": UIConfig.PRIMARY_COLOR,
                             "color": "white",
                             "borderRadius": "10px",
-                        }
+                        },
                     ),
                 ],
-                style={"backgroundColor": "#f8f9fa"}
+                style={"backgroundColor": "#f8f9fa"},
             ),
         ],
         id="ai-analysis-modal",
@@ -124,52 +118,3 @@ def create_ai_analysis_modal():
         centered=True,
         style={"zIndex": 1050},
     )
-
-
-
-
-
-# Add custom CSS for the chat interface
-def get_ai_chat_css():
-    """Get custom CSS for AI chat interface
-    
-    Returns:
-        str: CSS rules to be included in the app
-    """
-    return """
-    /* Custom CSS for AI chat interface */
-    .ai-message {
-        background-color: white;
-        border-radius: 10px 10px 10px 0;
-        padding: 10px 15px;
-        margin-right: auto;
-        margin-bottom: 5px;
-        max-width: 80%;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-    
-    .user-message {
-        background-color: #39275B;
-        color: white;
-        border-radius: 10px 10px 0 10px;
-        padding: 10px 15px;
-        margin-left: auto;
-        margin-bottom: 5px;
-        max-width: 80%;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-    
-    .message-container {
-        display: flex;
-        margin-bottom: 15px;
-    }
-    
-    #ai-send-button:hover {
-        color: #4B2E83;
-    }
-    
-    #ai-user-input:focus {
-        box-shadow: 0 0 0 0.25rem rgba(57, 39, 91, 0.25);
-        border-color: #4B2E83;
-    }
-    """
