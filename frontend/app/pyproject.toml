@@ -7,6 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
+boto3 = "^1.37"
 psycopg2-binary = "^2.9.9"
 dash = "2.17"
 dash-leaflet = "1.0.15"
