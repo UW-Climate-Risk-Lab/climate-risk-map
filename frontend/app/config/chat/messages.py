@@ -1,3 +1,14 @@
+"""
+Here we set up some simple classes to represent messages in our application.
+A message in our chat window consists of some content and a container for it,
+which has specific styling. We create this config to package up the html components
+into a single object and set different styling based on the role of the message.
+
+This makes messages easier to create in the chat window application code, and ensures
+they are generated with a consistent format.
+
+"""
+
 from abc import ABC, abstractmethod
 
 from dash import html, dcc
@@ -9,6 +20,8 @@ from config.ui_config import UIConfig
 
 class ChatMessage:
     """Factory to generate chat message with provided role
+
+    This will be called in the chat window ui components and callbacks code.
     """
     @staticmethod
     def create_message(role, text, **kwargs):

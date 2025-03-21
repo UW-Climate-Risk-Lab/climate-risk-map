@@ -77,7 +77,7 @@ def create_ai_analysis_modal():
                             ),
                             dbc.InputGroupText(
                                 html.Button(
-                                    html.I(className="fa fa-paper-plane"),
+                                    "↑",
                                     id="ai-send-button",
                                     className="btn",
                                     style={

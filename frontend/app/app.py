@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 logger.info("Initializing Dash application")
 app = Dash(
     __name__, 
-    external_stylesheets=[dbc.themes.BOOTSTRAP], 
+    external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME], 
     assets_folder=ASSETS_PATH
 )
 server = app.server
@@ -42,6 +42,6 @@ if __name__ == "__main__":
     app.run_server(
         host="0.0.0.0", 
         port=8050, 
-        debug=True, 
+        debug=False, 
         dev_tools_hot_reload=False
     )
