@@ -1,12 +1,15 @@
 import dash_bootstrap_components as dbc
-from dash import html, dcc, callback, Input, Output, State
-import plotly.graph_objects as go
+
+from dash import html
 
 from config.ui_config import UIConfig
+from config.chat.messages import ChatMessage
 
 
 def create_ai_analysis_modal():
     """Create the AI analysis modal with chat interface
+
+    This is the chat window pop up, which is initially closed.
 
     Returns:
         dbc.Modal: Modal component with chat interface
@@ -35,14 +38,9 @@ def create_ai_analysis_modal():
                         id="ai-chat-messages",
                         children=[
                             # Initial welcome message
-                            html.Div(
-                                [
-                                    html.Div(
-                                        "👋 Hi there! I'm your Climate Risk AI Assistant. I can help analyze climate data for your selected region and hazard indicators. What would you like to know?",
-                                        className="ai-message",
-                                    )
-                                ],
-                                className="message-container",
+                            ChatMessage.create_message(
+                                role="ai",
+                                text="👋 Hi there! I'm your Climate Risk AI Assistant. I can help analyze climate data for your selected region and hazard indicators. What would you like to know?",
                             ),
                         ],
                         style={

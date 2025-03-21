@@ -1,7 +1,7 @@
 from ui.callbacks.map_callbacks import register_map_callbacks
 from ui.callbacks.download_callbacks import register_download_callbacks
 from ui.callbacks.legend_callbacks import register_legend_callbacks
-from ui.callbacks.ai_callbacks import register_ai_analysis_callbacks
+from ui.callbacks.chat_window_callbacks import register_ai_analysis_callbacks
 def register_all_callbacks(app):
     """Register all application callbacks
     
