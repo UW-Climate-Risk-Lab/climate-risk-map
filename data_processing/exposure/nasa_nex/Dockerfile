@@ -36,13 +36,13 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry install --no-root --without dev && rm -rf $POETRY_CACHE_DIR
 
 # The runtime image, used to just run the code provided its virtual environment
-FROM python:3.11-slim-bullseye AS runtime
+FROM debian:bookworm-slim AS runtime
 
 # Install GDAL runtime libraries
 RUN apt-get update && apt-get install -y \
     gdal-bin \
-    libgdal28 \
-    libgeos-c1v5 \
+    libgdal-dev \
+    libgeos-dev \
     --fix-missing
 
 # Copy the virtual environment from the builder stage to the runtime stage
@@ -56,14 +56,6 @@ ENV CPLUS_INCLUDE_PATH=/usr/include/gdal \
 # Set working directory
 WORKDIR /app
 
-COPY run.py \
-    pipeline.py \
-    process_climate.py \ 
-    generate_geotiff.py \
-    utils.py \
-    infra_intersection.py \
-    constants.py \
-    infra_intersection_load.py ./
+COPY src/ src/
     
-
-ENTRYPOINT ["/bin/bash", "-c", "source /app/.venv/bin/activate && exec python run.py \"$@\"", "--"]
+ENTRYPOINT ["/bin/bash", "-c", "source /app/.venv/bin/activate && exec python src/run.py \"$@\"", "--"]
