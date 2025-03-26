@@ -11,13 +11,12 @@ logging.basicConfig(level=logging.INFO)
 def setup_args():
     parser = argparse.ArgumentParser(description="Process climate data for a given SSP")
 
-    parser.add_argument("--s3-bucket", required=True, help="S3 bucket name")
-    parser.add_argument("--s3-prefix", required=True, help="S3 base prefix for climate data")
-    parser.add_argument("--s3-prefix-geotiff", required=True, help="S3 base prefix for outputting geotiffs")
+    parser.add_argument("--s3-zarr-store-uri", required=True, help="S3 URI to zarr store containing climate dataset ")
     parser.add_argument(
-        "--climate-variable", required=True, help="Climate variable to process"
+        "--climate-variable", required=True, help="Climate variable to process in zarr store"
     )
     parser.add_argument("--crs", required=True, help="Coordinate reference system")
+    parser.add_argument("--ssp", required=True, help="SSP of climate hazard data")
     parser.add_argument(
         "--zonal-agg-method", required=True, help="Zonal aggregation method"
     )
@@ -29,19 +28,15 @@ def setup_args():
 
 if __name__ == "__main__":
     args = setup_args()
-    
-    for ssp in [str(ssp) for ssp in constants.SSPS]:
-        logger.info(f"STARTING PIPELINE FOR SSP {ssp}")
-        pipeline.main(
-            ssp=ssp,
-            s3_bucket=args.s3_bucket,
-            s3_prefix=args.s3_prefix,
-            s3_prefix_geotiff=args.s3_prefix_geotiff,
-            climate_variable=args.climate_variable,
-            crs=args.crs,
-            zonal_agg_method=args.zonal_agg_method,
-            state_bbox=args.state_bbox,
-            osm_category=args.osm_category,
-            osm_type=args.osm_type,
-        )
-        logger.info(f"PIPELINE SUCCEEDED FOR SSP {ssp}")
+    logger.info(f"STARTING PIPELINE FOR {args.s3_zarr_store_uri}")
+    pipeline.main(
+        s3_zarr_store_uri=args.s3_zarr_store_uri,
+        climate_variable=args.climate_variable,
+        ssp=args.ssp,
+        crs=args.crs,
+        zonal_agg_method=args.zonal_agg_method,
+        state_bbox=args.state_bbox,
+        osm_category=args.osm_category,
+        osm_type=args.osm_type,
+    )
+    logger.info(f"PIPELINE SUCCEEDED FOR {args.s3_zarr_store_uri}")

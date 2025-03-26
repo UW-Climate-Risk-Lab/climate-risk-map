@@ -5,7 +5,6 @@ import tempfile
 
 from psycopg2 import pool
 
-import generate_geotiff
 import infra_intersection
 import infra_intersection_load
 import process_climate
@@ -27,11 +26,9 @@ PG_PORT = os.environ["PG_PORT"]
 
 
 def main(
-    ssp: str,
-    s3_bucket: str,
-    s3_prefix: str,
-    s3_prefix_geotiff: str,
+    s3_zarr_store_uri: str,
     climate_variable: str,
+    ssp: str,
     crs: str,
     zonal_agg_method: str,
     state_bbox: str,
@@ -54,7 +51,6 @@ def main(
     bbox = utils.get_state_bbox(state_bbox)
 
     ds = process_climate.main(
-        ssp=ssp,
         s3_bucket=s3_bucket,
         s3_prefix=s3_prefix,
         climate_variable=climate_variable,
