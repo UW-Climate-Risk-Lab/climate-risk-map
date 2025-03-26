@@ -7,7 +7,7 @@ import xarray as xr
 import fsspec
 import s3fs
 
-import constants
+import src.constants as constants
 
 from typing import List, Set
 

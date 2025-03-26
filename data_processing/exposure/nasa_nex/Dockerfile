@@ -51,7 +51,7 @@ COPY --from=builder /app/.venv /app/.venv
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal \
     C_INCLUDE_PATH=/usr/include/gdal \
     PATH="/app/.venv/bin:$PATH" \
-    PYTHONPATH="/app/.venv/lib/python3.11/site-packages"
+    PYTHONPATH="/app"
 
 # Set working directory
 WORKDIR /app

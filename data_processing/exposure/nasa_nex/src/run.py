@@ -4,11 +4,11 @@ import os
 
 from psycopg2 import pool
 
-import infra_intersection
-import infra_intersection_load
-import process_climate
-import utils
-import constants
+import src.infra_intersection as infra_intersection
+import src.infra_intersection_load as infra_intersection_load
+import src.process_climate as process_climate
+import src.utils as utils
+import src.constants as constants
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
