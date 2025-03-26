@@ -250,7 +250,7 @@ def create_download_section():
                         children=[
                             dbc.Button(
                                 "Analyze with AI",
-                                id="ai-analysis-btn",
+                                id="analysis-btn",
                                 className="me-1",
                                 n_clicks=0,
                                 style=UIConfig.BUTTON_STYLE,
@@ -270,7 +270,7 @@ def create_download_section():
                         width={"size": 8, "offset": 0},
                         children=[
                             dbc.Alert(
-                                id="download-message",
+                                id="alert-message",
                                 color="danger",
                                 is_open=False,
                                 duration=3000,

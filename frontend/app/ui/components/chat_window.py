@@ -15,7 +15,7 @@ def create_ai_analysis_modal():
         dbc.Modal: Modal component with chat interface
     """
     return dbc.Modal(
-        id="ai-analysis-modal",
+        id="chat-modal",
         is_open=False,
         size="lg",
         scrollable=True,
@@ -35,7 +35,7 @@ def create_ai_analysis_modal():
                     # Chat message container with scrollable area for messages
                     # We simulate a chat by appending new messages to 'ai-chat-messages' children
                     html.Div(
-                        id="ai-chat-messages",
+                        id="chat-messages",
                         children=[
                             # Initial welcome message
                             ChatMessage.create_message(
@@ -56,18 +56,24 @@ def create_ai_analysis_modal():
                     ),
                     # Loading indicator for AI responses
                     dbc.Spinner(
-                        html.Div(id="ai-loading-placeholder"),
-                        id="ai-loading-spinner",
+                        html.Div(id="chat-loading-placeholder"),
+                        id="chat-loading-spinner",
                         delay_show=100,
                         color=UIConfig.PRIMARY_COLOR,
                         fullscreen=True,
                         fullscreen_style={"backgroundColor": "transparent"},
                     ),
+                    dbc.Alert(
+                        id="chat-alert-message",
+                        color="danger",
+                        is_open=False,
+                        duration=3000,
+                    ),
                     # Input area for user messages
                     dbc.InputGroup(
                         [
                             dbc.Textarea(
-                                id="ai-user-input",
+                                id="chat-user-input",
                                 placeholder="Ask me about climate risks in your selected region...",
                                 rows=2,
                                 style={
@@ -78,7 +84,7 @@ def create_ai_analysis_modal():
                             dbc.InputGroupText(
                                 html.Button(
                                     "↑",
-                                    id="ai-send-button",
+                                    id="chat-send-button",
                                     className="btn",
                                     style={
                                         "border": "none",
@@ -104,7 +110,7 @@ def create_ai_analysis_modal():
                     ),
                     dbc.Button(
                         "Close",
-                        id="ai-modal-close",
+                        id="chat-modal-close",
                         className="ms-auto",
                         style={
                             "backgroundColor": UIConfig.PRIMARY_COLOR,

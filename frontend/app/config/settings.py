@@ -21,5 +21,12 @@ PG_PORT = os.environ["PG_PORT"]
 MAX_DOWNLOADS = int(os.environ.get("MAX_DOWNLOADS", "5"))
 MAX_DOWNLOAD_AREA = float(os.environ.get("MAX_DOWNLOAD_AREA", "1000.0"))
 
-# AWS settings
+# Analysis settings (AI Chat Window)
+MAX_CHATS = int(os.environ.get("MAX_CHATS", "5"))
+
+# AWS S3 settings
 S3_BUCKET = os.environ["S3_BUCKET"]
+
+# AWS Bedrock Settings
+AGENT_ID = os.environ["AGENT_ID"]
+AGENT_ALIAS_ID = os.environ["AGENT_ALIAS_ID"]
