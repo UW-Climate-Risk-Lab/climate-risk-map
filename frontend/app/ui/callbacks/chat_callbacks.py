@@ -176,9 +176,6 @@ def register_chat_callbacks(app):
         selected_month,
         session_id
     ):
-        """Simulate an AI response (placeholder for the actual AI service call)"""
-        # This is just a placeholder to demonstrate the UI
-        # In the actual implementation, this would be triggered by the AI service response
 
         if not isinstance(chat_messages, list):
             chat_messages = [chat_messages]
