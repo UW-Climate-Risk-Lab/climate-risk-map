@@ -10,7 +10,7 @@ import psycopg2
 import psycopg2.sql as sql
 from pandas.testing import assert_frame_equal
 
-from ..infra_intersection import (
+from src.infra_intersection import (
     zonal_aggregation,
     create_pgosm_flex_query,
     ID_COLUMN,

@@ -13,8 +13,8 @@ import xarray as xr
 import xvec
 from shapely import wkt, Point
 
-import utils
-import constants
+import src.utils as utils
+import src.constants as constants
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

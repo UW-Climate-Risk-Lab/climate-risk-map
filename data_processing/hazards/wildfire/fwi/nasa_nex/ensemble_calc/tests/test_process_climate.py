@@ -5,7 +5,7 @@ import xarray as xr
 from unittest.mock import MagicMock, patch
 
 # Adjust import paths as needed
-from ..process_climate import (
+from src.ensemble import (
     validate_model_ssp,
     validate_model_years,
     decade_month_calc,
@@ -16,7 +16,6 @@ from ..process_climate import (
     FUTURE_YEARS
 )
 
-import constants
 
 logger = logging.getLogger(__name__)
 
