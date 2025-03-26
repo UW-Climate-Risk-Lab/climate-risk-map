@@ -1,13 +1,13 @@
-name: data_processing/infraxclimate/scenariomip CI-CD
+name: data_processing/exposure/nasa-nex CI-CD
 
 on:
   push:
     branches: [ "main" ]
-    paths: [ "data_processing/infraxclimate/nasa_nex/**" ]
+    paths: [ "data_processing/exposure/nasa_nex/**" ]
   
   pull_request:
     branches: [ "main" ]
-    paths: [ "data_processing/infraxclimate/nasa_nex/**" ]
+    paths: [ "data_processing/exposure/nasa_nex/**" ]
 
 jobs:
 
@@ -29,12 +29,12 @@ jobs:
 
       - name: Install Dependencies with Poetry
         run: |
-          cd data_processing/infraxclimate/nasa_nex
+          cd data_processing/exposure/nasa_nex
           poetry install
 
       - name: Run Unit Tests
         run: |
-          cd data_processing/infraxclimate/nasa_nex
+          cd data_processing/exposure/nasa_nex
           export PYTHONPATH=$PYTHONPATH:.
           poetry run pytest
 
@@ -44,7 +44,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Builds data_processing/infraxclimate/nasa_nex
-      run: docker build --tag data_processing/infraxclimate/nasa_nex:$(date +%s) ./data_processing/infraxclimate/nasa_nex
+    - name: Builds data_processing/exposure/nasa_nex
+      run: docker build --tag data_processing/exposure/nasa_nex:$(date +%s) ./data_processing/exposure/nasa_nex
   
   
