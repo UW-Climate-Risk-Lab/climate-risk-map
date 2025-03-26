@@ -36,14 +36,16 @@ def generate_random_table_id():
 
 def main(
     df: pd.DataFrame,
-    ssp: int,
+    ssp: str,
     climate_variable: str,
     conn: pg.extensions.connection,
-    metadata: Dict,
 ):
-
+    # Want to keep ssp in database as ints
+    if ssp == 'historical':
+        ssp = -999
+    
     # Adds columns needed for temp table
-    df["ssp"] = ssp
+    df["ssp"] = int(ssp)
     data_load_table = f"nasa_nex_{climate_variable}"
 
     # Random ID needed if multiple laod process running at once

@@ -11,7 +11,7 @@ import psycopg2.sql as sql
 import xarray as xr
 import geopandas as gpd
 
-import constants
+import src.constants as constants
 
 def str_to_bool(s):
     return s.lower() in ['true', '1', 't', 'y', 'yes']

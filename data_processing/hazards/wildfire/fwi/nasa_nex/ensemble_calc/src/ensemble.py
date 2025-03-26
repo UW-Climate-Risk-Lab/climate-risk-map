@@ -22,15 +22,11 @@ HISTORICAL_YEARS = set(range(1950, 2015))  # 1950-2014
 FUTURE_YEARS = set(range(2015, 2101))  # 2015-2100
 
 
-def validate_model_ssp(fs: s3fs.S3FileSystem, model_path: str, ssp: str) -> bool:
-    """Check if model has required SSP"""
-
-    # Handle historical case
-    if ssp == "-999":
-        return fs.exists(f"{model_path}/historical")
+def validate_model_scenario(fs: s3fs.S3FileSystem, model_path: str, scenario: str) -> bool:
+    """Check if model has required scenario"""
 
     # Handle regular SSP cases
-    return fs.exists(f"{model_path}/ssp{ssp}")
+    return fs.exists(f"{model_path}/{scenario}")
 
 
 def validate_model_years(fs: s3fs.S3FileSystem, zarr_stores: List[str]) -> bool:
@@ -130,7 +126,7 @@ def reduce_model_stats(da: xr.DataArray) -> xr.Dataset:
 def load_data(
     s3_bucket: str,
     s3_prefix: str,
-    ssp: str,
+    scenario: str,
     climate_variable: str,
 ) -> xr.DataArray:
     """Reads all valid Zarr stores in the given S3 directory"""
@@ -147,15 +143,11 @@ def load_data(
         logger.info(f"Validating model: {model_name}")
 
         # Check if model has all required SSPs
-        if not validate_model_ssp(fs, model_path, ssp):
-            logger.warning(f"Skipping {model_name}: missing required SSP")
+        if not validate_model_scenario(fs, model_path, scenario):
+            logger.warning(f"Skipping {model_name}: missing required scenario")
             continue
 
-        # Get all zarr stores for this model and SSP
-        if ssp == "-999":
-            model_pattern = f"{model_path}/historical/*/{climate_variable}_day_*.zarr"
-        else:
-            model_pattern = f"{model_path}/ssp{ssp}/*/{climate_variable}_day_*.zarr"
+        model_pattern = f"{model_path}/{scenario}/*/{climate_variable}_day_*.zarr"
 
         zarr_stores = fs.glob(model_pattern)
 
@@ -176,8 +168,6 @@ def load_data(
             preprocess=decade_month_calc,
         )
         _da = _ds[climate_variable]
-        _da = _da.assign_coords({"lon": (((_da["lon"] + 180) % 360) - 180)})
-        _da = _da.sortby("lon")
 
         _da = _da.assign_coords(model=model_name)
         _da = _da.expand_dims("model")
@@ -200,7 +190,7 @@ def load_data(
     return da
 
 
-def main(ssp: str, s3_bucket: str, s3_prefix: str, climate_variable: str) -> xr.Dataset:
+def main(scenario: str, s3_bucket: str, s3_prefix: str, climate_variable: str) -> xr.Dataset:
     """Processes climate data
 
     Args:
@@ -218,7 +208,7 @@ def main(ssp: str, s3_bucket: str, s3_prefix: str, climate_variable: str) -> xr.
     da = load_data(
         s3_bucket=s3_bucket,
         s3_prefix=s3_prefix,
-        ssp=ssp,
+        scenario=scenario,
         climate_variable=climate_variable,
     )
 
@@ -231,15 +221,16 @@ def main(ssp: str, s3_bucket: str, s3_prefix: str, climate_variable: str) -> xr.
 
 if __name__ == "__main__":
 
-    ssps = [126, 245, 370, 585, -999]
+    # Shared Socioeconomic Pathways (SSPS) and historical
+    scenarios = ["ssp126", "ssp245", "ssp370", "ssp585", "historical"]
     climate_variable = "fwi"
     s3_prefix = "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6"
     s3_bucket = os.environ["S3_BUCKET"]
 
-    for ssp in [str(ssp) for ssp in ssps]:
-        logger.info(f"STARTING PIPELINE FOR SSP {ssp}")
+    for scenario in scenarios:
+        logger.info(f"STARTING PIPELINE FOR {scenario}")
         ds = main(
-            ssp=ssp,
+            scenario=scenario,
             s3_bucket=s3_bucket,
             s3_prefix=s3_prefix,
             climate_variable=climate_variable,
@@ -248,9 +239,9 @@ if __name__ == "__main__":
             s3_bucket,
             s3_prefix,
             "DECADE_MONTH_ENSEMBLE",
-            "historical" if ssp == -999 else f"ssp{ssp}",
+            scenario
         )
-        s3_output_zarr = f"fwi_decade_month_ssp{ssp}.zarr"
+        s3_output_zarr = f"fwi_decade_month_{scenario}.zarr"
         s3_output_uri = f"s3://{s3_output_path / s3_output_zarr}"
 
         try:
@@ -267,4 +258,4 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error writing to s3: {str(e)}")
             raise ValueError
-        logger.info(f"PIPELINE SUCCEEDED FOR SSP {ssp}")
+        logger.info(f"PIPELINE SUCCEEDED FOR SSP {scenario}")
