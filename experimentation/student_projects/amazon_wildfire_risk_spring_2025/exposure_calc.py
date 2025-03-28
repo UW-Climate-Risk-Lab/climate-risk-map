@@ -1,0 +1,184 @@
+import concurrent.futures as cf
+import logging
+import os
+import json
+from typing import Dict, List, Tuple
+
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+import psycopg2 as pg
+import psycopg2.sql as sql
+import xarray as xr
+import xvec
+from shapely import wkt, Point
+
+import src.utils as utils
+import src.constants as constants
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+# Infrastructure return data should have two columns, id and geometry
+# 'id' column refers to a given feature's unique id. This is the OpenStreetMap ID for the PG OSM Flex
+ID_COLUMN = "osm_id"
+GEOMETRY_COLUMN = "geometry"
+
+
+def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
+    """Converts a DataArray to a Dataframe.
+
+    Used since we ultimately want the data in tabular form for PostGIS.
+
+    Args:
+        da (xr.DataArray): Datarray
+    """
+
+    df = (
+        ds.stack(id_dim=(GEOMETRY_COLUMN, "month"))
+        .to_dataframe()
+        .reset_index(drop=True)[[ID_COLUMN, "month", GEOMETRY_COLUMN] + list(ds.data_vars)]
+    )
+
+    df["month"] = df["month"].apply(lambda x: int(x))
+
+    return df
+
+
+def task_xvec_zonal_stats(
+    climate: xr.Dataset,
+    geometry,
+    x_dim,
+    y_dim,
+    zonal_agg_method,
+    method,
+    index,
+) -> pd.DataFrame:
+    """Used for running xvec.zonal_stats in parallel process pool. Param types are the same
+    as xvec.zonal_stats().
+
+    Note, there may be a warning that spatial references systems between
+    input features do not match. Under the hood, xvec uses exeactextract,
+    which does a simple check on the CRS attribute of each dataset.
+    If the attributes are not identical, it gives an error.
+
+    In this pipeline, we set the CRS as an ENV variable and make sure all
+    imported data is loaded/transformed in this CRS. From manual debugging and
+    checking attributes, it seems the CRS attribute strings showed the same CRS,
+    but the string values were not identical. So ignoring the warning was okay.
+
+    Returns:
+        pd.DataFrame: DataFrame in format of convert_da_to_df()
+    """
+
+    ds = climate.xvec.zonal_stats(
+        geometry,
+        x_coords=x_dim,
+        y_coords=y_dim,
+        stats=zonal_agg_method,
+        method=method,
+        index=index,
+    )
+
+    df = convert_ds_to_df(ds=ds)
+
+    return df
+
+
+def zonal_aggregation_point(
+    climate: xr.Dataset,
+    infra: gpd.GeoDataFrame,
+    x_dim: str,
+    y_dim: str,
+) -> pd.DataFrame:
+
+    ds = climate.xvec.extract_points(
+        infra.geometry, x_coords=x_dim, y_coords=y_dim, index=True
+    )
+
+    df = convert_ds_to_df(ds=ds)
+    return df
+
+
+def zonal_aggregation(
+    climate: xr.Dataset,
+    infra: gpd.GeoDataFrame,
+    x_dim: str,
+    y_dim: str,
+) -> pd.DataFrame:
+    """Performs zonal aggregation on climate data and infrastructure data.
+
+    Data needs to be split up into point and non point geometries, as xvec
+    uses 2 different methods to deal with the different geometries.
+
+    NOTE, xvec_zonal_stats can be slow. This uses a method called exactextract,
+    which is based on the package exactextract, which is a C++ zonal aggregation
+    implementation. This loops through each feature sequentially to calculate the value.
+
+    Because of this, we use a ProcessPoolExecutor and split up the infrastructure data
+    into "chunks" and process each one in parallel.
+
+    Args:
+        climate (xr.DataSet): Climate data
+        infra (gpd.GeoDataFrame): Infrastructure data
+        zonal_agg_method (str): Zonal aggregation method
+        x_dim (str): X dimension name
+        y_dim (str): Y dimension name
+
+    Returns:
+        pd.DataFrame: Aggregated data
+    """
+
+    point_geom_types = ["Point", "MultiPoint"]
+
+    point_infra = infra.loc[infra.geom_type.isin(point_geom_types)]
+
+    ds = climate.xvec.extract_points(
+        point_infra.geometry, x_coords=x_dim, y_coords=y_dim, index=True
+    )
+
+    df = convert_ds_to_df(ds=ds)
+
+    logger.info("Point geometries intersected successfully")
+
+
+    if GEOMETRY_COLUMN in df.columns:
+        df.drop(GEOMETRY_COLUMN, inplace=True, axis=1)
+
+    return df
+
+
+def main(
+    climate_ds: xr.Dataset,
+    crs: str,
+    zonal_agg_method: List[str] | str,
+    conn: pg.extensions.connection,
+    metadata: Dict,  # Add metadata parameter
+) -> pd.DataFrame:
+
+    infra_df = pd.read_csv("data/amazon_facilities_eastern_washington.csv")
+    infra_gdf = gpd.GeoDataFrame(infra_df, geometry=gpd.points_from_xy(x=infra_df["longitude"], y=infra_df["latitude"]), crs=crs)
+
+    logger.info("Starting Zonal Aggregation...")
+    df = zonal_aggregation(
+        climate=climate_ds,
+        infra=infra_gdf,
+        zonal_agg_method=zonal_agg_method,
+        x_dim=constants.X_DIM,
+        y_dim=constants.Y_DIM
+    )
+    logger.info("Zonal Aggregation Computed")
+
+    failed_aggregations = df.loc[df["value_mean"].isna(), ID_COLUMN].nunique()
+    logger.warning(
+        f"{str(failed_aggregations)} osm_ids were unable to be zonally aggregated"
+    )
+    df = df.dropna()
+    
+    # Before returning the DataFrame, add the metadata column
+    df['metadata'] = json.dumps(metadata)
+    
+    return df
+
+if __name__=="__main__":
+    main()
