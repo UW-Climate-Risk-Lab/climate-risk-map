@@ -168,3 +168,6 @@ cython_debug/
 out.yml
 samconfig.toml
 test.ipynb
+
+# Ignore all directories named 'data' in any location
+**/data/
