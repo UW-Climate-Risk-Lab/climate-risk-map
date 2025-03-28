@@ -67,10 +67,44 @@ class AiMessage(Message):
             style=self._message_container_style,
         )
 
+        # Passing in fig can give weird error 
+        # "NSWindow should only be instantiated on the main thread!" 
+        # is occurring because Matplotlib is trying to create a GUI window 
+        # outside the main thread, which isn't allowed in macOS
+
+        # Possible fix chat_service.py
+        # # Instead of creating a Matplotlib figure, encode as base64
+        # if type == "image/png":
+        #     b64_image = base64.b64encode(bytes_data).decode('utf-8')
+        #     image_src = f"data:image/png;base64,{b64_image}"
+        #     # Pass the image source to the message
+        #     message = ChatMessage.create_message(role="ai", text=text, image_src=image_src)
+
+        # At the top of chat_service.py, add:
+        # import matplotlib
+        # matplotlib.use('Agg')  # Use non-interactive backend
+        # import matplotlib.pyplot as plt
+        # import base64
+
+        # Add figure if present
+        # if fig:
+        #     message_content.append(dcc.Graph(
+        #         figure=fig,
+        #         config={"displayModeBar": False},
+        #         style={"marginBottom": "10px"},
+        #     ))
+        
+        # # Add base64 image if present
+        # if image_src:
+        #     message_content.append(html.Img(
+        #         src=image_src,
+        #         style={"maxWidth": "100%", "marginBottom": "10px"}
+        #     ))
+        
         if fig:
             message = html.Div(
                 [
-                    html.P(
+                    dcc.Markdown(
                         text,
                         style={"marginBottom": "10px"},
                     ),
@@ -84,7 +118,16 @@ class AiMessage(Message):
                 style=self._message_style,
             )
         else:
-            message = html.Div(text, className="ai-message", style=self._message_style)
+            message = html.Div(
+                [
+                    dcc.Markdown(
+                        text,
+                        style={"marginBottom": "10px"},
+                    ),
+                ],
+                className="ai-message",
+                style=self._message_style,
+            )
 
         message_container.children.append(message)
 

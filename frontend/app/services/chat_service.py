@@ -302,18 +302,18 @@ class ChatService:
 
                 # files contains intermediate response for code interpreter if any files have been generated.
                 fig = None
-                if "files" in event:
-                    files = event["files"]["files"]
-                    for file in files:
-                        name = file["name"]
-                        type = file["type"]
-                        bytes_data = file["bytes"]
+                # if "files" in event:
+                #     files = event["files"]["files"]
+                #     for file in files:
+                #         name = file["name"]
+                #         type = file["type"]
+                #         bytes_data = file["bytes"]
 
-                        # It the file is a PNG image then we can display it...
-                        if type == "image/png":
-                            # Display PNG image using Matplotlib
-                            img = plt.imread(io.BytesIO(bytes_data))
-                            fig = plt.figure(figsize=(10, 10))
+                #         # It the file is a PNG image then we can display it...
+                #         if type == "image/png":
+                #             # Display PNG image using Matplotlib
+                #             img = plt.imread(io.BytesIO(bytes_data))
+                #             fig = plt.figure(figsize=(10, 10))
         except Exception as e:
             print(f"Error: {e}")
 
