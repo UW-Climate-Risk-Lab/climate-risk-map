@@ -20,8 +20,6 @@ def load_datasets(s3_bucket):
     
     # Load burn probability and flame length exceedance datasets
     ds_burn_probability = xr.open_dataset("data/BP_WA.tif", engine="rasterio")
-    ds_flame_length_exceedance_4ft = xr.open_dataset("data/FLEP4_WA.tif", engine="rasterio")
-    ds_flame_length_exceedance_8ft = xr.open_dataset("data/FLEP8_WA.tif", engine="rasterio")
     
     # Load historical FWI dataset
     ds_fwi_historical = xr.open_dataset(
@@ -35,7 +33,7 @@ def load_datasets(s3_bucket):
         engine="zarr"
     )
     
-    return ds_burn_probability, ds_flame_length_exceedance_4ft, ds_flame_length_exceedance_8ft, ds_fwi_historical, ds_fwi_2030
+    return ds_burn_probability, ds_fwi_historical, ds_fwi_2030
 
 def filter_fire_season_months(ds, months=['05', '06', '07', '08', '09', '10']):
     """Filter dataset to include only fire season months (May-October)"""
@@ -89,12 +87,12 @@ def calculate_beta_1(fwi_data, prob_data):
     
     return beta_1
 
-def calculate_future_probability(p_now, fwi_now, fwi_future, beta_1):
-    """Calculate future probability using logistic function and Beta_1"""
-    # Apply the equation from the image
-    delta_fwi = fwi_future - fwi_now
-    odds_multiplier = np.exp(beta_1 * delta_fwi)
-    p_future = (p_now * odds_multiplier) / (1 + p_now * (odds_multiplier - 1))
+def calculate_future_probability(p_now, fwi_now, fwi_future):
+    """Calculate future probability using relative change method"""
+        
+    # Calculate relative change (1.0 means no change)
+    relative_change = 1.0 + (fwi_future - fwi_now) / fwi_future
+    p_future = p_now * relative_change
     
     # Ensure probability is between 0 and 1
     p_future = np.clip(p_future, 0, 1)
@@ -108,7 +106,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
     
     # Load datasets
-    ds_burn_probability, ds_flame_4ft, ds_flame_8ft, ds_fwi_historical, ds_fwi_2030 = load_datasets(s3_bucket)
+    ds_burn_probability, ds_fwi_historical, ds_fwi_2030 = load_datasets(s3_bucket)
     
     # Filter to fire season months (May-October)
     ds_fwi_historical = filter_fire_season_months(ds_fwi_historical)
@@ -117,83 +115,49 @@ def main():
     # Calculate historical mean FWI by month
     ds_fwi_historical = calculate_mean_fwi_by_month(ds_fwi_historical)
     ds_fwi_2030 = calculate_mean_fwi_by_month(ds_fwi_2030)
-    
-    # Calculate historical burn probabilities with different flame lengths
-    logger.info("Calculating historical burn probabilities...")
-    da_prob_gt_4ft = ds_burn_probability['band_data'] * ds_flame_4ft['band_data']
-    da_prob_gt_8ft = ds_burn_probability['band_data'] * ds_flame_8ft['band_data']
 
     # Reproject FWI data to match burn probability spatial resolution and extent
     logger.info("Reprojecting FWI data to match burn probability data...")
-    da_prob_gt_4ft = da_prob_gt_4ft.rio.reproject("EPSG:4326")
-    da_prob_gt_8ft = da_prob_gt_8ft.rio.reproject("EPSG:4326")
+    da_burn_probability = ds_burn_probability.sel(band=1)["band_data"]
+    da_burn_probability = da_burn_probability.rio.reproject("EPSG:4326")
+    da_burn_probability = da_burn_probability.rio.reproject("EPSG:4326")
     
     fwi_historical_reproj = ds_fwi_historical['value_q3'].rio.write_crs("EPSG:4326")
     fwi_historical_reproj.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=True)
-    fwi_historical_reproj = fwi_historical_reproj.rio.reproject_match(da_prob_gt_4ft, resampling=Resampling.bilinear)
+    fwi_historical_reproj = fwi_historical_reproj.rio.reproject_match(da_burn_probability, resampling=Resampling.bilinear)
     
     fwi_2030_reproj = ds_fwi_2030['value_q3'].rio.write_crs("EPSG:4326")
     fwi_2030_reproj.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=True)
-    fwi_2030_reproj = fwi_2030_reproj.rio.reproject_match(da_prob_gt_4ft, resampling=Resampling.bilinear)
-    
-    # Calculate Beta_1 for both probability thresholds
-    monthly_beta_1 = {
-        "4ft": {"05": None, "06": None, "07": None, "08": None, "09": None, "10": None},
-        "8ft": {"05": None, "06": None, "07": None, "08": None, "09": None, "10": None}
-    }
-
-    for month in monthly_beta_1["4ft"].keys():
-        beta_1_4ft = calculate_beta_1(fwi_historical_reproj.sel(month=month), da_prob_gt_4ft)
-        monthly_beta_1["4ft"][month] = beta_1_4ft
-    
-    for month in monthly_beta_1["8ft"].keys():
-        beta_1_8ft = calculate_beta_1(fwi_historical_reproj.sel(month=month), da_prob_gt_8ft)
-        monthly_beta_1["8ft"][month] = beta_1_8ft
+    fwi_2030_reproj = fwi_2030_reproj.rio.reproject_match(da_burn_probability, resampling=Resampling.bilinear)
     
     
     # Calculate future burn probabilities for each month
     logger.info("Calculating future burn probabilities...")
-    future_prob_4ft_by_month = []
-    future_prob_8ft_by_month = []
+    future_burn_probability = []
     
     for month in ds_fwi_2030.month.values:
-        beta_1_4ft = monthly_beta_1["4ft"][month]
-        beta_1_8ft = monthly_beta_1["8ft"][month]
 
         # Calculate future probabilities
-        future_prob_4ft = calculate_future_probability(
-            da_prob_gt_4ft, 
+        _da_future_burn_probability = calculate_future_probability(
+            da_burn_probability, 
             fwi_historical_reproj.sel(month=month), 
             fwi_2030_reproj.sel(month=month),
-            beta_1_4ft
         )
         
-        future_prob_8ft = calculate_future_probability(
-            da_prob_gt_8ft,
-            fwi_historical_reproj.sel(month=month),
-            fwi_2030_reproj.sel(month=month),
-            beta_1_8ft
-        )
+        _da_future_burn_probability = _da_future_burn_probability.assign_coords(month=month)
         
-        future_prob_4ft = future_prob_4ft.assign_coords(month=month)
-        future_prob_8ft = future_prob_8ft.assign_coords(month=month)
-        
-        future_prob_4ft_by_month.append(future_prob_4ft)
-        future_prob_8ft_by_month.append(future_prob_8ft)
+        future_burn_probability.append(_da_future_burn_probability)
     
-    future_2030_prob_gt_4ft = (xr.concat(future_prob_4ft_by_month, dim='month')).mean("month")
-    future_2030_prob_gt_8ft = (xr.concat(future_prob_8ft_by_month, dim='month')).mean("month")
+    da_burn_probability_future = (xr.concat(future_burn_probability, dim='month'))
 
-    fwi_historical_reproj = fwi_historical_reproj.mean("month")
-    fwi_2030_reproj = fwi_2030_reproj.mean("month")
+    fwi_historical_reproj = fwi_historical_reproj
+    fwi_2030_reproj = fwi_2030_reproj
 
     # Combine monthly future probabilities
     ds_burn_prob = xr.Dataset({
-        'future_2030_prob_gt_4ft': future_2030_prob_gt_4ft,
-        'future_2030_prob_gt_8ft': future_2030_prob_gt_8ft,
-        'current_prob_gt_4ft': da_prob_gt_4ft,
-        'current_prob_gt_8ft': da_prob_gt_8ft,
-        'fwi_historical': fwi_historical_reproj,
+        'burn_probability_future_2030': da_burn_probability_future,
+        'burn_probability_current': da_burn_probability,
+        'fwi_current': fwi_historical_reproj,
         'fwi_future_2030': fwi_2030_reproj
     })
     

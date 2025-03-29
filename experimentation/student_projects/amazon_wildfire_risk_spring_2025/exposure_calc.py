@@ -30,9 +30,9 @@ def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
     """
 
     df = (
-        ds
+        ds.stack(id_dim=(GEOMETRY_COLUMN, "month"))
         .to_dataframe()
-        .reset_index(drop=True)[[ID_COLUMN] + list(ds.data_vars)]
+        .reset_index(drop=True)[[ID_COLUMN, "month"] + list(ds.data_vars)]
     )
 
     return df
