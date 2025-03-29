@@ -147,8 +147,7 @@ def main(
     infra_df = pd.read_csv("data/amazon_facilities_eastern_washington.csv")
     infra_gdf = gpd.GeoDataFrame(infra_df, geometry=gpd.points_from_xy(x=infra_df["longitude"], y=infra_df["latitude"]), crs="4326")
 
-    #climate_ds = xr.load_dataset(f"s3://{S3_BUCKET}/student-projects/amazon-wildfire-risk-spring2025/data/cmip6_adjusted_burn_probability.zarr")
-    climate_ds = xr.open_dataset("data/BP_WA.tif", engine="rasterio")
+    climate_ds = xr.load_dataset(f"s3://{S3_BUCKET}/student-projects/amazon-wildfire-risk-spring2025/data/cmip6_adjusted_burn_probability.zarr")
     logger.info("Starting Zonal Aggregation...")
     df = zonal_aggregation(
         climate=climate_ds,
