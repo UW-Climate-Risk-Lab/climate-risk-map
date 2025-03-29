@@ -131,6 +131,9 @@ def main():
 
     # Reproject FWI data to match burn probability spatial resolution and extent
     logger.info("Reprojecting FWI data to match burn probability data...")
+    da_prob_gt_4ft = da_prob_gt_4ft.rio.reproject("EPSG:4326")
+    da_prob_gt_8ft = da_prob_gt_8ft.rio.reproject("EPSG:4326")
+    
     fwi_historical_reproj = ds_fwi_historical['value_q3'].rio.write_crs("EPSG:4326")
     fwi_historical_reproj.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=True)
     fwi_historical_reproj = fwi_historical_reproj.rio.reproject_match(da_prob_gt_4ft, resampling=Resampling.bilinear)
@@ -195,6 +198,7 @@ def main():
     # Save results to zarr files
     logger.info("Saving results to zarr files...")
     s3_output_uri = f"s3://{s3_bucket}/student-projects/amazon-wildfire-risk-spring2025/data/cmip6_adjusted_burn_probability.zarr"
+    # Let to_zarr() handle the computation
     fs = s3fs.S3FileSystem(
                 anon=False,
                 )
