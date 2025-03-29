@@ -1,20 +1,12 @@
 import concurrent.futures as cf
 import logging
 import os
-import json
 from typing import Dict, List, Tuple
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
-import psycopg2 as pg
-import psycopg2.sql as sql
 import xarray as xr
 import xvec
-from shapely import wkt, Point
-
-import src.utils as utils
-import src.constants as constants
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +15,7 @@ logging.basicConfig(level=logging.INFO)
 # 'id' column refers to a given feature's unique id. This is the OpenStreetMap ID for the PG OSM Flex
 ID_COLUMN = "osm_id"
 GEOMETRY_COLUMN = "geometry"
+S3_BUCKET = os.environ["S3_BUCKET"]
 
 
 def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
@@ -149,23 +142,19 @@ def zonal_aggregation(
 
 
 def main(
-    climate_ds: xr.Dataset,
-    crs: str,
-    zonal_agg_method: List[str] | str,
-    conn: pg.extensions.connection,
-    metadata: Dict,  # Add metadata parameter
 ) -> pd.DataFrame:
 
     infra_df = pd.read_csv("data/amazon_facilities_eastern_washington.csv")
-    infra_gdf = gpd.GeoDataFrame(infra_df, geometry=gpd.points_from_xy(x=infra_df["longitude"], y=infra_df["latitude"]), crs=crs)
+    infra_gdf = gpd.GeoDataFrame(infra_df, geometry=gpd.points_from_xy(x=infra_df["longitude"], y=infra_df["latitude"]), crs="4326")
 
+    climate_ds = xr.load_dataset(f"s3://{S3_BUCKET}/student-projects/amazon-wildfire-risk-spring2025/data/cmip6_adjusted_burn_probability.zarr")
     logger.info("Starting Zonal Aggregation...")
     df = zonal_aggregation(
         climate=climate_ds,
         infra=infra_gdf,
-        zonal_agg_method=zonal_agg_method,
-        x_dim=constants.X_DIM,
-        y_dim=constants.Y_DIM
+        zonal_agg_method="max",
+        x_dim="x",
+        y_dim="y"
     )
     logger.info("Zonal Aggregation Computed")
 
@@ -173,12 +162,12 @@ def main(
     logger.warning(
         f"{str(failed_aggregations)} osm_ids were unable to be zonally aggregated"
     )
-    df = df.dropna()
+
+    final_df = infra_df.merge(df, how='left', on=ID_COLUMN)
     
-    # Before returning the DataFrame, add the metadata column
-    df['metadata'] = json.dumps(metadata)
+    final_df.to_csv("data/final.csv")
     
-    return df
+    
 
 if __name__=="__main__":
     main()
