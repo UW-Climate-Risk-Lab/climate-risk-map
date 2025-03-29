@@ -192,7 +192,7 @@ def main():
         'future_2030_prob_gt_4ft': xr.concat(future_prob_4ft_by_month, dim='month'),
         'future_2030_prob_gt_8ft': xr.concat(future_prob_8ft_by_month, dim='month'),
         'current_prob_gt_4ft': da_prob_gt_4ft,
-        'current_pro_gt_8ft': da_prob_gt_8ft
+        'current_prob_gt_8ft': da_prob_gt_8ft
     })
     
     # Save results to zarr files
