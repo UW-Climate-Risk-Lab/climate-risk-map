@@ -122,12 +122,6 @@ def main():
     logger.info("Calculating historical burn probabilities...")
     da_prob_gt_4ft = ds_burn_probability['band_data'] * ds_flame_4ft['band_data']
     da_prob_gt_8ft = ds_burn_probability['band_data'] * ds_flame_8ft['band_data']
-    
-    # Create a dataset with historical burn probabilities
-    ds_historical_burn_prob = xr.Dataset({
-        'prob_gt_4ft': da_prob_gt_4ft,
-        'prob_gt_8ft': da_prob_gt_8ft
-    })
 
     # Reproject FWI data to match burn probability spatial resolution and extent
     logger.info("Reprojecting FWI data to match burn probability data...")
