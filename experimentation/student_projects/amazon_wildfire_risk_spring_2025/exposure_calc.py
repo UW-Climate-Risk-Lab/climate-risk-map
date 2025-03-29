@@ -8,6 +8,8 @@ import pandas as pd
 import xarray as xr
 import xvec
 
+import rioxarray
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -28,12 +30,10 @@ def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
     """
 
     df = (
-        ds.stack(id_dim=(GEOMETRY_COLUMN, "month"))
+        ds
         .to_dataframe()
-        .reset_index(drop=True)[[ID_COLUMN, "month", GEOMETRY_COLUMN] + list(ds.data_vars)]
+        .reset_index(drop=True)[[ID_COLUMN] + list(ds.data_vars)]
     )
-
-    df["month"] = df["month"].apply(lambda x: int(x))
 
     return df
 
@@ -125,7 +125,7 @@ def zonal_aggregation(
     point_geom_types = ["Point", "MultiPoint"]
 
     point_infra = infra.loc[infra.geom_type.isin(point_geom_types)]
-
+    point_infra = point_infra.set_index(ID_COLUMN)
     ds = climate.xvec.extract_points(
         point_infra.geometry, x_coords=x_dim, y_coords=y_dim, index=True
     )
@@ -147,25 +147,20 @@ def main(
     infra_df = pd.read_csv("data/amazon_facilities_eastern_washington.csv")
     infra_gdf = gpd.GeoDataFrame(infra_df, geometry=gpd.points_from_xy(x=infra_df["longitude"], y=infra_df["latitude"]), crs="4326")
 
-    climate_ds = xr.load_dataset(f"s3://{S3_BUCKET}/student-projects/amazon-wildfire-risk-spring2025/data/cmip6_adjusted_burn_probability.zarr")
+    #climate_ds = xr.load_dataset(f"s3://{S3_BUCKET}/student-projects/amazon-wildfire-risk-spring2025/data/cmip6_adjusted_burn_probability.zarr")
+    climate_ds = xr.open_dataset("data/BP_WA.tif", engine="rasterio")
     logger.info("Starting Zonal Aggregation...")
     df = zonal_aggregation(
         climate=climate_ds,
         infra=infra_gdf,
-        zonal_agg_method="max",
         x_dim="x",
         y_dim="y"
     )
     logger.info("Zonal Aggregation Computed")
 
-    failed_aggregations = df.loc[df["value_mean"].isna(), ID_COLUMN].nunique()
-    logger.warning(
-        f"{str(failed_aggregations)} osm_ids were unable to be zonally aggregated"
-    )
-
     final_df = infra_df.merge(df, how='left', on=ID_COLUMN)
     
-    final_df.to_csv("data/final.csv")
+    final_df.to_csv("data/amazon_facilities_with_fire_exposure.csv", index=False)
     
     
 
