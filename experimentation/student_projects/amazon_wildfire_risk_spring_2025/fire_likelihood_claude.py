@@ -8,6 +8,7 @@ from pathlib import Path
 import logging
 import zarr
 import fsspec
+import s3fs
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -165,15 +166,15 @@ def main():
         # Calculate future probabilities
         future_prob_4ft = calculate_future_probability(
             da_prob_gt_4ft, 
-            fwi_historical_reproj.isel(month=month), 
-            fwi_2030_reproj.isel(month=month),
+            fwi_historical_reproj.sel(month=month), 
+            fwi_2030_reproj.sel(month=month),
             beta_1_4ft
         )
         
         future_prob_8ft = calculate_future_probability(
             da_prob_gt_8ft,
-            fwi_historical_reproj.isel(month=month),
-            fwi_2030_reproj.isel(month=month),
+            fwi_historical_reproj.sel(month=month),
+            fwi_2030_reproj.sel(month=month),
             beta_1_8ft
         )
         
@@ -193,7 +194,16 @@ def main():
     
     # Save results to zarr files
     logger.info("Saving results to zarr files...")
-    ds_burn_prob.to_zarr(output_dir / "burn_probability.zarr", mode="w")
+    s3_output_uri = f"s3://{s3_bucket}/student-projects/amazon-wildfire-risk-spring2025/data/cmip6_adjusted_burn_probability.zarr"
+    fs = s3fs.S3FileSystem(
+                anon=False,
+                )
+    # Let to_zarr() handle the computation
+    ds_burn_prob.to_zarr(
+        store=s3fs.S3Map(root=s3_output_uri, s3=fs),
+        mode="w",
+        consolidated=True,
+    )
     
     logger.info("Processing complete!")
 

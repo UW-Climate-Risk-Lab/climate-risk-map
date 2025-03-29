@@ -14,6 +14,7 @@ bash /tmp/miniconda.sh -b -p $HOME/miniconda
 rm /tmp/miniconda.sh
 # Configure Miniconda
 $HOME/miniconda/bin/conda init bash
+echo 'export PATH="/home/ubuntu/miniconda/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
 # Install Docker
