@@ -44,6 +44,7 @@ PROJECTED_CRS = "EPSG:2285" # NAD83 / Washington North (meters)
 # Input/Output File Paths (adjust as needed)
 FACILITY_CSV_PATH = "data/amazon_facilities_eastern_washington.csv"
 FIRESTATIONS_GEOJSON_PATH = "data/fire_stations.geojson"
+SUBSTATIONS_CSV_PATH = "data/osm_substations.csv"
 OUTPUT_EXCEL_PATH = "data/amazon_facilities_with_detailed_fire_exposure.xlsx"
 # --- End Configuration ---
 
@@ -260,6 +261,119 @@ def create_buffer_gdfs_vectorized(infra_gdf: gpd.GeoDataFrame, radius_miles_list
 
     return buffer_gdfs
 
+def calculate_substation_metrics(
+    infra_gdf: gpd.GeoDataFrame,
+    substations_gdf: gpd.GeoDataFrame,
+    buffer_gdfs: Dict[int, gpd.GeoDataFrame],
+    id_column: str
+) -> Tuple[pd.DataFrame, Dict[int, pd.DataFrame]]:
+    """
+    Calculate electrical infrastructure metrics:
+    1. Distance to nearest substation (in miles)
+    2. Count of substations within each radius
+    
+    Args:
+        infra_gdf: GeoDataFrame of facility points
+        substations_gdf: GeoDataFrame of electrical substations
+        buffer_gdfs: Dictionary of buffer GeoDataFrames by radius
+        id_column: Name of the unique ID column
+        
+    Returns:
+        Tuple containing:
+        - DataFrame with nearest substation distances
+        - Dictionary of DataFrames with substation counts by radius
+    """
+    logger.info(f"Calculating electrical infrastructure metrics for {len(infra_gdf)} facilities.")
+    start_time = time.time()
+    
+    # Initialize results
+    distance_df = pd.DataFrame()
+    counts_dict = {}
+    
+    if infra_gdf.empty or substations_gdf.empty:
+        logger.warning("Input infra_gdf or substations_gdf is empty. Cannot calculate metrics.")
+        # Return empty results
+        return (
+            pd.DataFrame({id_column: infra_gdf[id_column], 'Distance_to_Substation_miles': np.nan}),
+            {radius: pd.DataFrame({id_column: infra_gdf[id_column], f'Substation_Count_{radius}mi': 0, 
+                                 f'Substation_Redundant_{radius}mi': False}) for radius in buffer_gdfs.keys()}
+        )
+    
+    # Ensure CRS match
+    if infra_gdf.crs is None:
+        logger.warning("infra_gdf CRS not set, assuming WGS84.")
+        infra_gdf.crs = WGS84_CRS
+    if substations_gdf.crs is None:
+        logger.warning("substations_gdf CRS not set, assuming WGS84.")
+        substations_gdf.crs = WGS84_CRS
+    
+    if infra_gdf.crs != substations_gdf.crs:
+        logger.info(f"Projecting substations from {substations_gdf.crs} to {infra_gdf.crs}.")
+        substations_gdf = substations_gdf.to_crs(infra_gdf.crs)
+    
+    try:
+        # 1. Calculate distance to nearest substation (similar to fire station function)
+        # Project both to projected CRS for accurate distance calculation
+        infra_proj = infra_gdf.to_crs(PROJECTED_CRS)
+        substations_proj = substations_gdf.to_crs(PROJECTED_CRS)
+        
+        # Use spatial join with nearest neighbor
+        nearest_join = gpd.sjoin_nearest(
+            infra_proj,
+            substations_proj,
+            how='left',
+            distance_col="distance_meters"
+        )
+        
+        # Convert distance from meters to miles
+        nearest_join['Distance_to_Substation_miles'] = nearest_join['distance_meters'] * 0.000621371
+        
+        # Handle null/infinite values
+        nearest_join['Distance_to_Substation_miles'].replace([np.inf, -np.inf], np.nan, inplace=True)
+        
+        # Ensure one result per facility
+        nearest_join = nearest_join[~nearest_join.index.duplicated(keep='first')]
+        
+        # Select and return necessary columns
+        distance_df = infra_gdf[[id_column]].merge(
+            nearest_join[['Distance_to_Substation_miles']],
+            left_index=True,
+            right_index=True,
+            how='left'
+        )
+        
+        # 2. Count substations within each buffer radius
+        for radius, buffer_gdf in buffer_gdfs.items():
+            # Ensure buffer GDF is in the same CRS as substations
+            if buffer_gdf.crs != substations_gdf.crs:
+                buffer_gdf = buffer_gdf.to_crs(substations_gdf.crs)
+            
+            # Spatial join to find substations within each buffer
+            joined = gpd.sjoin(buffer_gdf, substations_gdf, how='left', predicate='contains')
+            
+            # Count substations per facility
+            counts = joined.groupby(id_column).size().reset_index(name=f'Substation_Count_{radius}mileRadius')
+            
+            # Handle facilities with no substations in radius (will be missing from join result)
+            counts = infra_gdf[[id_column]].merge(counts, on=id_column, how='left')
+            
+            # Fill NaN with zeros (no substations in radius)
+            counts[f'Substation_Count_{radius}mileRadius'] = counts[f'Substation_Count_{radius}mileRadius'].fillna(0).astype(int)
+            
+            counts_dict[radius] = counts
+        
+        logger.info(f"Calculated electrical infrastructure metrics in {time.time() - start_time:.2f} seconds.")
+        
+    except Exception as e:
+        logger.exception(f"Error calculating electrical infrastructure metrics: {e}")
+        # Return empty DataFrames
+        distance_df = pd.DataFrame({id_column: infra_gdf[id_column], 'Distance_to_Substation_miles': np.nan})
+        counts_dict = {radius: pd.DataFrame({id_column: infra_gdf[id_column], 
+                                           f'Substation_Count_{radius}mileRadius': 0,}) 
+                      for radius in buffer_gdfs.keys()}
+    
+    return distance_df, counts_dict
+
 def calculate_distance_to_nearest_firestation(
     infra_gdf: gpd.GeoDataFrame,
     firestations_gdf: gpd.GeoDataFrame,
@@ -448,7 +562,7 @@ def main():
         data_vars=POINT_DATA_VARS, # Extract all point vars
         id_column=ID_COLUMN
     )
-
+    point_df = point_df.fillna(0)
     # Rename point value columns for clarity
     point_rename_map = {var: f"{var}_point" for var in POINT_DATA_VARS if var in point_df.columns}
     point_df = point_df.rename(columns=point_rename_map)
@@ -460,8 +574,35 @@ def main():
     buffer_gdfs = create_buffer_gdfs_vectorized(infra_gdf, RADIUS_MILES, id_column=ID_COLUMN)
     # buffer_gdfs is a dict: {5: GeoDataFrame, 10: GeoDataFrame, 25: GeoDataFrame}
 
+    # --- 6. Load Substation Data & Calculate Metrics ---
+    try:
+        logger.info("Loading electrical substation data...")
+        substations_df = pd.read_csv(SUBSTATIONS_CSV_PATH)
+        substations_gdf = gpd.GeoDataFrame(data=substations_df, geometry=gpd.points_from_xy(x=substations_df['longitude'], y=substations_df['latitude']))
+        substations_gdf = substations_gdf.drop([ID_COLUMN, "latitude", "longitude"], axis=1)
+        logger.info(f"Loaded {len(substations_gdf)} electrical substations.")
+        
+        # Calculate substation metrics
+        substation_distance_df, substation_counts_dict = calculate_substation_metrics(
+            infra_gdf,
+            substations_gdf,
+            buffer_gdfs,
+            id_column=ID_COLUMN
+        )
+        
+    except FileNotFoundError:
+        logger.warning("Electrical substation data file not found. Substation metrics will be NaN/zeros.")
+        # Create empty results
+        substation_distance_df = pd.DataFrame({ID_COLUMN: infra_gdf[ID_COLUMN], 'Distance_to_Substation_miles': np.nan})
+        substation_counts_dict = {radius: pd.DataFrame({ID_COLUMN: infra_gdf[ID_COLUMN], 
+                                                    f'Substation_Count_{radius}mileRadius': 0,}) 
+                                for radius in RADIUS_MILES}
+    except Exception as e:
+        logger.warning(f"Error processing substation data: {str(e)}. Substation metrics will be NaN/zeros.")
+        # Create empty results same as above
 
-    # --- 6. Process Each Radius (Zonal Stats for Burn Probability) ---
+
+    # --- 7. Process Each Radius (Zonal Stats for Burn Probability) ---
     # Select only the required variables and compute *once* before parallelizing
     radius_results_dict = {} # Store results DataFrames for each radius
     for radius in RADIUS_MILES:
@@ -523,7 +664,7 @@ def main():
         radius_results_dict[radius] = months_df
         logger.info(f"--- Finished processing {radius}-mile radius in {time.time() - radius_start_time:.2f} seconds ---")
 
-    # --- 7. Combine All Results ---
+    # --- 8. Combine All Results ---
     logger.info("Combining all results...")
 
     # Start with the original facility attributes (non-spatial)
@@ -548,9 +689,26 @@ def main():
         logger.warning("Skipping merge of fire station distances (data was empty).")
         final_df['Distance_to_FireStation_miles'] = np.nan # Add column explicitly if empty
 
+    # Add substation distance metrics
+    if not substation_distance_df.empty:
+        if substation_distance_df.index.name != ID_COLUMN:
+            substation_distance_df = substation_distance_df.set_index(ID_COLUMN)
+        final_df = final_df.merge(substation_distance_df[['Distance_to_Substation_miles']],
+                                left_index=True, right_index=True, how='left')
+        logger.info(f"Merged substation distances. DataFrame shape: {final_df.shape}")
 
     # Merge requires resetting index if merging on columns including month
     final_df = final_df.reset_index()
+
+    # Add substation count metrics for each radius
+    for radius, count_df in substation_counts_dict.items():
+        if not count_df.empty:
+            merge_cols = [ID_COLUMN]
+            if all(col in final_df.columns for col in merge_cols):
+                final_df = pd.merge(final_df, count_df, on=merge_cols, how='left')
+                logger.info(f"Merged substation count data for {radius}-mile radius.")
+
+    
 
     # Add point values (merge on ID_COLUMN and month)
     if not point_df.empty:
@@ -587,7 +745,7 @@ def main():
             logger.warning(f"Skipping merge for radius {radius} (data was empty).")
             # Optionally add NaN columns for this radius
 
-    # --- 8. Save the Results ---
+    # --- 9. Save the Results ---
     try:
         # Check for potential duplicate columns before saving (can happen if merges go wrong)
         final_columns = final_df.columns

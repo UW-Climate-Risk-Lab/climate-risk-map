@@ -55,38 +55,6 @@ def calculate_mean_fwi_by_month(ds):
     
     return monthly_mean_fwi
 
-def calculate_beta_1(fwi_data, prob_data):
-    """Calculate Beta_1 coefficient using logistic regression"""
-    logger.info("Calculating Beta_1 coefficient...")
-    
-    # Flatten arrays for regression
-    fwi_flat = fwi_data.values.flatten()
-    prob_flat = prob_data.values.flatten()
-    
-    # Filter valid values
-    valid_indices = ~np.isnan(fwi_flat) & ~np.isnan(prob_flat) & (prob_flat > 0) & (prob_flat < 1)
-    fwi_valid = fwi_flat[valid_indices]
-    prob_valid = prob_flat[valid_indices]
-    
-    if len(fwi_valid) == 0:
-        logger.warning("No valid data points for regression")
-        return 0.1  # Default value
-    
-    # Convert probabilities to log-odds
-    logodds = np.log(prob_valid / (1 - prob_valid))
-    
-    # Add constant for intercept
-    X = sm.add_constant(fwi_valid)
-    
-    # Perform regression
-    model = sm.OLS(logodds, X)
-    results = model.fit()
-    
-    beta_1 = results.params[1]
-    logger.info(f"Calculated Beta_1: {beta_1}")
-    
-    return beta_1
-
 def calculate_future_probability(p_now, fwi_now, fwi_future):
     """Calculate future probability using relative change method"""
         
