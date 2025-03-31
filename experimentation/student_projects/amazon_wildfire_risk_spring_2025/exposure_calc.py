@@ -92,12 +92,53 @@ def zonal_aggregation_point(
     df = convert_ds_to_df(ds=ds)
     return df
 
+def zonal_aggregation_polygon(
+    climate: xr.DataArray,
+    infra: gpd.GeoDataFrame,
+    x_dim: str,
+    y_dim: str,
+    zonal_agg_method: str,
+) -> pd.DataFrame:
+
+    climate_computed = climate.compute() # Parallel task did not work unless data was computed
+    # The following parallelizes the zonal aggregation of polygon geometry features
+    workers = min(os.cpu_count(), len(infra.geometry))
+    futures = []
+    results = []
+    geometry_chunks = np.array_split(infra.geometry, workers)
+    with cf.ProcessPoolExecutor(max_workers=workers) as executor:
+        for i in range(len(geometry_chunks)):
+            futures.append(
+                executor.submit(
+                    task_xvec_zonal_stats,
+                    climate_computed,
+                    geometry_chunks[i],
+                    x_dim,
+                    y_dim,
+                    zonal_agg_method,
+                    "exactextract",
+                    True,
+                )
+            )
+        cf.as_completed(futures)
+        for future in futures:
+            try:
+                results.append(future.result())
+            except Exception as e:
+                logger.info(
+                    f"Future result in zonal agg process pool could not be appended: {str(e)}"
+                )
+
+    df_polygon = pd.concat(results)
+    return df_polygon
+
 
 def zonal_aggregation(
     climate: xr.Dataset,
     infra: gpd.GeoDataFrame,
     x_dim: str,
     y_dim: str,
+    zonal_agg_method: str
 ) -> pd.DataFrame:
     """Performs zonal aggregation on climate data and infrastructure data.
 
@@ -123,17 +164,35 @@ def zonal_aggregation(
     """
 
     point_geom_types = ["Point", "MultiPoint"]
+    polygon_geom_types = ["Polygon", "MultiPolygon"]
 
+    polygon_infra = infra.loc[infra.geom_type.isin(polygon_geom_types)]
     point_infra = infra.loc[infra.geom_type.isin(point_geom_types)]
-    point_infra = point_infra.set_index(ID_COLUMN)
-    ds = climate.xvec.extract_points(
-        point_infra.geometry, x_coords=x_dim, y_coords=y_dim, index=True
+
+    df_point = zonal_aggregation_point(
+        climate=climate,
+        infra=point_infra,
+        x_dim=x_dim,
+        y_dim=y_dim
     )
-
-    df = convert_ds_to_df(ds=ds)
-
     logger.info("Point geometries intersected successfully")
 
+    df_polygon = zonal_aggregation_polygon(
+        climate=climate,
+        infra=polygon_infra,
+        x_dim=x_dim,
+        y_dim=y_dim,
+        zonal_agg_method=zonal_agg_method,
+    )
+
+    logger.info("Polygon geometries intersected successfully")
+
+    # Applies the same method for converting from DataArray to DataFrame, and
+    # combines the data back together.
+    df = pd.concat(
+        [df_point, df_polygon],
+        ignore_index=True,
+    )
 
     if GEOMETRY_COLUMN in df.columns:
         df.drop(GEOMETRY_COLUMN, inplace=True, axis=1)
@@ -153,7 +212,8 @@ def main(
         climate=climate_ds,
         infra=infra_gdf,
         x_dim="x",
-        y_dim="y"
+        y_dim="y",
+        zonal_agg_method='max'
     )
     logger.info("Zonal Aggregation Computed")
 
