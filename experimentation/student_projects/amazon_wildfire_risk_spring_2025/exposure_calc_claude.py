@@ -22,6 +22,8 @@ ID_COLUMN = "osm_id"
 GEOMETRY_COLUMN = "geometry"
 S3_BUCKET = os.environ["S3_BUCKET"]
 
+DATA_VARS = ['burn_probability_current', 'burn_probability_future_2030', 'fwi_current', 'fwi_future_2030']
+
 # Define radius distances (in miles)
 RADIUS_MILES = [5, 10, 25]
 
@@ -55,9 +57,8 @@ def create_buffer_polygon(point, radius_miles):
 def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
     """Converts a DataArray to a Dataframe."""
     df = (
-        ds.stack(id_dim=(GEOMETRY_COLUMN, "month"))
-        .to_dataframe()
-        .reset_index(drop=True)[[ID_COLUMN, "month"] + list(ds.data_vars)]
+        ds.to_dataframe()
+        .reset_index()[[ID_COLUMN, "month"] + DATA_VARS]
     )
     return df
 
@@ -155,6 +156,7 @@ def zonal_aggregation(
     
     # Process point geometries if any exist
     if not point_infra.empty:
+        point_infra = point_infra.set_index(ID_COLUMN)
         df_point = zonal_aggregation_point(
             climate=climate,
             infra=point_infra,
@@ -166,6 +168,7 @@ def zonal_aggregation(
 
     # Process polygon geometries if any exist
     if not polygon_infra.empty:
+        polygon_infra = polygon_infra.set_index(ID_COLUMN)
         df_polygon = zonal_aggregation_polygon(
             climate=climate,
             infra=polygon_infra,
@@ -225,7 +228,7 @@ def calculate_distance_to_nearest_firestation(infra_gdf, firestations_gdf):
     # Apply function to each facility
     infra_gdf['Distance_to_FireStation_mi'] = infra_gdf.geometry.apply(nearest_firestation)
     
-    return infra_gdf[['osm_id', 'Distance_to_FireStation_mi']]
+    return infra_gdf[[ID_COLUMN, 'Distance_to_FireStation_mi']]
 
 def main():
     """Main function to process and analyze wildfire risk data"""
