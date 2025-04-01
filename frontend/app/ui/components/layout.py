@@ -58,6 +58,7 @@ def create_main_layout():
             # chat-selection-config is a hash int representing the combination of the user selection of hazard, time, bounding box, assets
             # If the user selects a new combination of dropdowns, this will create a new section in the chat window
             dcc.Store(id="chat-selection-config", data=0, storage_type="session"),
-            dcc.Store(id="agent-session-id", data='', storage_type="session")
+            dcc.Store(id="agent-session-id", data='', storage_type="session"),
+            dcc.Store(id="trigger-ai-response-store", data=0.0, storage_type="memory")
         ],
     )
