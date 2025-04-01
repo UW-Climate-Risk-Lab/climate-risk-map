@@ -40,7 +40,7 @@ def create_ai_analysis_modal():
                             # Initial welcome message
                             ChatMessage.create_message(
                                 role="ai",
-                                text="👋 Hi there! I'm your Climate Risk AI Assistant. I can help analyze climate data for your selected region and hazard indicators. What would you like to know?",
+                                text="👋 Hi there! I'm your Climate Risk AI Assistant. I am currently generating an intitial analysis of your selected area, which may take a moment. You can then ask follow up questions. ",
                             ),
                         ],
                         style={
