@@ -19,21 +19,18 @@ from src.infra_intersection import (
 
 
 def test_create_pgosm_flex_query():
-    osm_tables = ["infrastructure_point", "infrastructure_polygon"]
+    osm_category = 'infrastructure'
     osm_type = "power"
+    osm_subtype = None
     crs = "4326"
-    query, params = create_pgosm_flex_query(osm_tables, osm_type, crs)
+    query, params = create_pgosm_flex_query(osm_category, osm_type, osm_subtype, crs, False)
 
     # Check that the query is of type sql.SQL
     assert isinstance(query, sql.Composed)
 
     # Check that the parameters are correct
-    expected_params = (4326, osm_type, 4326, osm_type)
+    expected_params = (4326, osm_type)
     assert params == expected_params
-
-    # You can also check that the query contains expected identifiers
-    for table in osm_tables:
-        assert table in str(query)
 
 
 @pytest.fixture

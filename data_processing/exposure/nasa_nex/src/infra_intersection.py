@@ -331,7 +331,7 @@ def create_pgosm_flex_query(
         query = sql.SQL(" ").join([query, sql.SQL("AND osm_subtype = %s")])
         params.append(osm_subtype)
 
-    return query, params
+    return query, tuple(params)
 
 
 def main(
