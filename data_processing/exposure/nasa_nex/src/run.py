@@ -33,6 +33,8 @@ def setup_args():
     )
     parser.add_argument("--osm-category", required=True, help="OSM category")
     parser.add_argument("--osm-type", required=True, help="OSM type")
+    parser.add_argument("--osm-subtype", required=False, help="OSM subtype")
+    parser.add_argument("--point-only", required=False, help="Convert all geometries to points for zonal aggregation speed up")
     return parser.parse_args()
 
 
@@ -41,11 +43,18 @@ def main(
     climate_variable: str,
     ssp: str,
     crs: str,
+    point_only: str,
     zonal_agg_method: str,
     osm_category: str,
     osm_type: str,
+    osm_subtype: str
 ):
     """Runs a processing pipeline for a given zarr store"""
+
+    if point_only.lower() == "true":
+        point_only=True
+    else:
+        point_only=False
 
     # Create connection pool with passed parameters
     connection_pool = pool.SimpleConnectionPool(
@@ -76,7 +85,9 @@ def main(
         climate_ds=ds,
         osm_category=osm_category,
         osm_type=osm_type,
+        osm_subtype=osm_subtype,
         crs=crs,
+        point_only=point_only,
         zonal_agg_method=zonal_agg_method,
         conn=infra_intersection_conn,
         metadata=metadata
@@ -105,5 +116,7 @@ if __name__ == "__main__":
         zonal_agg_method=args.zonal_agg_method,
         osm_category=args.osm_category,
         osm_type=args.osm_type,
+        osm_subtype=args.osm_subtype,
+        point_only=args.point_only
     )
     logger.info(f"EXPOSURE SUCCEEDED FOR {args.s3_zarr_store_uri}")

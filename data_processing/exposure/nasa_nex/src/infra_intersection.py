@@ -236,32 +236,41 @@ def zonal_aggregation(
     polygon_infra = infra.loc[infra.geom_type.isin(polygon_geom_types)]
     point_infra = infra.loc[infra.geom_type.isin(point_geom_types)]
 
-    df_point = zonal_aggregation_point(
-        climate=climate,
-        infra=point_infra,
-        x_dim=x_dim,
-        y_dim=y_dim
-    )
-    logger.info("Point geometries intersected successfully")
+    if len(point_infra != 0):
+        df_point = zonal_aggregation_point(
+            climate=climate,
+            infra=point_infra,
+            x_dim=x_dim,
+            y_dim=y_dim
+        )
+        logger.info("Point geometries intersected successfully")
+    else:
+        df_point = pd.DataFrame()
 
-    df_linestring = zonal_aggregation_linestring(
-        climate=climate,
-        infra=line_infra,
-        x_dim=x_dim,
-        y_dim=y_dim,
-    )
+    if len(line_infra != 0):
+        df_linestring = zonal_aggregation_linestring(
+            climate=climate,
+            infra=line_infra,
+            x_dim=x_dim,
+            y_dim=y_dim,
+        )
 
-    logger.info("Lines geometries intersected successfully")
+        logger.info("Lines geometries intersected successfully")
+    else:
+        df_linestring = pd.DataFrame()
 
-    df_polygon = zonal_aggregation_polygon(
-        climate=climate,
-        infra=polygon_infra,
-        x_dim=x_dim,
-        y_dim=y_dim,
-        zonal_agg_method=zonal_agg_method,
-    )
+    if len(polygon_infra != 0):
+        df_polygon = zonal_aggregation_polygon(
+            climate=climate,
+            infra=polygon_infra,
+            x_dim=x_dim,
+            y_dim=y_dim,
+            zonal_agg_method=zonal_agg_method,
+        )
 
-    logger.info("Polygon geometries intersected successfully")
+        logger.info("Polygon geometries intersected successfully")
+    else:
+        df_polygon = pd.DataFrame()
 
     # Applies the same method for converting from DataArray to DataFrame, and
     # combines the data back together.
@@ -277,20 +286,15 @@ def zonal_aggregation(
 
 
 def create_pgosm_flex_query(
-    osm_tables: List[str], osm_type: str, crs: str
+    osm_category: str, osm_type: str, osm_subtype: str, crs: str, point_only: bool
 ) -> Tuple[sql.SQL, Tuple[str]]:
     """Creates SQL query to get all features of a given type from PG OSM Flex Schema
-
 
 
     Example:
 
     SELECT osm_id AS id, ST_AsText(ST_Transform(geom, 4326)) AS geometry
-        FROM osm.infrastructure_polygon
-    WHERE osm_type = 'power'
-    UNION ALL
-    SELECT osm_id AS id, ST_AsText(ST_Transform(geom, 4326)) AS geometry
-        FROM osm.infrastructure_point
+        FROM osm.infrastructure
     WHERE osm_type = 'power'
 
 
@@ -302,46 +306,57 @@ def create_pgosm_flex_query(
         Tuple[sql.SQL, Tuple[str]]: Query in SQL object and params of given query
     """
     schema = "osm"  # Always schema name in PG OSM Flex
-    params = []
-    union_queries = []
 
-    for table in osm_tables:
-        sub_query = sql.SQL(
-            "SELECT main.osm_id AS {id}, ST_AsText(ST_Transform(main.geom, %s)) AS {geometry} FROM {schema}.{table} main WHERE osm_type = %s"
+    if point_only:
+        query = sql.SQL(
+        "SELECT main.osm_id AS {id}, ST_AsText(ST_Centroid(ST_Transform(main.geom, %s))) AS {geometry} FROM {schema}.{table} main WHERE osm_type = %s"
         ).format(
             schema=sql.Identifier(schema),
-            table=sql.Identifier(table),
+            table=sql.Identifier(osm_category),
             id=sql.Identifier(ID_COLUMN),
             geometry=sql.Identifier(GEOMETRY_COLUMN),
         )
-        params += [int(crs), osm_type]
-        union_queries.append(sub_query)
-    query = sql.SQL(" UNION ALL ").join(union_queries)
+    else:
+        query = sql.SQL(
+            "SELECT main.osm_id AS {id}, ST_AsText(ST_Transform(main.geom, %s)) AS {geometry} FROM {schema}.{table} main WHERE osm_type = %s"
+        ).format(
+            schema=sql.Identifier(schema),
+            table=sql.Identifier(osm_category),
+            id=sql.Identifier(ID_COLUMN),
+            geometry=sql.Identifier(GEOMETRY_COLUMN),
+        )
+    params = [int(crs), osm_type]
 
-    return query, tuple(params)
+    if osm_subtype:
+        query = sql.SQL(" ").join([query, sql.SQL("AND osm_subtype = %s")])
+        params.append(osm_subtype)
+
+    return query, params
 
 
 def main(
     climate_ds: xr.Dataset,
     osm_category: str,
     osm_type: str,
+    osm_subtype: str,
     crs: str,
     zonal_agg_method: List[str] | str,
+    point_only: bool,
     conn: pg.extensions.connection,
     metadata: Dict,  # Add metadata parameter
 ) -> pd.DataFrame:
 
-    osm_tables = utils.get_osm_category_tables(osm_category=osm_category, conn=conn)
-
     query, params = create_pgosm_flex_query(
-        osm_tables=osm_tables, osm_type=osm_type, crs=crs
+        osm_category=osm_category, osm_type=osm_type, osm_subtype=osm_subtype, point_only=point_only, crs=crs
     )
     infra_data = utils.query_db(query=query, params=params, conn=conn)
-    logger.info("OSM features queried successfully")
+    
 
     infra_df = pd.DataFrame(infra_data, columns=[ID_COLUMN, GEOMETRY_COLUMN]).set_index(
         ID_COLUMN
     )
+    num_features = len(infra_df)
+    logger.info(f"{str(num_features)} OSM features queried successfully")
     infra_df[GEOMETRY_COLUMN] = infra_df[GEOMETRY_COLUMN].apply(wkt.loads)
     infra_gdf = gpd.GeoDataFrame(infra_df, geometry=GEOMETRY_COLUMN, crs=crs)
 
