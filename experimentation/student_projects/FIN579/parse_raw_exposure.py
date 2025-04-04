@@ -79,13 +79,7 @@ def extract_infrastructure_attributes(df, infrastructure_type):
     
     # Common columns for all infrastructure types
     df['name'] = parsed_tags.apply(lambda x: x.get('name', None))
-    
-    # Parse capacity with its unit
-    capacity_values = parsed_tags.apply(lambda x: x.get('capacity', None))
-    df['capacity_raw'] = capacity_values
-    parsed_capacity = capacity_values.apply(parse_numeric_with_unit)
-    df['capacity'] = parsed_capacity.apply(lambda x: x['value'])
-    df['capacity_unit'] = parsed_capacity.apply(lambda x: x['unit'])
+
     
     df['operator'] = parsed_tags.apply(lambda x: x.get('operator', None))
     
@@ -97,23 +91,12 @@ def extract_infrastructure_attributes(df, infrastructure_type):
         
     elif infrastructure_type == 'power':
         df['power_type'] = parsed_tags.apply(lambda x: x.get('power', None))
-        
-        # Parse voltage with its unit
-        voltage_values = parsed_tags.apply(lambda x: x.get('voltage', None))
-        df['voltage_raw'] = voltage_values
-        parsed_voltage = voltage_values.apply(parse_numeric_with_unit)
-        df['voltage'] = parsed_voltage.apply(lambda x: x['value'])
-        df['voltage_unit'] = parsed_voltage.apply(lambda x: x['unit'])
-        
-        df['generator_source'] = parsed_tags.apply(lambda x: x.get('generator:source', None))
-        df['generator_type'] = parsed_tags.apply(lambda x: x.get('generator:type', None))
-        
-        # Parse generator output with its unit
-        generator_output_values = parsed_tags.apply(lambda x: x.get('generator:output', None))
-        df['generator_output_raw'] = generator_output_values
-        parsed_output = generator_output_values.apply(parse_numeric_with_unit)
-        df['generator_output'] = parsed_output.apply(lambda x: x['value'])
-        df['generator_output_unit'] = parsed_output.apply(lambda x: x['unit'])
+
+        # Parse capacity with its unit
+        capacity_values = parsed_tags.apply(lambda x: x.get('plant:output:electricity', None))
+        parsed_capacity = capacity_values.apply(parse_numeric_with_unit)
+        df['plant_output_electricity'] = parsed_capacity.apply(lambda x: x['value'])
+        df['plant_output_electricity_unit'] = parsed_capacity.apply(lambda x: x['unit'])
         
     elif infrastructure_type == 'datacenter':
         df['building_levels'] = parsed_tags.apply(lambda x: x.get('building:levels', None))
@@ -126,7 +109,7 @@ def extract_infrastructure_attributes(df, infrastructure_type):
         if key not in ['name', 'capacity', 'operator'] and not any(col.endswith(key.replace(':', '_')) for col in df.columns):
             # Create a clean column name (remove spaces, special chars)
             col_sub = re.sub(r'[^\w]', '_', key)
-            col_name = f"tag_{col_sub}"
+            col_name = f"{col_sub}"
             # Extract values for this key from parsed_tags
             df[col_name] = parsed_tags.apply(lambda x: x.get(key, None))
     
@@ -150,6 +133,7 @@ def process_csv(input_file, output_file, infrastructure_type):
     
     # Save to the output file
     print(f"Saving processed data to {output_file}...")
+    df = df.drop(columns = ['tags'])
     df.to_csv(output_file, index=False)
     
     print(f"Successfully processed {input_file}")
