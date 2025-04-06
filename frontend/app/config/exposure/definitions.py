@@ -137,6 +137,62 @@ ASSET_DEFINITIONS = {
         },
         "data_transformations": None,
     },
+    "osm-data-center": {
+        "type": "OpenStreetMap",
+        "label": "Data Center",
+        "osm_category": "data_center",
+        "osm_type": "building",
+        "osm_subtype": None,
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": True,
+        "superClusterOptions": {"radius": 1},
+        "custom_color": None,
+        "custom_icon": {
+            "property": 'telecom',
+            "categories": [
+                {
+                    "property_value": 'data_center',
+                    "icon_path": ASSETS_PATH + "/icons/data-center.svg",
+                    "label": "Data Center",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-storage-rental": {
+        "type": "OpenStreetMap",
+        "label": "Storage Rental Facility",
+        "osm_category": "shop",
+        "osm_type": "shop",
+        "osm_subtype": "storage_rental",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": True,
+        "superClusterOptions": {"radius": 20},
+        "custom_color": None,
+        "custom_icon": {
+            "property": 'shop',
+            "categories": [
+                {
+                    "property_value": 'storage_rental',
+                    "icon_path": ASSETS_PATH + "/icons/storage-rental.svg",
+                    "label": "Storage Rental Facility",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
     "hifld-power-transmission-line": {
         "type": "HIFLD",
         "label": "Power Transmission Lines (345+ kV)",

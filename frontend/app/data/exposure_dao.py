@@ -58,7 +58,7 @@ class ExposureDAO:
                 bbox=bbox,
             )
             return data
-        
+
         if all([isinstance(asset, HifldAsset) for asset in assets]):
             data = ExposureDAO.get_hifld_exposure_data(region=region, assets=assets)
             return data
@@ -66,23 +66,20 @@ class ExposureDAO:
     @staticmethod
     def get_hifld_exposure_data(region: Region, assets: List[HifldAsset]) -> Dict:
         """Load and combine multiple HIFLD GeoJSON files into a single GeoJSON dictionary.
-        
+
         Args:
             region (Region): Region of interest (currently unused but kept for API consistency)
             assets (List[HifldAsset]): List of HIFLD assets to load
-            
+
         Returns:
             Dict: Combined GeoJSON containing features from all asset files
         """
-        
-        combined_geojson = {
-            "type": "FeatureCollection",
-            "features": []
-        }
-        
+
+        combined_geojson = {"type": "FeatureCollection", "features": []}
+
         for asset in assets:
             try:
-                with open(asset.geojson_path, 'r') as f:
+                with open(asset.geojson_path, "r") as f:
                     geojson = json.load(f)
                     if "features" in geojson:
                         # Add asset name as a property to each feature
@@ -90,16 +87,18 @@ class ExposureDAO:
                             if "properties" not in feature:
                                 feature["properties"] = {}
                             feature["properties"]["asset_name"] = asset.name
-                            
+
                         combined_geojson["features"].extend(geojson["features"])
-                        logger.debug(f"Loaded {len(geojson['features'])} features from {asset.name}")
+                        logger.debug(
+                            f"Loaded {len(geojson['features'])} features from {asset.name}"
+                        )
                     else:
                         logger.warning(f"No features found in {asset.geojson_path}")
-                        
+
             except Exception as e:
                 logger.error(f"Error loading {asset.geojson_path}: {str(e)}")
                 continue
-        
+
         return combined_geojson
 
     @staticmethod
@@ -113,45 +112,41 @@ class ExposureDAO:
         bbox=None,
     ) -> Dict:
         categories = set([asset.osm_category for asset in assets])
-        osm_types = [asset.osm_type for asset in assets]
-        osm_subtypes = [asset.osm_subtype for asset in assets]
-
-        # Currently our API takes one OSM category at a time
-        # TODO: Implement multiple category query
-        if len(categories) != 1:
-            logger.error(
-                "Exactly one OSM category is required when querying exposure data"
-            )
-            return {"type": "FeatureCollection", "features": []}
-        else:
-            category = list(categories)[0]
 
         try:
             climate_variable = hazard.name
         except Exception as e:
             climate_variable = None
+        all_data = {"type": "FeatureCollection", "features": []}
+        for category in categories:
+            osm_types = [asset.osm_type for asset in assets if asset.osm_category == category]
+            osm_subtypes = [asset.osm_subtype for asset in assets if asset.osm_subtype and asset.osm_category == category]
 
-        with DatabaseManager.get_connection(region.dbname) as conn:
-            try:
-                params = infraXclimateInput(
-                    category=category,
-                    osm_types=osm_types,
-                    osm_subtypes=osm_subtypes,
-                    bbox=bbox,
-                    county=True,
-                    city=True,
-                    epsg_code=4326,
-                    climate_variable=climate_variable,
-                    climate_ssp=ssp,
-                    climate_month=month,
-                    climate_decade=decade,
-                    climate_metadata=False,
-                )
+            if len(osm_subtypes) == 0:
+                osm_subtypes = None
+            with DatabaseManager.get_connection(region.dbname) as conn:
+                try:
+                    params = infraXclimateInput(
+                        category=category,
+                        osm_types=osm_types,
+                        osm_subtypes=osm_subtypes,
+                        bbox=bbox,
+                        county=True,
+                        city=True,
+                        epsg_code=4326,
+                        climate_variable=climate_variable,
+                        climate_ssp=ssp,
+                        climate_month=month,
+                        climate_decade=decade,
+                        climate_metadata=False,
+                    )
 
-                api = infraXclimateAPI(conn=conn)
-                data = api.get_data(input_params=params)
-                del api
-            except Exception as e:
-                logger.error(f"Error fetching download data: {str(e)}")
-                data = {"type": "FeatureCollection", "features": []}
-        return data
+                    api = infraXclimateAPI(conn=conn)
+                    data = api.get_data(input_params=params)
+                    del api
+                    all_data["features"].extend(data["features"])
+                except Exception as e:
+                    logger.error(f"Error fetching download data: {str(e)}")
+                    data = {"type": "FeatureCollection", "features": []}
+
+        return all_data
