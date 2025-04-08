@@ -81,18 +81,16 @@ class MapConfig:
         Region(
             name="washington",
             label="Washington",
-            dbname="washington_expanded",
+            dbname="washington",
             map_center_lat=47.0902,
             map_center_lon=-120.7129,
             map_zoom=7,
-            geojson=ASSETS_PATH + "/geojsons/counties/washington.geojson",
+            geojson=ASSETS_PATH + "/geojsons/regions/washington.geojson",
             available_assets=[
                 AssetConfig.get_asset("osm-power-plant"),
                 AssetConfig.get_asset("osm-power-transmission-line"),
                 AssetConfig.get_asset("osm-power-distribution-line"),
                 AssetConfig.get_asset("osm-power-substation"),
-                AssetConfig.get_asset("osm-data-center"),
-                AssetConfig.get_asset("osm-storage-rental")
             ],
             available_download=True
         ),
