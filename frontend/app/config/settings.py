@@ -1,8 +1,9 @@
 import os
-#from dotenv import load_dotenv
+
+# from dotenv import load_dotenv
 
 # Load environment variables from .env file if it exists
-#load_dotenv()
+# load_dotenv()
 
 # App settings
 ASSETS_PATH = "assets"
@@ -28,5 +29,6 @@ MAX_CHATS = int(os.environ.get("MAX_CHATS", "5"))
 S3_BUCKET = os.environ["S3_BUCKET"]
 
 # AWS Bedrock Settings
-AGENT_ID = os.environ["AGENT_ID"]
-AGENT_ALIAS_ID = os.environ["AGENT_ALIAS_ID"]
+ENABLE_AI_ANALYSIS = os.environ.get("ENABLE_AI_ANALYSIS", "False").lower() == "true"
+AGENT_ID = os.environ.get("AGENT_ID", "id")
+AGENT_ALIAS_ID = os.environ.get("AGENT_ALIAS_ID", "id")

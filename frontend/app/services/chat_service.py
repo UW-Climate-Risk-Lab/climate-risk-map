@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 import plotly.graph_objects as go
 
-from config.settings import MAX_DOWNLOAD_AREA, AGENT_ID, AGENT_ALIAS_ID
+from config.settings import MAX_DOWNLOAD_AREA, ENABLE_AI_ANALYSIS, AGENT_ID, AGENT_ALIAS_ID
 from config.hazard_config import HazardConfig, Hazard
 from config.exposure.asset import AssetConfig, Asset
 from config.map_config import MapConfig, Region
@@ -170,7 +170,11 @@ class ChatService:
         if not ssp: missing_params.append("SSP Scenario")
         if not month: missing_params.append("Month")
         if not decade: missing_params.append("Decade")
-        # Assets are optional? If required, add: if not assets: missing_params.append("Assets")
+        
+        if not ENABLE_AI_ANALYSIS:
+            chat_allowed_message = f"AI features are not currently enabled at this time."
+            chat_allowed = False
+            return chat_allowed, chat_allowed_message
 
         if missing_params:
             chat_allowed_message = f"To start analysis, please select: {', '.join(missing_params)}."
