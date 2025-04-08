@@ -4,7 +4,7 @@ import atexit
 import dash_bootstrap_components as dbc
 from dash import Dash
 
-from config.settings import ASSETS_PATH
+from config.settings import ASSETS_PATH, DEBUG
 from ui.components.layout import create_main_layout
 from ui.callbacks import register_all_callbacks
 from data.database import DatabaseManager
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 logger.info("Initializing Dash application")
 app = Dash(
     __name__, 
-    external_stylesheets=[dbc.themes.BOOTSTRAP], 
+    external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME], 
     assets_folder=ASSETS_PATH
 )
 server = app.server
@@ -42,6 +42,6 @@ if __name__ == "__main__":
     app.run_server(
         host="0.0.0.0", 
         port=8050, 
-        debug=False, 
+        debug=DEBUG, 
         dev_tools_hot_reload=False
     )

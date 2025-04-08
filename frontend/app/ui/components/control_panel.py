@@ -88,7 +88,7 @@ def create_region_selector():
                                 is_open=False,
                                 duration=3000,
                                 children="Region loading!",
-                                fade=True
+                                fade=True,
                             )
                         ],
                     ),
@@ -243,7 +243,20 @@ def create_download_section():
                             ),
                             dcc.Download(id="data-download"),
                         ],
-                    )
+                    ),
+                    dbc.Col(
+                        align="center",
+                        width="auto",
+                        children=[
+                            dbc.Button(
+                                "Analyze with AI",
+                                id="analysis-btn",
+                                className="me-1",
+                                n_clicks=0,
+                                style=UIConfig.BUTTON_STYLE,
+                            )
+                        ],
+                    ),
                 ],
                 justify="center",
                 class_name="g-0",
@@ -257,7 +270,7 @@ def create_download_section():
                         width={"size": 8, "offset": 0},
                         children=[
                             dbc.Alert(
-                                id="download-message",
+                                id="alert-message",
                                 color="danger",
                                 is_open=False,
                                 duration=3000,

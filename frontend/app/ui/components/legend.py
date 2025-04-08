@@ -60,7 +60,7 @@ def create_icon_legend_item(icon_path, label):
 def create_legend_toggle_button():
     """Create a button to toggle legend visibility"""
     return html.Button(
-        children=[html.I(className="fa fa-info-circle"), "Legend"],
+        children=["Legend"],
         id="legend-toggle-btn",
         n_clicks=0,
         style=UIConfig.LEGEND_BUTTON_STYLE,

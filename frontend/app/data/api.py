@@ -106,7 +106,7 @@ class infraXclimateAPI:
 
         # As of Aug-2024, set manually for time being.
         # Possible categories here: https://pgosm-flex.com/layersets.html
-        self.available_categories = ["infrastructure", self.osm_table_places]
+        self.available_categories = ["infrastructure", self.osm_table_places, "data_center", "shop"]
 
         self.climate_schema = "climate"
         self.climate_table_alias = "climate_data"  # Table alias from nested join between scenariomip and scenariomip variables

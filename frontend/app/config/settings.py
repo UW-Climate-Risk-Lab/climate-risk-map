@@ -1,8 +1,9 @@
 import os
-#from dotenv import load_dotenv
+
+# from dotenv import load_dotenv
 
 # Load environment variables from .env file if it exists
-#load_dotenv()
+# load_dotenv()
 
 # App settings
 ASSETS_PATH = "assets"
@@ -21,5 +22,13 @@ PG_PORT = os.environ["PG_PORT"]
 MAX_DOWNLOADS = int(os.environ.get("MAX_DOWNLOADS", "5"))
 MAX_DOWNLOAD_AREA = float(os.environ.get("MAX_DOWNLOAD_AREA", "1000.0"))
 
-# AWS settings
+# Analysis settings (AI Chat Window)
+MAX_CHATS = int(os.environ.get("MAX_CHATS", "5"))
+
+# AWS S3 settings
 S3_BUCKET = os.environ["S3_BUCKET"]
+
+# AWS Bedrock Settings
+ENABLE_AI_ANALYSIS = os.environ.get("ENABLE_AI_ANALYSIS", "False").lower() == "true"
+AGENT_ID = os.environ.get("AGENT_ID", "id")
+AGENT_ALIAS_ID = os.environ.get("AGENT_ALIAS_ID", "id")

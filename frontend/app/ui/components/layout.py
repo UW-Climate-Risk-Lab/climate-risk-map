@@ -3,6 +3,7 @@ from dash import html, dcc
 
 from ui.components.control_panel import create_control_panel
 from ui.components.legend import create_legend_bar, create_legend_toggle_button
+from ui.components.chat_window import create_ai_analysis_modal 
 from services.map_service import MapService
 from config.map_config import MapConfig
 from config.ui_config import UIConfig
@@ -46,10 +47,18 @@ def create_main_layout():
                     ),
                 ],
             ),
+            create_ai_analysis_modal(),
             # State for tracking downloads
             dcc.Store(id="download-counter", data=0, storage_type="session"),
+            dcc.Store(id="download-allowed", data=False, storage_type="memory"),
             dcc.Store(id="region-features-change-signal", storage_type="memory"),
             dcc.Store(id="region-outline-change-signal", storage_type="memory"),
-            dcc.Store(id="download-allowed", data=False, storage_type="memory"),
+            dcc.Store(id="chat-counter", data=0, storage_type="session"),
+            dcc.Store(id="chat-allowed", data=False, storage_type="memory"),
+            # chat-selection-config is a hash int representing the combination of the user selection of hazard, time, bounding box, assets
+            # If the user selects a new combination of dropdowns, this will create a new section in the chat window
+            dcc.Store(id="chat-selection-config", data=0, storage_type="session"),
+            dcc.Store(id="agent-session-id", data='', storage_type="session"),
+            dcc.Store(id="trigger-ai-response-store", data=0.0, storage_type="memory")
         ],
     )
