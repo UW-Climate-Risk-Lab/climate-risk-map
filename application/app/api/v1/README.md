@@ -1,6 +1,6 @@
-# climate-risk-map-api
+# Climate Risk Map API
 
-A repository for a data API that allows access to physical asset and climate risk data curated by the Climate Risk Lab.
+This directory contains a full flask app for deploying an API to AWS API Gateway that allows access to the underlying data of the application. The dash application itself will simply use the query and schema modules and connect directly to the database. 
 
 ## Table of Contents
 
@@ -29,13 +29,13 @@ A repository for a data API that allows access to physical asset and climate ris
 - PostgreSQL database with PostGIS extension
 - AWS account (if deploying to AWS Lambda)
 
-## Installation
+## Installation and Standalone Deployment
 
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/yourusername/climate-risk-map-api.git
-   cd climate-risk-map-api/api
+   git clone https://github.com/yourusername/climate-risk-map.git
+   cd climate-risk-map/application/app/api/v1
    ```
 
 2. **Install dependencies using Poetry**

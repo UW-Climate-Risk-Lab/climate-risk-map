@@ -115,13 +115,19 @@ def get_data(
         )
 
     # Always upload to S3 and return presigned URL
-    presigned_url = utils.upload_to_s3_and_get_presigned_url(
-        bucket_name=S3_BUCKET,
-        prefix=S3_PREFIX_USER_DOWNLOADS,
-        data=result,
-        input_params=input_params,
-        format=format.lower()
-    )
+    try:
+        presigned_url = utils.upload_to_s3_and_get_presigned_url(
+            bucket_name=S3_BUCKET,
+            prefix=S3_PREFIX_USER_DOWNLOADS,
+            data=result,
+            input_params=input_params,
+            format=format.lower()
+        )
+    except Exception as e:
+        logger.error(f"Error uploading to S3: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail="Error uploading to S3. Please contact us!"
+        )
     
     return {"download_url": presigned_url}
 
