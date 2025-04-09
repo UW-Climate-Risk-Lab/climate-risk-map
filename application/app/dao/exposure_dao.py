@@ -7,8 +7,8 @@ from config.map_config import Region
 from config.exposure.asset import Asset, OpenStreetMapAsset, HifldAsset
 from config.hazard_config import Hazard
 
-from data.database import DatabaseManager
-from data.api import infraXclimateAPI, infraXclimateInput
+from dao.database import DatabaseManager
+from dao.api import infraXclimateAPI, infraXclimateInput
 
 logger = logging.getLogger(__name__)
 

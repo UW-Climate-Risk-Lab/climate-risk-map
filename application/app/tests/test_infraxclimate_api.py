@@ -11,7 +11,7 @@ ensure our return values are going to be what we expect.
 import pytest
 from psycopg2.sql import SQL, Composed, Identifier
 from unittest.mock import MagicMock, patch
-from data.api import infraXclimateAPI, infraXclimateInput
+from dao.api import infraXclimateAPI, infraXclimateInput
 
 TEST_BBOX = {
     "type": "FeatureCollection",

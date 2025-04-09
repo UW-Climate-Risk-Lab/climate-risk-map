@@ -16,7 +16,7 @@ from config.settings import MAX_DOWNLOADS, MAX_DOWNLOAD_AREA
 from config.hazard_config import HazardConfig, Hazard
 from config.exposure.asset import AssetConfig, Asset
 from config.map_config import MapConfig, Region
-from data.exposure_dao import ExposureDAO
+from dao.exposure_dao import ExposureDAO
 from utils.geo_utils import calc_bbox_area, geojson_to_pandas
 
 logger = logging.getLogger(__name__)

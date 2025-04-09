@@ -6,9 +6,9 @@ This directory contains a Dash app that visualizes both infrastructure and clima
 
 ## How to run
 
-0. Set up a local or remote PostgreSQL instance and load data using the steps in `database/v1/pgosm_flex/washington` and `data_processing/etl/pgosm_flex`.
+0. Set up a local or remote PostgreSQL instance and load data using the steps in `database/v1` and `data_processing/etl/pgosm_flex`.
 
-1. Navigate to this directory (`/climate-risk-map/frontend`) and build the Docker images using Docker Compose.
+1. Navigate to this directory (`/climate-risk-map/application`) and build the Docker images using Docker Compose.
 
 *Note: If the Docker build fails due to build dependencies and an error about "Hash Sum Mismatch", try building on another network or VPN.*
 

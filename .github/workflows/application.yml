@@ -1,13 +1,13 @@
-name: frontend/app CI-CD
+name: application CI-CD
 
 on:
   push:
     branches: [ "main" ]
-    paths: [ "frontend/app/**" ]
+    paths: [ "application/**" ]
   
   pull_request:
     branches: [ "main" ]
-    paths: [ "frontend/app/**" ]
+    paths: [ "application**" ]
 
 jobs:
 
@@ -29,12 +29,12 @@ jobs:
 
       - name: Install Dependencies with Poetry
         run: |
-          cd frontend/app
+          cd application/app
           poetry install
 
       - name: Run Unit Tests
         run: |
-          cd frontend/app
+          cd application/app
           poetry run pytest
 
   build:
@@ -44,7 +44,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Builds frontend/app
-      run: docker build --tag frontend/app:$(date +%s) ./frontend/app
+      run: docker build --tag frontend/app:$(date +%s) ./application/app
   
   deploy:
     needs: build
@@ -80,7 +80,7 @@ jobs:
           script: |
             set -e
             sudo systemctl stop apache2
-            cd /home/${{ secrets.EC2_CLIMATE_RISK_MAP_FRONTEND_DEV_USERNAME }}/climate-risk-map/frontend
+            cd /home/${{ secrets.EC2_CLIMATE_RISK_MAP_FRONTEND_DEV_USERNAME }}/climate-risk-map/application
             sudo git fetch origin
             sudo git checkout main
             sudo git pull origin main
