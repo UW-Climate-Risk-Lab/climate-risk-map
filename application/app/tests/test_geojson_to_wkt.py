@@ -1,4 +1,4 @@
-from ..app.utils import geojson_to_wkt
+from api.v1.app.utils import geojson_to_wkt
 
 def test_point():
     geojson = {

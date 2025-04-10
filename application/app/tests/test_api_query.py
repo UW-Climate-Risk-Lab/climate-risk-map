@@ -4,7 +4,7 @@ import pytest
 from geojson_pydantic import FeatureCollection
 from psycopg2.sql import SQL, Composed, Identifier
 
-from ..app import query, schemas
+from api.v1.app import query, schemas
 
 TEST_BBOX = {
     "type": "FeatureCollection",
@@ -90,7 +90,7 @@ TEST_BBOX = {
                                     Identifier("tags"),
                                     SQL("."),
                                     Identifier("tags"),
-                                    SQL(" AS osm_tags"),
+                                    SQL(" AS tags"),
                                 ]
                             ),
                             SQL(", "),
@@ -201,7 +201,7 @@ TEST_BBOX = {
                                     Identifier("tags"),
                                     SQL("."),
                                     Identifier("tags"),
-                                    SQL(" AS osm_tags"),
+                                    SQL(" AS tags"),
                                 ]
                             ),
                             SQL(", "),

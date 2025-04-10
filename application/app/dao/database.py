@@ -1,8 +1,10 @@
 # data/database.py
-import psycopg2 as pg
-from psycopg2 import pool
-from contextlib import contextmanager
 import logging
+import psycopg2 as pg
+
+from psycopg2 import pool, sql
+from contextlib import contextmanager
+from typing import Tuple, List, Any, Optional
 
 from config.settings import PG_USER, PG_PASSWORD, PG_HOST, PG_PORT
 
@@ -60,3 +62,35 @@ class DatabaseManager:
             logger.info(f"Closing connection pool for {dbname}")
             pool.closeall()
         cls._pools = {}
+
+    @classmethod
+    def execute_query(cls, dbname: str, query: sql.SQL, params: Optional[Tuple[Any, ...]] = None) -> List[Tuple]:
+        """Execute a SQL query on the specified database
+        
+        Args:
+            dbname: Database name to connect to
+            query: SQL query object (use psycopg2.sql.SQL for safety)
+            params: Query parameters (optional)
+            
+        Returns:
+            List of query results for SELECT queries
+            Empty list for other query types (INSERT, UPDATE, DELETE)
+            
+        Raises:
+            Exception: If a database error occurs
+        """
+        with cls.get_connection(dbname) as conn:
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute(query, params)
+                    conn.commit()
+                    try:
+                        results = cursor.fetchall()
+                        return results
+                    except pg.ProgrammingError:
+                        # No results to fetch (e.g., for INSERT, UPDATE, DELETE)
+                        return []
+            except Exception as e:
+                conn.rollback()
+                logger.error(f"Error executing query: {str(e)}")
+                raise

@@ -1,4 +1,3 @@
-import os
 import logging
 import atexit
 import dash_bootstrap_components as dbc
@@ -7,7 +6,7 @@ from dash import Dash
 from config.settings import ASSETS_PATH, DEBUG
 from ui.components.layout import create_main_layout
 from ui.callbacks import register_all_callbacks
-from data.database import DatabaseManager
+from dao.database import DatabaseManager
 from utils.log_utils import configure_logging
 
 # Configure logging

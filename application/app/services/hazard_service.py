@@ -3,7 +3,7 @@ import dash_leaflet as dl
 
 from typing import Tuple, List
 
-from data.hazard_dao import HazardRasterDAO
+from dao.hazard_dao import HazardRasterDAO
 from config.hazard_config import HazardConfig
 from config.map_config import MapConfig
 from config.settings import TITILER_ENDPOINT

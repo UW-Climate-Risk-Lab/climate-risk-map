@@ -81,7 +81,7 @@ class MapConfig:
         Region(
             name="washington",
             label="Washington",
-            dbname="washington",
+            dbname="washington_expanded",
             map_center_lat=47.0902,
             map_center_lon=-120.7129,
             map_zoom=7,

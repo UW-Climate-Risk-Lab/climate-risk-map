@@ -13,7 +13,7 @@ from dash_extensions.javascript import arrow_function
 
 from config.hazard_config import HazardConfig
 from config.ui_config import UIConfig
-from data.exposure_dao import ExposureDAO
+from dao.exposure_dao import ExposureDAO
 
 from config.map_config import MapConfig
 from config.exposure.asset import (

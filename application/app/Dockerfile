@@ -1,7 +1,7 @@
 FROM python:3.12
 
 # Set working directory
-WORKDIR /climate-risk-map/frontend/app
+WORKDIR /climate-risk-map/application/app
 
 # Install gdal dependencies
 RUN apt-get update && apt-get install -y \

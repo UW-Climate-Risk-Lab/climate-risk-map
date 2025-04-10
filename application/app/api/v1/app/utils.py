@@ -12,7 +12,6 @@ from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 from geojson_pydantic import FeatureCollection
 from geojson_pydantic.features import Feature
 from geojson_pydantic.geometries import Polygon
-from fastapi import HTTPException
 
 from . import schemas
 
@@ -167,34 +166,29 @@ def upload_to_s3_and_get_presigned_url(
     filename = create_descriptive_filename(input_params, format)
     object_key = prefix + filename
 
-    try:
-        # Prepare content based on format
-        if format == "csv":
-            content = geojson_to_csv_buffer(data).getvalue()
-            content_type = "application/gzip"
-        else:
-            content = json.dumps(data)
-            content_type = "application/json"
+    # Prepare content based on format
+    if format == "csv":
+        content = geojson_to_csv_buffer(data).getvalue()
+        content_type = "application/gzip"
+    else:
+        content = json.dumps(data)
+        content_type = "application/json"
 
-        # Upload to S3
-        s3_client.put_object(
-            Bucket=bucket_name,
-            Key=object_key,
-            Body=content,
-            ContentType=content_type
-        )
-        # Generate presigned URL
-        presigned_url = s3_client.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": bucket_name, "Key": object_key},
-            ExpiresIn=expiration
-        )
-        return presigned_url
-    except Exception as e:
-        logger.error(f"Error uploading to S3: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail="Error uploading to S3. Please contact us!"
-        )
+    # Upload to S3
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key=object_key,
+        Body=content,
+        ContentType=content_type
+    )
+    # Generate presigned URL
+    presigned_url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket_name, "Key": object_key},
+        ExpiresIn=expiration
+    )
+    return presigned_url
+    
 
 def get_parameter(name):
     ssm = boto3.client("ssm")
