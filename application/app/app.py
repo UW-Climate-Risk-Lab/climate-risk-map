@@ -9,7 +9,7 @@ from ui.callbacks import register_all_callbacks
 from dao.database import DatabaseManager
 from utils.log_utils import configure_logging
 
-# Configure logging
+# Configure application logging
 configure_logging()
 logger = logging.getLogger(__name__)
 
