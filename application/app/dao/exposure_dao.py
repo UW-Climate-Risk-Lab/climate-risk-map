@@ -2,13 +2,16 @@ import logging
 import json
 
 from typing import List, Dict
+from geojson_pydantic import FeatureCollection
 
 from config.map_config import Region
 from config.exposure.asset import Asset, OpenStreetMapAsset, HifldAsset
 from config.hazard_config import Hazard
 
 from dao.database import DatabaseManager
-from dao.api import infraXclimateAPI, infraXclimateInput
+
+from api.v1.app.schemas import GetDataInputParameters
+from api.v1.app.query import GetDataQueryBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -111,42 +114,49 @@ class ExposureDAO:
         decade: List[int] = None,
         bbox=None,
     ) -> Dict:
+        
+
         categories = set([asset.osm_category for asset in assets])
 
+        # If there is a bounding box provided, we convert to a standard GeoJSON object
+        if bbox:
+                bbox = FeatureCollection(features=bbox["features"], type="FeatureCollection")
         try:
             climate_variable = hazard.name
         except Exception as e:
             climate_variable = None
         all_data = {"type": "FeatureCollection", "features": []}
+
+        # We loop here since database query is designed to only get data from a single category
         for category in categories:
             osm_types = [asset.osm_type for asset in assets if asset.osm_category == category]
             osm_subtypes = [asset.osm_subtype for asset in assets if asset.osm_subtype and asset.osm_category == category]
 
             if len(osm_subtypes) == 0:
                 osm_subtypes = None
-            with DatabaseManager.get_connection(region.dbname) as conn:
-                try:
-                    params = infraXclimateInput(
-                        category=category,
-                        osm_types=osm_types,
-                        osm_subtypes=osm_subtypes,
-                        bbox=bbox,
-                        county=True,
-                        city=True,
-                        epsg_code=4326,
-                        climate_variable=climate_variable,
-                        climate_ssp=ssp,
-                        climate_month=month,
-                        climate_decade=decade,
-                        climate_metadata=False,
-                    )
 
-                    api = infraXclimateAPI(conn=conn)
-                    data = api.get_data(input_params=params)
-                    del api
-                    all_data["features"].extend(data["features"])
-                except Exception as e:
-                    logger.error(f"Error fetching download data: {str(e)}")
-                    data = {"type": "FeatureCollection", "features": []}
+            try:
+                input_params = GetDataInputParameters(
+                    osm_category=category,
+                    osm_types=osm_types,
+                    osm_subtypes=osm_subtypes,
+                    bbox=bbox,
+                    county=True,
+                    city=True,
+                    epsg_code=4326,
+                    climate_variable=climate_variable,
+                    climate_ssp=ssp,
+                    climate_month=month,
+                    climate_decade=decade,
+                    climate_metadata=False,
+                )
+                query, query_params = GetDataQueryBuilder(input_params).build_query()
+
+                data = DatabaseManager.execute_query(dbname=region.dbname, query=query, params=query_params)
+                data = data[0][0]
+                all_data["features"].extend(data["features"])
+            except Exception as e:
+                logger.error(f"Error fetching download data: {str(e)}")
+                data = {"type": "FeatureCollection", "features": []}
 
         return all_data

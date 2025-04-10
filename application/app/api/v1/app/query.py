@@ -41,7 +41,7 @@ class GetDataQueryBuilder:
         select_fields = [
             sql.Identifier(config.OSM_SCHEMA_NAME, self.primary_table, "osm_id"),
             sql.Identifier(config.OSM_SCHEMA_NAME, self.primary_table, "osm_type"),
-            sql.SQL("{schema}.{table}.{column} AS osm_tags").format(
+            sql.SQL("{schema}.{table}.{column} AS tags").format(
                 schema=sql.Identifier(config.OSM_SCHEMA_NAME),
                 table=sql.Identifier(config.OSM_TABLE_TAGS),
                 column=sql.Identifier("tags"),

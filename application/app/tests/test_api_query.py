@@ -90,7 +90,7 @@ TEST_BBOX = {
                                     Identifier("tags"),
                                     SQL("."),
                                     Identifier("tags"),
-                                    SQL(" AS osm_tags"),
+                                    SQL(" AS tags"),
                                 ]
                             ),
                             SQL(", "),
@@ -201,7 +201,7 @@ TEST_BBOX = {
                                     Identifier("tags"),
                                     SQL("."),
                                     Identifier("tags"),
-                                    SQL(" AS osm_tags"),
+                                    SQL(" AS tags"),
                                 ]
                             ),
                             SQL(", "),

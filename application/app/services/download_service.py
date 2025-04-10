@@ -18,6 +18,7 @@ from config.exposure.asset import AssetConfig, Asset
 from config.map_config import MapConfig, Region
 from dao.exposure_dao import ExposureDAO
 from utils.geo_utils import calc_bbox_area, geojson_to_pandas
+from api.v1.app.utils import clean_geojson_data
 
 logger = logging.getLogger(__name__)
 
