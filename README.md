@@ -21,35 +21,39 @@ Our current focus is on the risks to the power grid in Washington State. Over ti
 
 The application consists of several key components:
 
-### Frontend (`/frontend`)
+### Application (`/application`)
 - Dash application built with [Dash Leaflet](https://www.dash-leaflet.com/) for interactive mapping
 - Docker containerized deployment
 - Visualizes infrastructure and climate data layers
 - [TiTiler](https://developmentseed.org/titiler/) used for serving climate raster overlay
-
-### Backend API (`/api/v1`)
-- FastAPI-based REST API deployed on AWS Lambda
-- Serves physical asset and climate risk data
-- Supports GeoJSON and CSV response formats
-- Flexible querying with filters for categories, types, and climate variables
+- Database API nested in `/application/app/api`, can be deployed as a standalone API for user direct data access
 
 ### Data Processing Pipelines
 
 #### Hazard
+
+##### Wildfire
 - **Fire Weather Index Pipeline** (`/data_processing/hazards/wildfire/fwi`)
   - Processes NASA NEX-GDDP-CMIP6 data
   - Computes FWI components using Dask and Xclim
   - Distributed computing with AWS Batch support
   - Zarr format output to S3
 
+- **Burn Probability**
+  - Uses USDA Wildfire Burn Probability to get grid level burn probabilties
+  - Outputs data in Zarr by decade, using Fire Weather Index to scale
+
 #### Exposure
-- **Infrastructure & Climate Intersections** (`/data_processing/infraxclimate`)
-    - NASA NEX climate data processing pipeline
-    - Generates Cloud Optimized GeoTIFFs
+- **Infrastructure & Climate Intersections** (`/data_processing/exposure/nasa_nex`)
+    - Uses NASA NEX zarr as input
     - Performs spatial intersections with OpenStreetMap features
     - Parallel processing for zonal aggregation
     - PostGIS database loading
 
+#### Geotiff
+- **Geotiff Processing Component**
+  - Takes Zarr path as input
+  - Outputs Cloud Optimzied Geotiffs for serving on frontend application
 
 ### ETL Services
 
@@ -73,7 +77,7 @@ The application consists of several key components:
 
 ### CI/CD Workflows
 - GitHub Actions for automated testing and deployment
-- Separate workflows for frontend, API, and data processing components
+- Separate workflows for application and data processing components
 - Automated testing with Poetry and pytest
 - Docker image builds for containerized components
 - Automated deployment to AWS infrastructure
