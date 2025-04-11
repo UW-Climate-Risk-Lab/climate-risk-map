@@ -5,29 +5,21 @@ and processing geographic data for export.
 """
 
 import logging
-import time
-import io
 import boto3
 import dash_leaflet as dl
 import pandas as pd
 import uuid
 
-from typing import List, Dict, Tuple, Optional, Any
-from dataclasses import dataclass
-
-import matplotlib.pyplot as plt
-
-import plotly.graph_objects as go
+from typing import List, Dict, Tuple, Optional
 
 from config.settings import MAX_DOWNLOAD_AREA, ENABLE_AI_ANALYSIS, AGENT_ID, AGENT_ALIAS_ID
-from config.hazard_config import HazardConfig, Hazard
-from config.exposure.asset import AssetConfig, Asset
-from config.map_config import MapConfig, Region
+from config.hazard_config import HazardConfig
+from config.exposure.asset import AssetConfig
+from config.map_config import MapConfig
 from config.chat.messages import ChatMessage
 from config.chat.prompts import INITIAL_PROMPT
-from services.download_service import DownloadService
 
-from utils.geo_utils import calc_bbox_area, geojson_to_pandas
+from utils.geo_utils import calc_bbox_area
 from utils.file_utils import dataframe_to_csv_bytes
 
 logger = logging.getLogger(__name__)
@@ -172,22 +164,22 @@ class ChatService:
         if not decade: missing_params.append("Decade")
         
         if not ENABLE_AI_ANALYSIS:
-            chat_allowed_message = f"AI features are not currently enabled at this time."
+            chat_allowed_message = "AI features are not currently enabled at this time."
             chat_allowed = False
             return chat_allowed, chat_allowed_message
 
         if missing_params:
-            chat_allowed_message = f"To start analysis, please select: {', '.join(missing_params)}."
+            chat_allowed_message = "To start analysis, please select: {', '.join(missing_params)}."
             chat_allowed = False
             return chat_allowed, chat_allowed_message
         
         if not any(assets):
-            chat_allowed_message = f"Please select your asset overlays."
+            chat_allowed_message = "Please select your asset overlays."
             chat_allowed = False
             return chat_allowed, chat_allowed_message
 
         if not region.available_download: # Check attribute exists before access
-            chat_allowed_message = f"The region '{region.label}' is not yet available for analysis."
+            chat_allowed_message = "The region '{region.label}' is not yet available for analysis."
             chat_allowed = False
             return chat_allowed, chat_allowed_message
 
