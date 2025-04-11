@@ -97,7 +97,7 @@ jobs:
             sudo git pull origin main
             cd /home/${{ secrets.EC2_CLIMATE_RISK_MAP_FRONTEND_DEV_USERNAME }}/climate-risk-map/application
             sudo docker compose down
-            sudo docker system prune -af
+            sudo docker builder prune -f
             sudo docker compose up --build -d
 
       - name: revoke runner ip address

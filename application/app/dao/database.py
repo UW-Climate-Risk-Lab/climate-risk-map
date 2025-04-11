@@ -58,9 +58,9 @@ class DatabaseManager:
     @classmethod
     def close_all_pools(cls):
         """Close all connection pools (use during application shutdown)"""
-        for dbname, pool in cls._pools.items():
+        for dbname, cls_pool in cls._pools.items():
             logger.info(f"Closing connection pool for {dbname}")
-            pool.closeall()
+            cls_pool.closeall()
         cls._pools = {}
 
     @classmethod
