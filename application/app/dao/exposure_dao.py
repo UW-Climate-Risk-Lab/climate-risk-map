@@ -118,7 +118,7 @@ class ExposureDAO:
 
         categories = set([asset.osm_category for asset in assets])
 
-        # If there is a bounding box provided, we convert to a standard GeoJSON object
+        # If there is a bounding box provided, we convert to a standard GeoJSON pydantic object
         if bbox:
                 bbox = FeatureCollection(features=bbox["features"], type="FeatureCollection")
         try:
