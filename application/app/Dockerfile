@@ -1,40 +1,32 @@
-# Stage 1: Build environment with uv
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
-# Set desired working directory (using /app as standard, adjust if needed)
 WORKDIR /app
 
-# Install system dependencies (like build-essential for C extensions, add others like libgdal-dev if needed by your Python packages)
-# Doing this early helps Docker layer caching if these don't change often.
 RUN apt-get update && apt-get install -y \
     build-essential \
-    # Add any other required system packages here, e.g., libgdal-dev
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure uv - enable bytecode compilation and copy link mode for Docker
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+# Configure uv - enable bytecode compilation for faster app start time
+ENV UV_COMPILE_BYTECODE=1
+
 # Disable uv trying to manage Python versions, use the one from the base image
 ENV UV_PYTHON_DOWNLOADS=0
 
-# Install dependencies using uv sync and BuildKit caching
-# Requires pyproject.toml and uv.lock in the build context
-# --frozen: Use uv.lock for exact versions
-# --no-dev: Exclude development dependencies (like poetry's --without dev)
-# --no-install-project: Don't install the local project itself (like poetry's --no-root)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    uv sync --frozen --no-dev --no-install-project
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
 
-# Copy the rest of your application code into the builder stage
-# This happens *after* dependencies are installed for better caching
-COPY . .
+# Install the project's dependencies using the lockfile and settings
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --no-install-project --no-dev
+
+# Then, add the rest of the project source code and install it
+# Installing separately from its dependencies allows optimal layer caching
+ADD . /app
 
 # Add the virtual environment's bin directory to the PATH
-# This makes tools installed in the venv (like gunicorn) directly executable
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Expose the port the app runs on
