@@ -110,6 +110,55 @@ def create_region_selector():
         style=PANEL_SECTION_STYLE,
     )
 
+def create_exposure_selector():
+    """Create the exposure selection dropdown
+
+    Returns:
+        html.Div: Exposure selector component
+    """
+    return html.Div(
+        children=[
+            dbc.Row(
+                align="center",
+                class_name="g-0",
+                children=[
+                    html.Div(
+                        children=[
+                            html.H6("Select an Exposure", style={"color": "white"}),
+                            dcc.Dropdown(
+                                id="exposure-select-dropdown",
+                                placeholder="Select a Exposure",
+                            ),
+                        ]
+                    )
+                ],
+            ),
+            html.Br(),
+            dbc.Row(
+                align="center",
+                children=[
+                    dbc.Col(
+                        align="center",
+                        width={"size": 15, "offset": 0},
+                        children=[
+                            dbc.Alert(
+                                id="exposure-select-message",
+                                color="success",
+                                is_open=False,
+                                duration=3000,
+                                children="Assets loading!",
+                                fade=True,
+                            )
+                        ],
+                    ),
+                ],
+                justify="center",
+                class_name="g-0",
+                style={"border-radius": "25px"},
+            ),
+        ],
+        style=PANEL_SECTION_STYLE,
+    )
 
 def create_hazard_indicator_selector():
     """Create the climate variable indicator selection components
@@ -308,6 +357,7 @@ def create_control_panel():
             create_title_bar(),
             html.Br(),
             create_region_selector(),
+            create_exposure_selector(),
             create_hazard_indicator_selector(),
             html.Br(),
             create_timeframe_selector(),

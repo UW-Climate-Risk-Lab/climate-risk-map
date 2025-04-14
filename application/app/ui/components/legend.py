@@ -1,7 +1,7 @@
 from dash import html
 
 from config.ui_config import TEXT_COLOR_DARK, LEGEND_BAR_STYLE, LEGEND_BUTTON_STYLE
-from config.map_config import MapConfig
+from config.exposure import get_asset_group
 from config.exposure.definitions import POWER_LINE_CUSTOM_COLOR_RANGES
 
 
@@ -61,23 +61,23 @@ def create_legend_toggle_button():
     )
 
 
-def create_legend_bar(region_name=None):
+def create_legend_bar(asset_group_name: str = None):
     """Create the legend container component
 
     Args:
-        region_name (str): The selected region name
+        asset_group (str): The selected asset group
 
     Returns:
         html.Div: Legend bar component
     """
-    if not region_name:
-        region_name = MapConfig.BASE_MAP_COMPONENT["default_region_name"]
 
-    region = MapConfig.get_region(region_name=region_name)
+    asset_group = get_asset_group(name=asset_group_name)
 
-    if not region:
+    if not asset_group:
         # Return empty legend if region not found
-        return html.Div(id="legend-container", style={"display": "none"})
+        return html.Div(id="legend-bar", style={"display": "none"})
+
+    assets = [asset for asset in asset_group.assets]
 
     # Create legend items for available assets in the region
     power_line_items = []
@@ -86,7 +86,7 @@ def create_legend_bar(region_name=None):
     # Only show the power line legend if there are power line assets
     has_power_lines = any(
         asset.name.endswith("-line") or "transmission-line" in asset.name
-        for asset in region.available_assets
+        for asset in assets
     )
 
     if has_power_lines:
@@ -115,7 +115,7 @@ def create_legend_bar(region_name=None):
             )
 
     # Add icon-based assets
-    icon_assets = [asset for asset in region.available_assets if asset.custom_icon]
+    icon_assets = [asset for asset in asset_group.assets if asset.custom_icon]
     if icon_assets:
         asset_icon_items.append(
             html.Div(

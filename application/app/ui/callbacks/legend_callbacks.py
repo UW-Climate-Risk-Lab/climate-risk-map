@@ -18,26 +18,24 @@ def register_legend_callbacks(app):
 
     @app.callback(
         Output("legend-container", "children"),
-        Input("region-select-dropdown", "value"),
+        Input("exposure-select-dropdown", "value"),
         prevent_initial_call=True,
     )
     @handle_callback_error(output_count=1)
-    def update_legend(selected_region):
+    def update_legend(selected_exposure):
         """Update legend when region selection changes
 
         Args:
-            selected_region (str): Selected region
+            selected_exposure (str): Selected exposure grouping
 
         Returns:
             html.Div: Updated legend component
         """
-        if not selected_region:
-            return no_update
 
-        logger.debug(f"Updating legend for region: {selected_region}")
+        logger.debug(f"Updating legend for exposure: {selected_exposure}")
 
         # Create new legend bar for selected region
-        legend_bar = create_legend_bar(region_name=selected_region)
+        legend_bar = create_legend_bar(asset_group_name=selected_exposure)
 
         return [legend_bar]
 

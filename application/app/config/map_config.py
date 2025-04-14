@@ -6,6 +6,7 @@ This also defines the available regions that can be selected for the map. By cen
 this configuration, we can add additional regions and update the map setings all in one place.
 
 """
+
 import logging
 
 from dataclasses import dataclass
@@ -13,9 +14,10 @@ from dataclasses import dataclass
 from typing import List
 
 from config.settings import ASSETS_PATH
-from config.exposure import Asset, get_asset
+from config.exposure import AssetGroup, get_asset_group
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class Region:
@@ -26,7 +28,7 @@ class Region:
     map_center_lon: float
     map_zoom: int
     geojson: str  # path to geojson with region shape
-    available_assets: List[Asset]
+    available_asset_groups: List[AssetGroup]
     available_download: bool  # flag if region should be available on the map
 
 
@@ -40,6 +42,7 @@ class MapConfig:
         "style": {"height": "100vh"},
         "preferCanvas": True,
         "default_region_name": "usa",
+        "default_asset_group_name": "hifld-high-voltage-power-grid",
         "base_map_layer": {
             "id": "base-map-layer",
             "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
@@ -70,7 +73,7 @@ class MapConfig:
             "placeholder_opacity": 1,
         },
         "asset_layer": {"id": "asset-layer"},
-        "viewport": {"transition": "flyTo"}
+        "viewport": {"transition": "flyTo"},
     }
 
     REGIONS = [
@@ -82,13 +85,8 @@ class MapConfig:
             map_center_lon=-120.7129,
             map_zoom=7,
             geojson=ASSETS_PATH + "/geojsons/regions/washington.geojson",
-            available_assets=[
-                get_asset("osm-power-plant"),
-                get_asset("osm-power-transmission-line"),
-                get_asset("osm-power-distribution-line"),
-                get_asset("osm-power-substation"),
-            ],
-            available_download=True
+            available_asset_groups=[get_asset_group("power-grid")],
+            available_download=True,
         ),
         Region(
             name="new-york",
@@ -98,13 +96,8 @@ class MapConfig:
             map_center_lon=-75.0071,
             map_zoom=7,
             geojson=ASSETS_PATH + "/geojsons/regions/new-york.geojson",
-            available_assets=[
-                get_asset("osm-power-plant"),
-                get_asset("osm-power-transmission-line"),
-                get_asset("osm-power-distribution-line"),
-                get_asset("osm-power-substation"),
-            ],
-            available_download=False
+            available_asset_groups=[get_asset_group("power-grid")],
+            available_download=False,
         ),
         Region(
             name="usa",
@@ -114,9 +107,9 @@ class MapConfig:
             map_center_lat=39.8283,
             map_zoom=4,
             geojson=ASSETS_PATH + "/geojsons/regions/usa.geojson",
-            available_assets=[get_asset("hifld-power-transmission-line")],
-            available_download=False
-        )
+            available_asset_groups=[get_asset_group("hifld-high-voltage-power-grid")],
+            available_download=False,
+        ),
     ]
 
     @classmethod

@@ -32,6 +32,12 @@ ASSET_GROUP_DEFINITIONS = {
         ],
         "icon": "assets/icons/data-center.svg",
     },
+    "hifld-high-voltage-power-grid": {
+        "label": "High Voltage Transmission Lines",
+        "description": "Transmission lines over 345 kV",
+        "assets": ["hifld-power-transmission-line"],
+        "icon": None
+    }
 
 }
 

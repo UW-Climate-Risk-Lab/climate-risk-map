@@ -66,7 +66,7 @@ def register_map_callbacks(app):
     )
     @handle_callback_error(output_count=2)
     def remove_region_outline(selected_region: str):
-        """Remove region outline and 
+        """Remove region outline and
 
         Args:
             selected_region (str): Selected region
@@ -118,10 +118,11 @@ def register_map_callbacks(app):
         Output(MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"], "children"),
         Output(MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"], "overlays"),
         Input("region-features-change-signal", "data"),
+        Input("exposure-select-dropdown", "value"),
         prevent_initial_call=True,
     )
     @handle_callback_error(output_count=1)
-    def update_region_features(selected_region):
+    def update_region_features(selected_region, selected_exposure):
         """Update map overlays when region selection changes. This queries
         database and loads vector features.
 
@@ -130,6 +131,7 @@ def register_map_callbacks(app):
 
         Args:
             selected_region (str): Selected region
+            selected_exposure(str): Selected exposure
 
         Returns:
             list: List of map overlays
@@ -137,7 +139,12 @@ def register_map_callbacks(app):
         if not selected_region:
             return no_update
 
-        overlays, overlay_names = MapService.get_asset_overlays(region_name=selected_region)
+        if not selected_exposure:
+            return no_update
+
+        overlays, overlay_names = MapService.get_asset_overlays(
+            asset_group_name=selected_exposure, region_name=selected_region
+        )
 
         return overlays, overlay_names
 
@@ -149,6 +156,7 @@ def register_map_callbacks(app):
                 allow_duplicate=True,
             ),
             Output("region-features-change-signal", "data"),
+            Output("exposure-select-dropdown", "value")
         ],
         Input("region-select-dropdown", "value"),
         prevent_initial_call=True,
@@ -163,17 +171,45 @@ def register_map_callbacks(app):
 
         Args:
             selected_region (str): Selected region
+            selected_exposure(str): Selected exposure
 
         Returns:
-            list, str: List of map overlays and selected region
+            list, str: List of map overlays, selected region, and None for exposure dropdown
         """
         if not selected_region:
-            return no_update, no_update
+            return no_update, no_update, no_update
 
         overlays = list()
 
-        return overlays, selected_region
-    
+        return overlays, selected_region, None
+
+    @app.callback(
+        Output(
+            MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"],
+            "children",
+            allow_duplicate=True,
+        ),
+        Input("exposure-select-dropdown", "value"),
+        prevent_initial_call=True,
+    )
+    @handle_callback_error(output_count=1)
+    def remove_exposure_features(selected_exposure):
+        """Remove map asset overlays when exposure dropdown is cleared.
+
+        Similar to remove_region_features. We return an empty list if
+        there is "None" for the selected exposure dropdown
+
+        Args:
+            selected_exposure(str): Selected exposure
+
+        Returns:
+            list: Em
+        """
+        if selected_exposure is None:
+            return list()
+
+        return no_update
+
     @app.callback(
         Output("region-select-message", "is_open"),
         Input("region-select-dropdown", "value"),
@@ -192,9 +228,8 @@ def register_map_callbacks(app):
         """
         if not selected_region:
             return no_update
-        
+
         return True
-    
 
     @app.callback(
         [
@@ -297,3 +332,27 @@ def register_map_callbacks(app):
         ssp_options = HazardService.get_available_ssp(hazard_name=hazard_name)
 
         return [ssp_options]
+
+    @app.callback(
+        [Output("exposure-select-dropdown", "options")],
+        [Input("region-select-dropdown", "value")],
+    )
+    @handle_callback_error(output_count=1)
+    def update_exposure_dropdown(region_name: str):
+        """Update exposire dropdown options based on selected region
+
+        Args:
+            region_name (str): Selected climate variable
+
+        Returns:
+            list: List of available SSP options
+        """
+        if not region_name:
+            return no_update
+
+        region = MapConfig.get_region(region_name=region_name)
+        exposure_options = [
+            asset_group.label for asset_group in region.available_asset_groups
+        ]
+
+        return [exposure_options]
