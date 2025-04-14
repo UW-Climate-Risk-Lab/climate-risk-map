@@ -211,27 +211,6 @@ def register_map_callbacks(app):
         return no_update
 
     @app.callback(
-        Output("region-select-message", "is_open"),
-        Input("region-select-dropdown", "value"),
-        prevent_initial_call=True,
-    )
-    @handle_callback_error(output_count=1)
-    def update_region_select_message(selected_region):
-        """When region is selected, open pop up message to notify user region
-        assets are loading
-
-        Args:
-            selected_region (str): Selected region
-
-        Returns:
-            bool: True to display message
-        """
-        if not selected_region:
-            return no_update
-
-        return True
-
-    @app.callback(
         [
             Output(MapConfig.BASE_MAP_COMPONENT["hazard_tile_layer"]["id"], "url"),
             Output(MapConfig.BASE_MAP_COMPONENT["hazard_tile_layer"]["id"], "opacity"),

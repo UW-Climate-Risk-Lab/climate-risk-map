@@ -38,7 +38,7 @@ atexit.register(shutdown)
 
 if __name__ == "__main__":
     logger.info("Starting Dash server")
-    app.run_server(
+    app.run(
         host="0.0.0.0", 
         port=8050, 
         debug=DEBUG, 
