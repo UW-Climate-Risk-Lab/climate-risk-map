@@ -66,11 +66,6 @@ class MapService:
             opacity=config["hazard_tile_layer"]["placeholder_opacity"],
         )
 
-        # Layer control for toggling asset/exposure features
-        # default_assets, default_asset_labels = MapService.get_asset_overlays(
-        #     asset_group_name=config["default_asset_group_name"],
-        #     region_name=default_region.name
-        # )
         asset_layer = dl.LayersControl(
             id=config["asset_layer"]["id"],
             children=list(),

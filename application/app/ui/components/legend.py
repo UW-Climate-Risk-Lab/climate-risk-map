@@ -1,6 +1,6 @@
 from dash import html
 
-from config.ui_config import TEXT_COLOR_DARK, LEGEND_BAR_STYLE, LEGEND_BUTTON_STYLE
+from config.ui_config import TEXT_COLOR_DARK, LEGEND_BAR_STYLE
 from config.exposure import get_asset_group
 from config.exposure.definitions import POWER_LINE_CUSTOM_COLOR_RANGES
 
@@ -57,7 +57,7 @@ def create_legend_toggle_button():
         children=["Legend"],
         id="legend-toggle-btn",
         n_clicks=0,
-        style=LEGEND_BUTTON_STYLE,
+        style={"display": "none"},  # Initialize stle as display none to hide at startup
     )
 
 

@@ -42,7 +42,6 @@ class MapConfig:
         "style": {"height": "100vh"},
         "preferCanvas": True,
         "default_region_name": "usa",
-        "default_asset_group_name": "hifld-high-voltage-power-grid",
         "base_map_layer": {
             "id": "base-map-layer",
             "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",

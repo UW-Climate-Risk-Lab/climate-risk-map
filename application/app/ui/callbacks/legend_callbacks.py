@@ -41,11 +41,11 @@ def register_legend_callbacks(app):
 
     @app.callback(
         [Output("legend-container", "style"), Output("legend-toggle-btn", "style")],
-        Input("legend-toggle-btn", "n_clicks"),
+        [Input("legend-toggle-btn", "n_clicks"), Input("exposure-select-dropdown", "value")],
         prevent_initial_call=True,
     )
     @handle_callback_error(output_count=1)
-    def toggle_legend_visibility(n_clicks):
+    def toggle_legend_visibility(n_clicks, selected_exposure):
         """Toggle legend visibility when button is clicked
 
         Changes button color to give on/off visual cue to user
@@ -58,9 +58,13 @@ def register_legend_callbacks(app):
         """
         if n_clicks is None:
             return no_update
-
+        
         legend_container_style = LEGEND_CONTAINER_STYLE.copy()
         legend_button_style = LEGEND_BUTTON_STYLE.copy()
+        
+        if not selected_exposure:
+            legend_button_style["display"] = "none"
+            return legend_container_style, legend_button_style
 
         # Toggle visibility based on even/odd clicks
         if n_clicks % 2 == 1:
