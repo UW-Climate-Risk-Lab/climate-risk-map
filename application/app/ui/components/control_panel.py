@@ -1,7 +1,16 @@
 import dash_bootstrap_components as dbc
 from dash import html, dcc
 
-from config.ui_config import UIConfig
+from config.ui_config import (
+    LOGO_PATH,
+    LOGO_STYLE,
+    TITLE_STYLE,
+    TITLE_BAR_STYLE,
+    TITLE_CONTAINER_STYLE,
+    PANEL_SECTION_STYLE,
+    BUTTON_STYLE,
+    PANEL_BACKGROUND_COLOR,
+)
 from config.map_config import MapConfig
 from config.hazard_config import HazardConfig
 
@@ -19,25 +28,25 @@ def create_title_bar():
                 children=[
                     dbc.Col(
                         html.Img(
-                            src=UIConfig.LOGO_PATH,
-                            style=UIConfig.LOGO_STYLE,
+                            src=LOGO_PATH,
+                            style=LOGO_STYLE,
                         ),
                         width="auto",
                     ),
                     dbc.Col(
                         html.Div(
                             "UW Climate Risk Map",
-                            style=UIConfig.TITLE_STYLE,
+                            style=TITLE_STYLE,
                         ),
                         width="auto",
                     ),
                 ],
                 justify="center",
                 class_name="g-0",
-                style=UIConfig.TITLE_BAR_STYLE,
+                style=TITLE_BAR_STYLE,
             )
         ],
-        style=UIConfig.TITLE_CONTAINER_STYLE,
+        style=TITLE_CONTAINER_STYLE,
     )
 
 
@@ -98,7 +107,7 @@ def create_region_selector():
                 style={"border-radius": "25px"},
             ),
         ],
-        style=UIConfig.PANEL_SECTION_STYLE,
+        style=PANEL_SECTION_STYLE,
     )
 
 
@@ -147,7 +156,7 @@ def create_hazard_indicator_selector():
                 ],
             ),
         ],
-        style=UIConfig.PANEL_SECTION_STYLE,
+        style=PANEL_SECTION_STYLE,
     )
 
 
@@ -215,7 +224,7 @@ def create_timeframe_selector():
                 ],
             ),
         ],
-        style=UIConfig.PANEL_SECTION_STYLE,
+        style=PANEL_SECTION_STYLE,
     )
 
 
@@ -239,7 +248,7 @@ def create_download_section():
                                 id="download-btn",
                                 className="me-1",
                                 n_clicks=0,
-                                style=UIConfig.BUTTON_STYLE,
+                                style=BUTTON_STYLE,
                             ),
                             dcc.Download(id="data-download"),
                         ],
@@ -253,7 +262,7 @@ def create_download_section():
                                 id="analysis-btn",
                                 className="me-1",
                                 n_clicks=0,
-                                style=UIConfig.BUTTON_STYLE,
+                                style=BUTTON_STYLE,
                             )
                         ],
                     ),
@@ -283,7 +292,7 @@ def create_download_section():
                 style={"border-radius": "25px"},
             ),
         ],
-        style=UIConfig.PANEL_SECTION_STYLE,
+        style=PANEL_SECTION_STYLE,
     )
 
 
@@ -305,6 +314,6 @@ def create_control_panel():
             html.Br(),
             create_download_section(),
         ],
-        style={"backgroundColor": UIConfig.PANEL_BACKGROUND_COLOR},
+        style={"backgroundColor": PANEL_BACKGROUND_COLOR},
         width=3,
     )

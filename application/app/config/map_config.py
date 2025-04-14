@@ -10,14 +10,10 @@ import logging
 
 from dataclasses import dataclass
 
-
-from dash_extensions.javascript import arrow_function
-from dash_extensions.javascript import assign
-
 from typing import List
 
 from config.settings import ASSETS_PATH
-from config.exposure.asset import AssetConfig, Asset
+from config.exposure import Asset, get_asset
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +83,10 @@ class MapConfig:
             map_zoom=7,
             geojson=ASSETS_PATH + "/geojsons/regions/washington.geojson",
             available_assets=[
-                AssetConfig.get_asset("osm-power-plant"),
-                AssetConfig.get_asset("osm-power-transmission-line"),
-                AssetConfig.get_asset("osm-power-distribution-line"),
-                AssetConfig.get_asset("osm-power-substation"),
+                get_asset("osm-power-plant"),
+                get_asset("osm-power-transmission-line"),
+                get_asset("osm-power-distribution-line"),
+                get_asset("osm-power-substation"),
             ],
             available_download=True
         ),
@@ -103,10 +99,10 @@ class MapConfig:
             map_zoom=7,
             geojson=ASSETS_PATH + "/geojsons/regions/new-york.geojson",
             available_assets=[
-                AssetConfig.get_asset("osm-power-plant"),
-                AssetConfig.get_asset("osm-power-transmission-line"),
-                AssetConfig.get_asset("osm-power-distribution-line"),
-                AssetConfig.get_asset("osm-power-substation"),
+                get_asset("osm-power-plant"),
+                get_asset("osm-power-transmission-line"),
+                get_asset("osm-power-distribution-line"),
+                get_asset("osm-power-substation"),
             ],
             available_download=False
         ),
@@ -118,7 +114,7 @@ class MapConfig:
             map_center_lat=39.8283,
             map_zoom=4,
             geojson=ASSETS_PATH + "/geojsons/regions/usa.geojson",
-            available_assets=[AssetConfig.get_asset("hifld-power-transmission-line")],
+            available_assets=[get_asset("hifld-power-transmission-line")],
             available_download=False
         )
     ]

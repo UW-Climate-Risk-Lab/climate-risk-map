@@ -2,7 +2,7 @@ import dash_bootstrap_components as dbc
 
 from dash import html
 
-from config.ui_config import UIConfig
+from config.ui_config import PRIMARY_COLOR
 from config.chat.messages import ChatMessage
 
 
@@ -25,7 +25,7 @@ def create_ai_analysis_modal():
             dbc.ModalHeader(
                 dbc.ModalTitle(
                     [html.I(className="fa fa-robot me-2"), "Climate Risk AI Assistant"],
-                    style={"color": UIConfig.PRIMARY_COLOR},
+                    style={"color": PRIMARY_COLOR},
                 ),
                 close_button=True,
                 style={"background-color": "white"},
@@ -59,7 +59,7 @@ def create_ai_analysis_modal():
                         html.Div(id="chat-loading-placeholder"),
                         id="chat-loading-spinner",
                         delay_show=100,
-                        color=UIConfig.PRIMARY_COLOR,
+                        color=PRIMARY_COLOR,
                         fullscreen=True,
                         fullscreen_style={"backgroundColor": "transparent"},
                     ),
@@ -88,7 +88,7 @@ def create_ai_analysis_modal():
                                     className="btn",
                                     style={
                                         "border": "none",
-                                        "backgroundColor": UIConfig.PRIMARY_COLOR,
+                                        "backgroundColor": PRIMARY_COLOR,
                                         "color": "white",
                                     },
                                 ),
@@ -113,7 +113,7 @@ def create_ai_analysis_modal():
                         id="chat-modal-close",
                         className="ms-auto",
                         style={
-                            "backgroundColor": UIConfig.PRIMARY_COLOR,
+                            "backgroundColor": PRIMARY_COLOR,
                             "color": "white",
                             "borderRadius": "10px",
                         },

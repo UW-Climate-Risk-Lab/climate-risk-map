@@ -2,7 +2,7 @@ import logging
 from dash import Input, Output, no_update
 
 
-from config.ui_config import UIConfig
+from config.ui_config import PRIMARY_COLOR, LEGEND_CONTAINER_STYLE, LEGEND_BUTTON_STYLE
 from ui.components.legend import create_legend_bar
 from utils.error_utils import handle_callback_error
 
@@ -61,15 +61,15 @@ def register_legend_callbacks(app):
         if n_clicks is None:
             return no_update
 
-        legend_container_style = UIConfig.LEGEND_CONTAINER_STYLE.copy()
-        legend_button_style = UIConfig.LEGEND_BUTTON_STYLE.copy()
+        legend_container_style = LEGEND_CONTAINER_STYLE.copy()
+        legend_button_style = LEGEND_BUTTON_STYLE.copy()
 
         # Toggle visibility based on even/odd clicks
         if n_clicks % 2 == 1:
             # Hide legend
             legend_container_style["display"] = "none"
             legend_button_style["backgroundColor"] = "white"
-            legend_button_style["color"] = UIConfig.PRIMARY_COLOR
+            legend_button_style["color"] = PRIMARY_COLOR
             return legend_container_style, legend_button_style
         else:
             return legend_container_style, legend_button_style

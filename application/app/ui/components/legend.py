@@ -1,10 +1,8 @@
-import dash_bootstrap_components as dbc
 from dash import html
 
-from config.ui_config import UIConfig
+from config.ui_config import TEXT_COLOR_DARK, LEGEND_BAR_STYLE, LEGEND_BUTTON_STYLE
 from config.map_config import MapConfig
 from config.exposure.definitions import POWER_LINE_CUSTOM_COLOR_RANGES
-from config.exposure.asset import AssetConfig
 
 
 def create_color_legend_item(color, label):
@@ -25,9 +23,7 @@ def create_color_legend_item(color, label):
                     "marginRight": "8px",
                 },
             ),
-            html.Span(
-                label, style={"fontSize": "12px", "color": UIConfig.TEXT_COLOR_DARK}
-            ),
+            html.Span(label, style={"fontSize": "12px", "color": TEXT_COLOR_DARK}),
         ],
     )
 
@@ -50,9 +46,7 @@ def create_icon_legend_item(icon_path, label):
                     "marginRight": "8px",
                 },
             ),
-            html.Span(
-                label, style={"fontSize": "12px", "color": UIConfig.TEXT_COLOR_DARK}
-            ),
+            html.Span(label, style={"fontSize": "12px", "color": TEXT_COLOR_DARK}),
         ],
     )
 
@@ -63,7 +57,7 @@ def create_legend_toggle_button():
         children=["Legend"],
         id="legend-toggle-btn",
         n_clicks=0,
-        style=UIConfig.LEGEND_BUTTON_STYLE,
+        style=LEGEND_BUTTON_STYLE,
     )
 
 
@@ -106,7 +100,7 @@ def create_legend_bar(region_name=None):
                         style={
                             "fontSize": "12px",
                             "marginRight": "4px",
-                            "color": UIConfig.TEXT_COLOR_DARK,
+                            "color": TEXT_COLOR_DARK,
                         },
                     )
                 ],
@@ -132,7 +126,7 @@ def create_legend_bar(region_name=None):
                         style={
                             "fontSize": "12px",
                             "marginRight": "4px",
-                            "color": UIConfig.TEXT_COLOR_DARK,
+                            "color": TEXT_COLOR_DARK,
                         },
                     )
                 ],
@@ -142,7 +136,9 @@ def create_legend_bar(region_name=None):
         for asset in icon_assets:
             for category in asset.custom_icon["categories"]:
                 asset_icon_items.append(
-                    create_icon_legend_item(icon_path=category["icon_path"], label=category["label"])
+                    create_icon_legend_item(
+                        icon_path=category["icon_path"], label=category["label"]
+                    )
                 )
 
     # Create the two rows
@@ -178,7 +174,7 @@ def create_legend_bar(region_name=None):
     legend_bar = html.Div(
         id="legend-bar",
         className="shadow-sm",
-        style=UIConfig.LEGEND_BAR_STYLE,
+        style=LEGEND_BAR_STYLE,
         children=legend_content,
     )
 

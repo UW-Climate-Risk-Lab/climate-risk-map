@@ -12,11 +12,11 @@ from dash import html
 from dash_extensions.javascript import arrow_function
 
 from config.hazard_config import HazardConfig
-from config.ui_config import UIConfig
+from config.ui_config import PRIMARY_COLOR
 from dao.exposure_dao import ExposureDAO
 
 from config.map_config import MapConfig
-from config.exposure.asset import (
+from config.exposure import (
     TRANSPARENT_MARKER_CLUSTER,
     CREATE_FEATURE_ICON,
     CREATE_FEATURE_COLOR_STYLE,
@@ -131,7 +131,7 @@ class MapService:
             dl.GeoJSON(
                 url=region.geojson,
                 style={
-                    "color": UIConfig.PRIMARY_COLOR,
+                    "color": PRIMARY_COLOR,
                     "weight": 2,
                     "fillOpacity": 0,
                 },

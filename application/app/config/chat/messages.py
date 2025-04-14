@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from dash import html, dcc
 from plotly.graph_objects import Figure
 
-from config.ui_config import UIConfig
+from config.ui_config import PRIMARY_COLOR, SECONDARY_COLOR
 
 
 
@@ -51,7 +51,7 @@ class AiMessage(Message):
             "marginBottom": "5px",
             "maxWidth": "80%",
             "boxShadow": "0 1px 2px rgba(0,0,0,0.1)",
-            "border": f"1px solid {UIConfig.SECONDARY_COLOR}",
+            "border": f"1px solid {SECONDARY_COLOR}",
         }
         self._message_container_style = {
             "display": "flex",
@@ -139,7 +139,7 @@ class UserMessage(Message):
         super().__init__()
 
         self._message_style = {
-            "backgroundColor": UIConfig.PRIMARY_COLOR,
+            "backgroundColor": PRIMARY_COLOR,
             "color": "white",
             "borderRadius": "10px 10px 0 10px",
             "padding": "10px 15px",

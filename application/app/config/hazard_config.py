@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from typing import List, Dict
+from typing import List
 
 from config.settings import S3_BUCKET
 from config.map_config import Region
