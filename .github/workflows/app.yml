@@ -1,13 +1,13 @@
-name: application CI-CD
+name: app CI-CD
 
 on:
   push:
     branches: [ "main" ]
-    paths: [ "application/**" ]
+    paths: [ "app/**" ]
   
   pull_request:
     branches: [ "main" ]
-    paths: [ "application/**" ]
+    paths: [ "app/**" ]
 
 jobs:
 
@@ -21,22 +21,22 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          cache-dependency-glob: "application/app/uv.lock"
+          cache-dependency-glob: "app/uv.lock"
 
       - name: Enable caching
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          cache-dependency-glob: "application/app/uv.lock"
+          cache-dependency-glob: "app/uv.lock"
 
       - name: Install the project
         run: |
-          cd application/app
+          cd app
           uv sync --all-extras --dev
 
       - name: Run tests
         run: |
-          cd application/app
+          cd app
           uv run pytest tests
 
   build:
@@ -52,7 +52,7 @@ jobs:
       - name: Build and cache Docker image
         uses: docker/build-push-action@v6
         with:
-          context: application/app
+          context: app
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max 
@@ -95,7 +95,6 @@ jobs:
             sudo git fetch origin
             sudo git checkout main
             sudo git pull origin main
-            cd /home/${{ secrets.EC2_CLIMATE_RISK_MAP_FRONTEND_DEV_USERNAME }}/climate-risk-map/application
             sudo docker compose down
             sudo docker builder prune -f
             sudo docker compose up --build -d

@@ -32,6 +32,5 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Expose the port the app runs on
 EXPOSE 8050
 
-# Run the application using gunicorn (no 'poetry run' or 'uv run' needed due to PATH)
-# Assumes your entrypoint is 'app:server' as in your original Dockerfile
-CMD uv run gunicorn -b 0.0.0.0:8050 --workers $GUNICORN_WORKERS app:server
+# Assumes your entrypoint is 'app:server'
+CMD gunicorn -b 0.0.0.0:8050 --workers $GUNICORN_WORKERS app:server
