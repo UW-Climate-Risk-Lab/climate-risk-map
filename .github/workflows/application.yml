@@ -95,7 +95,6 @@ jobs:
             sudo git fetch origin
             sudo git checkout main
             sudo git pull origin main
-            cd /home/${{ secrets.EC2_CLIMATE_RISK_MAP_FRONTEND_DEV_USERNAME }}/climate-risk-map/app
             sudo docker compose down
             sudo docker builder prune -f
             sudo docker compose up --build -d
