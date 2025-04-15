@@ -5,8 +5,8 @@ from ui.components.control_panel import create_control_panel
 from ui.components.legend import create_legend_bar, create_legend_toggle_button
 from ui.components.chat_window import create_ai_analysis_modal 
 from services.map_service import MapService
+from config.ui_config import LEGEND_CONTAINER_STYLE
 from config.map_config import MapConfig
-from config.ui_config import UIConfig
 
 
 def create_main_layout():
@@ -36,7 +36,7 @@ def create_main_layout():
                             html.Div(
                                 id="legend-container",
                                 children=[create_legend_bar()],
-                                style=UIConfig.LEGEND_CONTAINER_STYLE,
+                                style=LEGEND_CONTAINER_STYLE,
                             ),
                             # Add legend toggle button
                             create_legend_toggle_button(),
@@ -51,7 +51,7 @@ def create_main_layout():
             # State for tracking downloads
             dcc.Store(id="download-counter", data=0, storage_type="session"),
             dcc.Store(id="download-allowed", data=False, storage_type="memory"),
-            dcc.Store(id="region-features-change-signal", storage_type="memory"),
+            dcc.Store(id="region-features-change-signal", data=MapConfig.BASE_MAP_COMPONENT["default_region_name"], storage_type="memory"),
             dcc.Store(id="region-outline-change-signal", storage_type="memory"),
             dcc.Store(id="chat-counter", data=0, storage_type="session"),
             dcc.Store(id="chat-allowed", data=False, storage_type="memory"),

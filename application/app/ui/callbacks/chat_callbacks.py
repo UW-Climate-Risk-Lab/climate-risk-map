@@ -4,7 +4,6 @@ import time
 from dash import Input, Output, no_update, State, callback_context
 
 from config.settings import MAX_CHATS
-from config.ui_config import UIConfig
 from config.map_config import MapConfig
 from config.chat.messages import ChatMessage
 
@@ -219,8 +218,10 @@ def register_chat_callbacks(app):
             logger.info("Modal opened and chat allowed. Requesting initial AI analysis.")
 
             # Ensure asset_overlays is a list
-            if asset_overlays is None: asset_overlays = []
-            elif not isinstance(asset_overlays, list): asset_overlays = [asset_overlays]
+            if asset_overlays is None: 
+                asset_overlays = []
+            elif not isinstance(asset_overlays, list): 
+                asset_overlays = [asset_overlays]
 
             # 1. Fetch data using DownloadService (assuming it returns a DataFrame)
             try:

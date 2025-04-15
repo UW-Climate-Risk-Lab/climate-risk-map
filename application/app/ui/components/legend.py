@@ -1,10 +1,8 @@
-import dash_bootstrap_components as dbc
 from dash import html
 
-from config.ui_config import UIConfig
-from config.map_config import MapConfig
+from config.ui_config import TEXT_COLOR_DARK, LEGEND_BAR_STYLE
+from config.exposure import get_asset_group
 from config.exposure.definitions import POWER_LINE_CUSTOM_COLOR_RANGES
-from config.exposure.asset import AssetConfig
 
 
 def create_color_legend_item(color, label):
@@ -25,9 +23,7 @@ def create_color_legend_item(color, label):
                     "marginRight": "8px",
                 },
             ),
-            html.Span(
-                label, style={"fontSize": "12px", "color": UIConfig.TEXT_COLOR_DARK}
-            ),
+            html.Span(label, style={"fontSize": "12px", "color": TEXT_COLOR_DARK}),
         ],
     )
 
@@ -50,9 +46,7 @@ def create_icon_legend_item(icon_path, label):
                     "marginRight": "8px",
                 },
             ),
-            html.Span(
-                label, style={"fontSize": "12px", "color": UIConfig.TEXT_COLOR_DARK}
-            ),
+            html.Span(label, style={"fontSize": "12px", "color": TEXT_COLOR_DARK}),
         ],
     )
 
@@ -63,27 +57,27 @@ def create_legend_toggle_button():
         children=["Legend"],
         id="legend-toggle-btn",
         n_clicks=0,
-        style=UIConfig.LEGEND_BUTTON_STYLE,
+        style={"display": "none"},  # Initialize stle as display none to hide at startup
     )
 
 
-def create_legend_bar(region_name=None):
+def create_legend_bar(asset_group_name: str = None):
     """Create the legend container component
 
     Args:
-        region_name (str): The selected region name
+        asset_group (str): The selected asset group
 
     Returns:
         html.Div: Legend bar component
     """
-    if not region_name:
-        region_name = MapConfig.BASE_MAP_COMPONENT["default_region_name"]
 
-    region = MapConfig.get_region(region_name=region_name)
+    asset_group = get_asset_group(name=asset_group_name)
 
-    if not region:
+    if not asset_group:
         # Return empty legend if region not found
-        return html.Div(id="legend-container", style={"display": "none"})
+        return html.Div(id="legend-bar", style={"display": "none"})
+
+    assets = [asset for asset in asset_group.assets]
 
     # Create legend items for available assets in the region
     power_line_items = []
@@ -92,7 +86,7 @@ def create_legend_bar(region_name=None):
     # Only show the power line legend if there are power line assets
     has_power_lines = any(
         asset.name.endswith("-line") or "transmission-line" in asset.name
-        for asset in region.available_assets
+        for asset in assets
     )
 
     if has_power_lines:
@@ -106,7 +100,7 @@ def create_legend_bar(region_name=None):
                         style={
                             "fontSize": "12px",
                             "marginRight": "4px",
-                            "color": UIConfig.TEXT_COLOR_DARK,
+                            "color": TEXT_COLOR_DARK,
                         },
                     )
                 ],
@@ -121,7 +115,7 @@ def create_legend_bar(region_name=None):
             )
 
     # Add icon-based assets
-    icon_assets = [asset for asset in region.available_assets if asset.custom_icon]
+    icon_assets = [asset for asset in asset_group.assets if asset.custom_icon]
     if icon_assets:
         asset_icon_items.append(
             html.Div(
@@ -132,7 +126,7 @@ def create_legend_bar(region_name=None):
                         style={
                             "fontSize": "12px",
                             "marginRight": "4px",
-                            "color": UIConfig.TEXT_COLOR_DARK,
+                            "color": TEXT_COLOR_DARK,
                         },
                     )
                 ],
@@ -142,7 +136,9 @@ def create_legend_bar(region_name=None):
         for asset in icon_assets:
             for category in asset.custom_icon["categories"]:
                 asset_icon_items.append(
-                    create_icon_legend_item(icon_path=category["icon_path"], label=category["label"])
+                    create_icon_legend_item(
+                        icon_path=category["icon_path"], label=category["label"]
+                    )
                 )
 
     # Create the two rows
@@ -178,7 +174,7 @@ def create_legend_bar(region_name=None):
     legend_bar = html.Div(
         id="legend-bar",
         className="shadow-sm",
-        style=UIConfig.LEGEND_BAR_STYLE,
+        style=LEGEND_BAR_STYLE,
         children=legend_content,
     )
 

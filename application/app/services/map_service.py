@@ -12,11 +12,12 @@ from dash import html
 from dash_extensions.javascript import arrow_function
 
 from config.hazard_config import HazardConfig
-from config.ui_config import UIConfig
+from config.ui_config import PRIMARY_COLOR
 from dao.exposure_dao import ExposureDAO
 
 from config.map_config import MapConfig
-from config.exposure.asset import (
+from config.exposure import (
+    get_asset_group,
     TRANSPARENT_MARKER_CLUSTER,
     CREATE_FEATURE_ICON,
     CREATE_FEATURE_COLOR_STYLE,
@@ -65,14 +66,10 @@ class MapService:
             opacity=config["hazard_tile_layer"]["placeholder_opacity"],
         )
 
-        # Layer control for toggling asset/exposure features
-        default_assets, default_asset_labels = MapService.get_asset_overlays(
-            region_name=default_region.name
-        )
         asset_layer = dl.LayersControl(
             id=config["asset_layer"]["id"],
-            children=default_assets,
-            overlays=default_asset_labels,
+            children=list(),
+            overlays=list(),
         )
 
         # State outline overlay
@@ -131,7 +128,7 @@ class MapService:
             dl.GeoJSON(
                 url=region.geojson,
                 style={
-                    "color": UIConfig.PRIMARY_COLOR,
+                    "color": PRIMARY_COLOR,
                     "weight": 2,
                     "fillOpacity": 0,
                 },
@@ -145,13 +142,14 @@ class MapService:
         return layer
 
     @staticmethod
-    def get_asset_overlays(region_name: str) -> Tuple[List[dl.Overlay], List[str]]:
+    def get_asset_overlays(asset_group_name: str, region_name: str) -> Tuple[List[dl.Overlay], List[str]]:
         """Get asset overlays for the specified region, and return the overlay geojson
         data and the labels that are checked. We default to checking all asset layers
         when assets are loaded.
 
         Args:
-            region (str): Region name
+            asset_group_name (str): Name of asset group
+            region_name (str): Name of region
 
         Returns:
             Tuple[List[dl.Overlay], List[str]]: List of dl.Overlay components, which
@@ -161,14 +159,15 @@ class MapService:
         overlays = []
         overlay_names = []
 
+        asset_group = get_asset_group(name=asset_group_name)
         region = MapConfig.get_region(region_name=region_name)
 
-        if not region:
+        if not asset_group:
             return list()
 
-        # Iterate through the specified assets available in the region
+        # Iterate through the specified assets so that each asset gets its own layer
         # These are are configured manually in config/map_config.py
-        for asset in region.available_assets:
+        for asset in asset_group.assets:
             try:
                 # Get raw data from DAO
                 data = ExposureDAO.get_exposure_data(region=region, assets=[asset])

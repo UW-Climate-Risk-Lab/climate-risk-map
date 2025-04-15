@@ -1,18 +1,45 @@
 from config.settings import ASSETS_PATH
+from config.ui_config import POWER_LINE_CUSTOM_COLOR_RANGES
 
 
 def load_asset_definitions():
     return ASSET_DEFINITIONS.copy()
 
-
-POWER_LINE_CUSTOM_COLOR_RANGES = [
-    {"min": 0, "max": 100, "color": "#5b8f22", "label": "< 100 kV"},
-    {"min": 100, "max": 300, "color": "#0046AD", "label": "100-300 kV"},
-    {"min": 300, "max": 500, "color": "#63B1E5", "label": "300-500 kV"},
-    {"min": 500, "max": float("inf"), "color": "#C75B12", "label": "> 500 kV"},
-]
+def load_asset_group_definitions():
+    return ASSET_GROUP_DEFINITIONS.copy()
 
 DEFAULT_ICON_PATH = ASSETS_PATH + "/icons/black-dot.svg"
+
+ASSET_GROUP_DEFINITIONS = {
+    "power-grid": {
+        "label": "Power Grid Infrastructure",
+        "description": "Power generation, transmission, and distribution assets",
+        "assets": [
+            "osm-power-plant",
+            "osm-power-transmission-line",
+            "osm-power-distribution-line",
+            "osm-power-substation",
+        ],
+        "icon": "assets/icons/electric.svg",
+    },
+    "data-infrastructure": {
+        "label": "Data & Computing Infrastructure",
+        "description": "Data centers and supporting power infrastructure",
+        "assets": [
+            "osm-data-center",
+            "osm-power-substation",
+            "osm-power-transmission-line"
+        ],
+        "icon": "assets/icons/data-center.svg",
+    },
+    "hifld-high-voltage-power-grid": {
+        "label": "High Voltage Transmission Lines",
+        "description": "Transmission lines over 345 kV",
+        "assets": ["hifld-power-transmission-line"],
+        "icon": None
+    }
+
+}
 
 ASSET_DEFINITIONS = {
     "osm-power-plant": {
@@ -154,10 +181,10 @@ ASSET_DEFINITIONS = {
         "superClusterOptions": {"radius": 1},
         "custom_color": None,
         "custom_icon": {
-            "property": 'telecom',
+            "property": "telecom",
             "categories": [
                 {
-                    "property_value": 'data_center',
+                    "property_value": "data_center",
                     "icon_path": ASSETS_PATH + "/icons/data-center.svg",
                     "label": "Data Center",
                 },
@@ -182,10 +209,10 @@ ASSET_DEFINITIONS = {
         "superClusterOptions": {"radius": 20},
         "custom_color": None,
         "custom_icon": {
-            "property": 'shop',
+            "property": "shop",
             "categories": [
                 {
-                    "property_value": 'storage_rental',
+                    "property_value": "storage_rental",
                     "icon_path": ASSETS_PATH + "/icons/storage-rental.svg",
                     "label": "Storage Rental Facility",
                 },

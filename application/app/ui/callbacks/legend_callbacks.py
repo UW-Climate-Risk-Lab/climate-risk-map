@@ -2,7 +2,7 @@ import logging
 from dash import Input, Output, no_update
 
 
-from config.ui_config import UIConfig
+from config.ui_config import PRIMARY_COLOR, LEGEND_CONTAINER_STYLE, LEGEND_BUTTON_STYLE
 from ui.components.legend import create_legend_bar
 from utils.error_utils import handle_callback_error
 
@@ -18,36 +18,34 @@ def register_legend_callbacks(app):
 
     @app.callback(
         Output("legend-container", "children"),
-        Input("region-select-dropdown", "value"),
+        Input("exposure-select-dropdown", "value"),
         prevent_initial_call=True,
     )
     @handle_callback_error(output_count=1)
-    def update_legend(selected_region):
+    def update_legend(selected_exposure):
         """Update legend when region selection changes
 
         Args:
-            selected_region (str): Selected region
+            selected_exposure (str): Selected exposure grouping
 
         Returns:
             html.Div: Updated legend component
         """
-        if not selected_region:
-            return no_update
 
-        logger.debug(f"Updating legend for region: {selected_region}")
+        logger.debug(f"Updating legend for exposure: {selected_exposure}")
 
         # Create new legend bar for selected region
-        legend_bar = create_legend_bar(region_name=selected_region)
+        legend_bar = create_legend_bar(asset_group_name=selected_exposure)
 
         return [legend_bar]
 
     @app.callback(
         [Output("legend-container", "style"), Output("legend-toggle-btn", "style")],
-        Input("legend-toggle-btn", "n_clicks"),
+        [Input("legend-toggle-btn", "n_clicks"), Input("exposure-select-dropdown", "value")],
         prevent_initial_call=True,
     )
     @handle_callback_error(output_count=1)
-    def toggle_legend_visibility(n_clicks):
+    def toggle_legend_visibility(n_clicks, selected_exposure):
         """Toggle legend visibility when button is clicked
 
         Changes button color to give on/off visual cue to user
@@ -60,16 +58,20 @@ def register_legend_callbacks(app):
         """
         if n_clicks is None:
             return no_update
-
-        legend_container_style = UIConfig.LEGEND_CONTAINER_STYLE.copy()
-        legend_button_style = UIConfig.LEGEND_BUTTON_STYLE.copy()
+        
+        legend_container_style = LEGEND_CONTAINER_STYLE.copy()
+        legend_button_style = LEGEND_BUTTON_STYLE.copy()
+        
+        if not selected_exposure:
+            legend_button_style["display"] = "none"
+            return legend_container_style, legend_button_style
 
         # Toggle visibility based on even/odd clicks
         if n_clicks % 2 == 1:
             # Hide legend
             legend_container_style["display"] = "none"
             legend_button_style["backgroundColor"] = "white"
-            legend_button_style["color"] = UIConfig.PRIMARY_COLOR
+            legend_button_style["color"] = PRIMARY_COLOR
             return legend_container_style, legend_button_style
         else:
             return legend_container_style, legend_button_style

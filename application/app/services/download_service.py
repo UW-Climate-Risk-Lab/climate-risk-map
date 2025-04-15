@@ -14,11 +14,10 @@ from dataclasses import dataclass
 
 from config.settings import MAX_DOWNLOADS, MAX_DOWNLOAD_AREA
 from config.hazard_config import HazardConfig, Hazard
-from config.exposure.asset import AssetConfig, Asset
+from config.exposure import Asset, get_asset
 from config.map_config import MapConfig, Region
 from dao.exposure_dao import ExposureDAO
 from utils.geo_utils import calc_bbox_area, geojson_to_pandas
-from api.v1.app.utils import clean_geojson_data
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +70,7 @@ class DownloadService:
 
         hazard = HazardConfig.get_hazard(hazard_name=hazard_name)
         
-        assets = [AssetConfig.get_asset(name=asset_label) for asset_label in asset_overlays]
+        assets = [get_asset(name=asset_label) for asset_label in asset_overlays]
 
         region = MapConfig.get_region(region_name=region_name)
 
@@ -119,7 +118,7 @@ class DownloadService:
         """
         if None in [download_config.region, download_config.hazard, download_config.ssp, download_config.month, download_config.decade, download_config.region]:
             download_config.download_message = (
-                f"To download data, please select all dropdowns!"
+                "To download data, please select all dropdowns!"
             )
             download_config.download_message_is_open = True
             download_config.download_message_color = "danger"
@@ -151,7 +150,7 @@ class DownloadService:
             > MAX_DOWNLOAD_AREA
         ):
             download_config.download_message = (
-                f"Your selected area is too large to download"
+                "Your selected area is too large to download"
             )
             download_config.download_message_is_open = True
             download_config.download_message_color = "danger"
@@ -192,7 +191,7 @@ class DownloadService:
         """
         hazard = HazardConfig.get_hazard(hazard_name=hazard_name)
         
-        assets = [AssetConfig.get_asset(name=asset_label) for asset_label in asset_overlays]
+        assets = [get_asset(name=asset_label) for asset_label in asset_overlays]
 
         region = MapConfig.get_region(region_name=region_name)
 

@@ -7,14 +7,13 @@ Assets will generally be vector features, having geometry properties.
 
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from typing import List, Dict, Optional
+from typing import List, Dict
 
-from dash_extensions.javascript import arrow_function
 from dash_extensions.javascript import assign
 
-from config.exposure.definitions import load_asset_definitions, DEFAULT_ICON_PATH
+from config.exposure.definitions import DEFAULT_ICON_PATH
 from config.exposure.transformer import DataTransformer
 
 
@@ -22,7 +21,7 @@ class AssetRegistry:
     _asset_types = {}
 
     @classmethod
-    def register(cls, name):
+    def register_asset_type(cls, name):
         def decorator(asset_class):
             cls._asset_types[name] = asset_class
             return asset_class
@@ -30,26 +29,10 @@ class AssetRegistry:
         return decorator
 
     @classmethod
-    def create(cls, asset_type, **kwargs):
+    def create_asset(cls, asset_type, **kwargs):
         if asset_type not in cls._asset_types:
             raise ValueError(f"Unknown asset type: {asset_type}")
         return cls._asset_types[asset_type](**kwargs)
-
-
-class AssetFactory:
-    @staticmethod
-    def create_from_definitions():
-        """Create assets from definitions."""
-        asset_definitions = load_asset_definitions()
-        assets = []
-
-        for name, config in asset_definitions.items():
-            asset_type = config.pop("type")
-            asset = AssetRegistry.create(asset_type, name=name, **config)
-            assets.append(asset)
-
-        return assets
-
 
 @dataclass
 class Asset:
@@ -229,7 +212,7 @@ class Asset:
         return feature
 
 
-@AssetRegistry.register("OpenStreetMap")
+@AssetRegistry.register_asset_type("OpenStreetMap")
 @dataclass
 class OpenStreetMapAsset(Asset):
     osm_category: str
@@ -243,24 +226,10 @@ class OpenStreetMapAsset(Asset):
         return feature
 
 
-@AssetRegistry.register("HIFLD")
+@AssetRegistry.register_asset_type("HIFLD")
 @dataclass
 class HifldAsset(Asset):
     geojson_path: str
-
-
-class AssetConfig:
-    # Load assets dynamically
-    ASSETS = AssetFactory.create_from_definitions()
-
-    @classmethod
-    def get_asset(cls, name):
-        """Returns asset object by name or label."""
-        for asset in cls.ASSETS:
-            if (asset.name == name) or (asset.label == name):
-                return asset
-        return None
-
 
 # Javascript code to create a transparent cluster icon
 TRANSPARENT_MARKER_CLUSTER = assign(

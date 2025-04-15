@@ -1,12 +1,21 @@
 import dash_bootstrap_components as dbc
 from dash import html, dcc
 
-from config.ui_config import UIConfig
+from config.ui_config import (
+    LOGO_PATH,
+    LOGO_STYLE,
+    TITLE_STYLE,
+    TITLE_BAR_STYLE,
+    TITLE_CONTAINER_STYLE,
+    PANEL_SECTION_STYLE,
+    BUTTON_STYLE,
+    PANEL_BACKGROUND_COLOR,
+)
 from config.map_config import MapConfig
 from config.hazard_config import HazardConfig
 
 
-def create_title_bar():
+def create_title_bar() -> html.Div:
     """Create the application title bar
 
     Returns:
@@ -19,90 +28,135 @@ def create_title_bar():
                 children=[
                     dbc.Col(
                         html.Img(
-                            src=UIConfig.LOGO_PATH,
-                            style=UIConfig.LOGO_STYLE,
+                            src=LOGO_PATH,
+                            style=LOGO_STYLE,
                         ),
                         width="auto",
                     ),
                     dbc.Col(
                         html.Div(
                             "UW Climate Risk Map",
-                            style=UIConfig.TITLE_STYLE,
+                            style=TITLE_STYLE,
                         ),
                         width="auto",
                     ),
                 ],
                 justify="center",
                 class_name="g-0",
-                style=UIConfig.TITLE_BAR_STYLE,
+                style=TITLE_BAR_STYLE,
             )
         ],
-        style=UIConfig.TITLE_CONTAINER_STYLE,
+        style=TITLE_CONTAINER_STYLE,
     )
 
 
-def create_region_selector():
+def create_region_selector() -> dbc.Row:
     """Create the region selection dropdown
 
     Returns:
-        html.Div: Region selector component
+        dbc.Row: Region selector component
     """
-    return html.Div(
+    selector = dbc.Row(
+        align="center",
+        class_name="g-0",
         children=[
-            dbc.Row(
-                align="center",
-                class_name="g-0",
+            html.Div(
                 children=[
-                    html.Div(
-                        children=[
-                            html.H6("Select a Region", style={"color": "white"}),
-                            dcc.Dropdown(
-                                [
-                                    {
-                                        "label": region.label,
-                                        "value": region.name,
-                                    }
-                                    for region in MapConfig.REGIONS
-                                ],
-                                id="region-select-dropdown",
-                                placeholder="Select a Region",
-                                value=MapConfig.BASE_MAP_COMPONENT[
-                                    "default_region_name"
-                                ],
-                            ),
-                        ]
-                    )
-                ],
-            ),
-            html.Br(),
-            dbc.Row(
-                align="center",
-                children=[
-                    dbc.Col(
-                        align="center",
-                        width={"size": 15, "offset": 0},
-                        children=[
-                            dbc.Alert(
-                                id="region-select-message",
-                                color="success",
-                                is_open=False,
-                                duration=3000,
-                                children="Region loading!",
-                                fade=True,
-                            )
+                    dcc.Dropdown(
+                        [
+                            {
+                                "label": region.label,
+                                "value": region.name,
+                            }
+                            for region in MapConfig.REGIONS
                         ],
+                        id="region-select-dropdown",
+                        placeholder="Select a Region",
+                        value=MapConfig.BASE_MAP_COMPONENT["default_region_name"],
                     ),
-                ],
-                justify="center",
-                class_name="g-0",
-                style={"border-radius": "25px"},
-            ),
+                ]
+            )
         ],
-        style=UIConfig.PANEL_SECTION_STYLE,
+    )
+    return selector
+
+
+def create_exposure_selector() -> dbc.Row:
+    """Create the exposure selection dropdown
+
+    Returns:
+        dbc.Row: Exposure selector component
+    """
+
+    selector = dbc.Row(
+        align="center",
+        class_name="g-0",
+        children=[
+            html.Div(
+                children=[
+                    dcc.Dropdown(
+                        id="exposure-select-dropdown",
+                        placeholder="Select an Asset Exposure",
+                    ),
+                ]
+            )
+        ],
     )
 
+    return selector
 
-def create_hazard_indicator_selector():
+
+def create_hazard_selector() -> dbc.Row:
+    """Creates the hazard indicator selector dropdown
+
+    Returns:
+        dbc.Row: Hazard indicator selector component
+    """
+    selector = dbc.Row(
+        align="center",
+        class_name="g-0",
+        children=[
+            html.Div(
+                children=[
+                    dcc.Dropdown(
+                        [
+                            {
+                                "label": hazard.label,
+                                "value": hazard.name,
+                            }
+                            for hazard in HazardConfig.HAZARDS
+                        ],
+                        id="hazard-indicator-dropdown",
+                        placeholder="Select a Hazard Indicator",
+                    ),
+                ]
+            )
+        ],
+    )
+    return selector
+
+
+def create_emissions_scenario_selector() -> dbc.Row:
+    """Creates the SSP emissions scenrio dropdown
+
+    Returns:
+        dbc.Row: Emission scenario selector dropdown
+    """
+    selector = dbc.Row(
+        align="center",
+        children=[
+            html.Div(
+                dcc.Dropdown(
+                    id="ssp-dropdown",
+                    placeholder="Select an Emissions Scenario",
+                )
+            )
+        ],
+    )
+    return selector
+
+
+def create_dropdown_selectors():
     """Create the climate variable indicator selection components
 
     Returns:
@@ -110,44 +164,16 @@ def create_hazard_indicator_selector():
     """
     return html.Div(
         children=[
-            dbc.Row(
-                align="center",
-                class_name="g-0",
-                children=[
-                    html.Div(
-                        children=[
-                            html.H6(
-                                "Select a Hazard Indicator", style={"color": "white"}
-                            ),
-                            dcc.Dropdown(
-                                [
-                                    {
-                                        "label": hazard.label,
-                                        "value": hazard.name,
-                                    }
-                                    for hazard in HazardConfig.HAZARDS
-                                ],
-                                id="hazard-indicator-dropdown",
-                                placeholder="Select a Hazard Indicator",
-                            ),
-                        ]
-                    )
-                ],
-            ),
+            html.H6("Select Your Settings", style={"color": "white"}),
+            create_region_selector(),
             html.Br(),
-            dbc.Row(
-                align="center",
-                children=[
-                    html.Div(
-                        dcc.Dropdown(
-                            id="ssp-dropdown",
-                            placeholder="Select an Emissions Scenario",
-                        )
-                    )
-                ],
-            ),
+            create_exposure_selector(),
+            html.Br(),
+            create_hazard_selector(),
+            html.Br(),
+            create_emissions_scenario_selector(),
         ],
-        style=UIConfig.PANEL_SECTION_STYLE,
+        style=PANEL_SECTION_STYLE,
     )
 
 
@@ -215,7 +241,7 @@ def create_timeframe_selector():
                 ],
             ),
         ],
-        style=UIConfig.PANEL_SECTION_STYLE,
+        style=PANEL_SECTION_STYLE,
     )
 
 
@@ -239,7 +265,7 @@ def create_download_section():
                                 id="download-btn",
                                 className="me-1",
                                 n_clicks=0,
-                                style=UIConfig.BUTTON_STYLE,
+                                style=BUTTON_STYLE,
                             ),
                             dcc.Download(id="data-download"),
                         ],
@@ -253,7 +279,7 @@ def create_download_section():
                                 id="analysis-btn",
                                 className="me-1",
                                 n_clicks=0,
-                                style=UIConfig.BUTTON_STYLE,
+                                style=BUTTON_STYLE,
                             )
                         ],
                     ),
@@ -283,7 +309,7 @@ def create_download_section():
                 style={"border-radius": "25px"},
             ),
         ],
-        style=UIConfig.PANEL_SECTION_STYLE,
+        style=PANEL_SECTION_STYLE,
     )
 
 
@@ -298,13 +324,12 @@ def create_control_panel():
         children=[
             create_title_bar(),
             html.Br(),
-            create_region_selector(),
-            create_hazard_indicator_selector(),
+            create_dropdown_selectors(),
             html.Br(),
             create_timeframe_selector(),
             html.Br(),
             create_download_section(),
         ],
-        style={"backgroundColor": UIConfig.PANEL_BACKGROUND_COLOR},
+        style={"backgroundColor": PANEL_BACKGROUND_COLOR},
         width=3,
     )
