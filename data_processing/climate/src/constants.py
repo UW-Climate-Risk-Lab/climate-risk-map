@@ -39,10 +39,10 @@ INDICATOR_REGISTRY = {
         "requires_initial_conditions": True # Specific flag for FWI
     },
     "precip_percent_change": {
-        "module": "indicators.precip_change",
+        "module": "indicators.precip",
         "function": "calculate_precip_percent_change",
         "output_vars": ["pr_change_percent"],
-        "requires_initial_conditions": False
+        "requires_initial_conditions": False,
         # Add flags if it requires historical baseline data
         # "requires_historical_baseline": True 
     },
@@ -58,5 +58,5 @@ INDICATOR_REGISTRY = {
 # Default chunk sizes (can be overridden by args)
 DEFAULT_LAT_CHUNK = 30
 DEFAULT_LON_CHUNK = 72
-DEFAULT_THREADS = 4
-DEFAULT_MEMORY = "16" # GB
+DEFAULT_THREADS = 2
+DEFAULT_MEMORY = "250" # GB

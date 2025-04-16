@@ -245,7 +245,7 @@ requires-dist = [
     { name = "s3fs", specifier = ">=2025.3.2" },
     { name = "xarray", specifier = ">=2025.3.1" },
     { name = "xclim", specifier = ">=0.56.0" },
-    { name = "zarr", specifier = "==2.18.4" },
+    { name = "zarr", specifier = "==2.18.7" },
 ]
 
 [[package]]
@@ -318,6 +318,18 @@ wheels = [
 [package.optional-dependencies]
 array = [
     { name = "numpy" },
+]
+
+[[package]]
+name = "deprecated"
+version = "1.2.18"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "wrapt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/98/97/06afe62762c9a8a86af0cfb7bfdab22a43ad17138b07af5b1a58442690a2/deprecated-1.2.18.tar.gz", hash = "sha256:422b6f6d859da6f2ef57857761bfb392480502a64c3028ca9bbe86085d72115d", size = 2928744 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/c6/ac0b6c1e2d138f1002bcf799d330bd6d85084fece321e662a14223794041/Deprecated-1.2.18-py2.py3-none-any.whl", hash = "sha256:bd5011788200372a32418f888e326a09ff80d0214bd961147cfed01b5c018eec", size = 9998 },
 ]
 
 [[package]]
@@ -638,19 +650,18 @@ wheels = [
 
 [[package]]
 name = "numcodecs"
-version = "0.16.0"
+version = "0.15.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "deprecated" },
     { name = "numpy" },
-    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/3d/54b07213c1c3b489f3be23e11f4d2c81d2e682852fc93b2bf37d5efd5664/numcodecs-0.16.0.tar.gz", hash = "sha256:f71229a951c4991ab226df4147f3780c988d1cecf1309e388d9e57bcba827387", size = 6268216 }
+sdist = { url = "https://files.pythonhosted.org/packages/63/fc/bb532969eb8236984ba65e4f0079a7da885b8ac0ce1f0835decbb3938a62/numcodecs-0.15.1.tar.gz", hash = "sha256:eeed77e4d6636641a2cc605fbc6078c7a8f2cc40f3dfa2b3f61e52e6091b04ff", size = 6267275 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/81/eaf0eb5f60123840e31081ed4226d326eb035d0284e49596331b9f76995f/numcodecs-0.16.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:a28f3f2c1aab21417bec52932d453eedb8323a07088be72edc2a440426d823ae", size = 1672497 },
-    { url = "https://files.pythonhosted.org/packages/da/b8/e15f3dc5c5763efbfceed34100bc045d397dc02f277bc128845ac2e751f2/numcodecs-0.16.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0f5203b86e57bc6d0dad8f0719f10404fcadeabb5f112205d4e926075a4e1388", size = 1170472 },
-    { url = "https://files.pythonhosted.org/packages/e3/16/773ae1edb0e63e16c539a06b30d3d117fa0de475400576da2b0cfa682831/numcodecs-0.16.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:881b1650938feb395b7157fd46bde683aa6cfde0616a31fe47972f1d0ea8ba37", size = 8188333 },
-    { url = "https://files.pythonhosted.org/packages/25/df/6cbdd9842f9da811367773bdcbc12b196aaf4ad84bf3395b366931b32130/numcodecs-0.16.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:271d07bfa230e02dec7ba93d5776b5032aecf1d4c20d52a93858e957d44ae722", size = 8752531 },
-    { url = "https://files.pythonhosted.org/packages/52/e7/a8df8fc7e7ee574a66ca706916e486448c1f1f90cc3dcc660b3d6d846e72/numcodecs-0.16.0-cp313-cp313-win_amd64.whl", hash = "sha256:7e6f501d7ac78107d80a2f4798e81b38584929cab1d2c7c03789610b9a39826a", size = 811488 },
+    { url = "https://files.pythonhosted.org/packages/78/57/acbc54b3419e5be65015e47177c76c0a73e037fd3ae2cde5808169194d4d/numcodecs-0.15.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:e3d82b70500cf61e8d115faa0d0a76be6ecdc24a16477ee3279d711699ad85f3", size = 1688220 },
+    { url = "https://files.pythonhosted.org/packages/b6/56/9863fa6dc679f40a31bea5e9713ee5507a31dcd3ee82ea4b1a9268ce52e8/numcodecs-0.15.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:1d471a1829ce52d3f365053a2bd1379e32e369517557c4027ddf5ac0d99c591e", size = 1180294 },
+    { url = "https://files.pythonhosted.org/packages/fa/91/d96999b41e3146b6c0ce6bddc5ad85803cb4d743c95394562c2a4bb8cded/numcodecs-0.15.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1dfdea4a67108205edfce99c1cb6cd621343bc7abb7e16a041c966776920e7de", size = 8834323 },
+    { url = "https://files.pythonhosted.org/packages/c3/32/233e5ede6568bdb044e6f99aaa9fa39827ff3109c6487fc137315f733586/numcodecs-0.15.1-cp313-cp313-win_amd64.whl", hash = "sha256:a4f7bdb26f1b34423cb56d48e75821223be38040907c9b5954eeb7463e7eb03c", size = 831955 },
 ]
 
 [[package]]
@@ -1230,7 +1241,7 @@ wheels = [
 
 [[package]]
 name = "zarr"
-version = "2.18.4"
+version = "2.18.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asciitree" },
@@ -1238,9 +1249,9 @@ dependencies = [
     { name = "numcodecs" },
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/21/d1/764ca5b66d91b20dede66aedc6eb9ede3adbe5c61779e7378a7ecb010e87/zarr-2.18.4.tar.gz", hash = "sha256:37790ededd0683ae1abe6ff90aa16c22543b3436810060f53d72c15e910c24bb", size = 3603684 }
+sdist = { url = "https://files.pythonhosted.org/packages/da/1d/01cf9e3ab2d85190278efc3fca9f68563de35ae30ee59e7640e3af98abe3/zarr-2.18.7.tar.gz", hash = "sha256:b2b8f66f14dac4af66b180d2338819981b981f70e196c9a66e6bfaa9e59572f5", size = 3604558 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b4/d1/c84022a44afc7b7ccc442fba3daee56bdd03593d91ee4bc245a08e4fcc55/zarr-2.18.4-py3-none-any.whl", hash = "sha256:2795e20aff91093ce7e4da36ab1a138aededbd8ab66bf01fd01512e61d31e5d1", size = 210600 },
+    { url = "https://files.pythonhosted.org/packages/5e/d8/9ffd8c237b3559945bb52103cf0eed64ea098f7b7f573f8d2962ef27b4b2/zarr-2.18.7-py3-none-any.whl", hash = "sha256:ac3dc4033e9ae4e9d7b5e27c97ea3eaf1003cc0a07f010bd83d5134bf8c4b223", size = 211273 },
 ]
 
 [[package]]
