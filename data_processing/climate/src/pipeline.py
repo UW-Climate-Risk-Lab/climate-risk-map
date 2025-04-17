@@ -322,7 +322,8 @@ def run_pipeline_for_year(config: PipelineConfig):
                     consolidated=True,
                     compute=True,  # Trigger computation and writing
                 )
-
+            
+            pr_baseline = pr_baseline["pr"]
             config.indicator_context["precip_baseline_mean"] = pr_baseline
             print("Precipitation baseline loaded/calculated.")
         except Exception as e:

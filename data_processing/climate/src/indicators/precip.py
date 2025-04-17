@@ -4,9 +4,7 @@ import s3fs
 
 from typing import Optional
 
-# Assuming constants.py is accessible (adjust import path if needed)
 import constants
-import file_utils
 
 
 def get_historical_baseline(
@@ -74,7 +72,7 @@ def calculate_precip_percent_change(
         Dataset with the 'pr_change_percent' variable, retaining only
         ('time', 'lat', 'lon') dimensions from ds_input.
     """
-    ds_input_pr = ds_input["pr"]  # Should have dims (time, lat, lon)
+    ds_input_pr = ds_input["pr"].copy()  # Should have dims (time, lat, lon)
 
     # --- Input Validation ---
     if "dayofyear" not in pr_baseline_mean.coords:
@@ -160,7 +158,7 @@ def calculate_precip_percent_change(
 
     # --- Step 3: Prepare Output Dataset ---
     # Rename the output DataArray
-    pr_change_percent = pr_change_percent.rename({"pr": "pr_change_percent"})
+    pr_change_percent = pr_change_percent.rename('pr')
 
     # Set standard attributes
     pr_change_percent.attrs["units"] = "%"
@@ -181,22 +179,10 @@ def calculate_precip_percent_change(
         if attr_name not in pr_change_percent.attrs:  # Avoid overwriting specific attrs
             pr_change_percent.attrs[attr_name] = attr_val
 
+    pr_change_percent = pr_change_percent.reset_coords(names="dayofyear", drop=True)
+
     # Create the output dataset
     ds_output = pr_change_percent.to_dataset()
-
-    # Ensure chunks are preserved or reapplied (important for Dask)
-    # Check if input was chunked and apply the same chunking
-    if ds_input_pr.chunks:
-        print(f"Re-applying input chunking: {ds_input_pr.chunks}")
-        ds_output = ds_output.chunk(ds_input_pr.chunks)
-    else:
-        # If input wasn't chunked (e.g., loaded fully), maybe apply default chunks
-        print("Input was not chunked; output will not be chunked by default.")
-
-    print(
-        f"Output dataset created with variable '{ds_output.data_vars}' "
-        f"and dimensions {ds_output.dims}."
-    )
 
     # Final check on estimated size (only works well if data is loaded/computed)
     # print(f"Estimated size of output dataset in memory: {ds_output.nbytes / 1e9:.3f} GB")
