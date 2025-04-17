@@ -46,13 +46,13 @@ INDICATOR_REGISTRY = {
         # Add flags if it requires historical baseline data
         # "requires_historical_baseline": True 
     },
-    # Add more indicators here
-    # "example_indicator": {
-    #     "module": "src.indicators.example",
-    #     "function": "calculate_example",
-    #     "output_vars": ["example_var1", "example_var2"],
-    #     "requires_initial_conditions": False 
-    # }
+    "spei": {
+        "module": "indicators.spei",
+        "function": "calculate_spei",
+        "spei_scale": 6,
+        "output_vars": ["spei_6month"],
+        "requires_initial_conditions": False 
+    }
 }
 
 # Default chunk sizes (can be overridden by args)

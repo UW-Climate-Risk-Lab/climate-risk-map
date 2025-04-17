@@ -139,26 +139,15 @@ def calculate_precip_percent_change(
     # dimensions and coordinates, allowing for direct element-wise operations.
     print("Calculating percentage change...")
 
-    # Difference
-    pr_change = ds_input_pr - baseline_aligned_to_input
-
-    # Avoid division by zero or near-zero baseline values
-    # Use a small threshold appropriate for the units (kg m-2 s-1)
-    threshold = 1e-9  # A very small precipitation rate threshold
-    # Alternatively, convert to mm/day for thresholding if easier: threshold_mm_day = 1e-5
-    # threshold = threshold_mm_day / 86400.0
-
     # Calculate percentage change where baseline is sufficiently large
-    pr_change_percent = xr.where(
-        abs(baseline_aligned_to_input) > threshold,
-        (pr_change / baseline_aligned_to_input) * 100.0,
-        np.nan,  # Assign NaN where baseline is too small or for day 366 mismatch if applicable
-    )
+    pr_change_percent = (
+        ds_input_pr - baseline_aligned_to_input
+    ) / baseline_aligned_to_input
     print("Percentage change calculation complete.")
 
     # --- Step 3: Prepare Output Dataset ---
     # Rename the output DataArray
-    pr_change_percent = pr_change_percent.rename('pr')
+    pr_change_percent = pr_change_percent.rename("pr_percent_change")
 
     # Set standard attributes
     pr_change_percent.attrs["units"] = "%"
@@ -169,11 +158,7 @@ def calculate_precip_percent_change(
     pr_change_percent.attrs["baseline_period"] = (
         f"{constants.HISTORICAL_BASELINE_YEARS[0]}-{constants.HISTORICAL_BASELINE_YEARS[-1]}"
     )
-    pr_change_percent.attrs["calculation_note"] = (
-        "Result is NaN where baseline daily mean precipitation is below threshold "
-        f"({threshold:.2e} kg m-2 s-1) or potentially for day 366 in non-leap years "
-        "if baseline includes day 366."
-    )
+    
     # Preserve input variable attributes if desired (e.g., grid mapping)
     for attr_name, attr_val in ds_input_pr.attrs.items():
         if attr_name not in pr_change_percent.attrs:  # Avoid overwriting specific attrs
