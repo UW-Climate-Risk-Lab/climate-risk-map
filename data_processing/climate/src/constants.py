@@ -42,16 +42,17 @@ INDICATOR_REGISTRY = {
         "function": "calculate_precip_percent_change",
         "output_vars": ["pr_change_percent"],
     },
-    "spei": {
-        "module": "indicators.spei",
-        "function": "calculate_spei",
-        "spei_scale": 12,
-        "output_vars": ["spei_12month"],
-    }
+    # SPEI used too much memory for calculation, need to optimze later
+    # "spei": {
+    #     "module": "indicators.spei",
+    #     "function": "calculate_spei",
+    #     "spei_scale": 12,
+    #     "output_vars": ["spei_12month"],
+    # }
 }
 
 # Default chunk sizes (can be overridden by args)
 DEFAULT_LAT_CHUNK = 30
 DEFAULT_LON_CHUNK = 72
-DEFAULT_THREADS = 2
+DEFAULT_THREADS = 4
 DEFAULT_MEMORY = "250" # GB

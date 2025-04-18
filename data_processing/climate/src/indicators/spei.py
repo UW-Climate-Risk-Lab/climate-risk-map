@@ -5,11 +5,11 @@ import xclim.core.units as xcu
 import xclim.indices as xci
 
 import warnings
-import climate_indices_fork
+import src.indicators.climate_indices_fork as climate_indices_fork
 
 
 # --- Helper Function for Unit Conversion ---
-def ensure_correct_units(ds):
+def ensure_correct_units(ds: xr.Dataset):
     """Converts units if necessary and ensures required variables exist."""
     required_vars = ["pr", "tasmin", "tasmax"]
     for var in required_vars:
@@ -208,9 +208,9 @@ def calculate_spei(ds_input, ds_historical, spei_scale, baseline_years):
     # 1. Ensure correct units and variable presence
     print("Step 1: Checking variables and converting units...")
     ds_historical = ensure_correct_units(
-        ds_historical.copy()
+        ds_historical
     )  # Use copy to avoid modifying original
-    ds_input = ensure_correct_units(ds_input.copy())
+    ds_input = ensure_correct_units(ds_input)
 
     # 2. Concatenate historical and future datasets along time
     print("Step 2: Concatenating historical and future data...")
@@ -338,7 +338,7 @@ if __name__ == "__main__":
     times_hist = pd.date_range(
         "1981-01-01", "2014-12-31", freq="D"
     )  # Shorter period for quick example
-    times_future = pd.date_range("2015-01-01", "2015-12-31", freq="D")
+    times_future = pd.date_range("2018-01-01", "2018-12-31", freq="D")
     lats = np.arange(-90, 90, 5)  # Example latitudes
     lons = np.arange(-180, 180, 5)  # Example longitudes
 

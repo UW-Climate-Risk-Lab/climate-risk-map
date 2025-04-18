@@ -64,7 +64,7 @@ def load_historical_data(
     model: str, ensemble_member: str, required_vars: list[str], years: List[int]
 ):
     """Loads required historical variables into a single Dataset."""
-    fs = fsspec.filesystem("s3", anon=True)  # Use anonymous access for public NEX data
+    fs = fsspec.filesystem("s3", anon=True)
     s3_client = boto3.client("s3")
 
     uris_to_load = []
@@ -95,6 +95,7 @@ def load_historical_data(
 
     # Use open_mfdataset carefully - ensure chunks are sensible
     # Use preprocess function if needed for unit conversion, renaming coords etc.
+    storage_options = {'anon': True}
     ds_historical = xr.open_mfdataset(
         uris_to_load,
         engine="h5netcdf",  # Assuming NetCDF4/HDF5
@@ -102,6 +103,7 @@ def load_historical_data(
         combine="by_coords",
         chunks={},  # Let xarray decide initial chunks, rechunk later
         parallel=True,  # Enable parallel reading
+        backend_kwargs={'storage_options': storage_options}
     )
 
     return ds_historical
@@ -179,7 +181,7 @@ def load_input_data(config: PipelineConfig, required_vars: list[str]) -> xr.Data
 # --- Main Pipeline Logic ---
 
 
-def run_pipeline_for_year(config: PipelineConfig):
+def run_pipeline_for_year(ds_historical, config: PipelineConfig):
     """Runs the indicator calculation pipeline for a single year."""
 
     year_start_time = time.time()
@@ -193,40 +195,7 @@ def run_pipeline_for_year(config: PipelineConfig):
     all_req_vars = set()
     indicators_to_run = {}
 
-    print("Loading historical file...")
-    cache_historical_prefix = PurePosixPath(
-        constants.OUTPUT_BUCKET,
-        constants.OUTPUT_PREFIX,  # Use updated OUTPUT_PREFIX
-        constants.INPUT_PREFIX,  # Keep structure similar
-        config.model,
-        "historical",
-        config.ensemble_member,
-    )
-    cache_historical_file = (
-        f"day_{config.model}_historical_{config.ensemble_member}_gn.zarr"
-    )
-    cached_historical_uri = f"s3://{cache_historical_prefix / cache_historical_file}"
-
-    if file_utils.s3_uri_exists(s3_uri=cached_historical_uri, check_zattrs=True):
-        ds_historical = xr.load_dataset(cache_historical_file)
-    else:
-        ds_historical = load_historical_data(
-            model=config.model,
-            ensemble_member=config.ensemble_member,
-            required_vars=constants.VAR_LIST,
-            years=constants.VALID_YEARS["historical"],
-        )
-
-        output_historical_mapper = s3fs.S3Map(
-            root=cached_historical_uri, s3=fs_s3, check=False
-        )
-        ds_historical.to_zarr(
-            store=output_historical_mapper,
-            mode="w",  # Overwrite mode
-            consolidated=True,
-            compute=True,  # Trigger computation and writing
-        )
-
+    
     # Determine which indicators need to be run
     print("Checking existing variables in Zarr store...")
     all_output_vars_needed = [
@@ -398,8 +367,9 @@ def run_pipeline_for_year(config: PipelineConfig):
                     "precip_baseline_mean"
                 ]
             if name == "spei":
-                kwargs["ds_historical"] = ds_historical
+                kwargs["ds_historical"] = ds_historical[["pr", "tasmin", "tasmax"]]
                 kwargs["spei_scale"] = constants.INDICATOR_REGISTRY["spei"]["spei_scale"]
+                kwargs["baseline_years"] = constants.HISTORICAL_BASELINE_YEARS
 
             # Add other context items as needed based on indicator requirements
 
@@ -504,9 +474,8 @@ def main(args):
     # --- Dask Client Setup ---
     # Use LocalCluster for single-node execution within the Batch job
     # Adjust memory_limit based on Batch job's allocation
-    n_workers = min(multiprocessing.cpu_count(), 16)
+    n_workers = min(multiprocessing.cpu_count(), 24)
     memory_limit_gb = int(args.memory_available or constants.DEFAULT_MEMORY) / n_workers
-    memory_limit_bytes = memory_limit_gb * 1024**3
     threads_per_worker = int(args.threads or constants.DEFAULT_THREADS)
 
     print(
@@ -551,6 +520,45 @@ def main(args):
             )
     else:
         print("No bounding box provided, processing global data.")
+
+    print("Loading historical file...")
+    baseline_years = constants.HISTORICAL_BASELINE_YEARS
+    fs_s3 = s3fs.S3FileSystem(anon=False)
+    cache_historical_prefix = PurePosixPath(
+        constants.OUTPUT_BUCKET,
+        constants.OUTPUT_PREFIX,  # Use updated OUTPUT_PREFIX
+        constants.INPUT_PREFIX,  # Keep structure similar
+        args.model,
+        "historical",
+        args.ensemble_member,
+    )
+    cache_historical_file = (
+        f"day_{args.model}_historical_{args.ensemble_member}_gn_{str(baseline_years[0])}-{str(baseline_years[-1])}.zarr"
+    )
+    cached_historical_uri = f"s3://{cache_historical_prefix / cache_historical_file}"
+
+    if file_utils.s3_uri_exists(s3_uri=cached_historical_uri, check_zattrs=True):
+        print("Cached historical file found, loading..")
+        ds_historical = xr.open_dataset(cached_historical_uri, engine="zarr")
+    else:
+        print("No historical file found, loading from source..")
+        ds_historical = load_historical_data(
+            model=args.model,
+            ensemble_member=args.ensemble_member,
+            required_vars=constants.VAR_LIST,
+            years=baseline_years,
+        )
+
+        output_historical_mapper = s3fs.S3Map(
+            root=cached_historical_uri, s3=fs_s3, check=False
+        )
+        ds_historical.to_zarr(
+            store=output_historical_mapper,
+            mode="w",  # Overwrite mode
+            consolidated=True,
+            compute=True,  # Trigger computation and writing
+        )
+
 
     # --- Iterate Through Years ---
     for year in years:
@@ -616,7 +624,7 @@ def main(args):
                 )
 
                 # 4. Run the Pipeline for this year
-                run_pipeline_for_year(config)
+                run_pipeline_for_year(ds_historical=ds_historical, config=config)
 
         except Exception as e:
             print(f"FATAL ERROR processing year {year}: {e}")
