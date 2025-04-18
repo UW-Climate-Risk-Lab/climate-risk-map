@@ -188,15 +188,15 @@ def calculate_spei_for_series(
 
 
 # --- Main Calculation Function ---
-def calculate_spei(ds_hist, ds_future, spei_scale, baseline_years):
+def calculate_spei(ds_input, ds_historical, spei_scale, baseline_years):
     """
     Calculates SPEI using historical and future CMIP6 data.
 
     Args:
-        ds_hist (xr.Dataset): Dataset containing historical daily 'pr', 'tasmin', 'tasmax'.
-                               Must include 'lat' coordinate. Assumes 'time' coordinate.
-        ds_future (xr.Dataset): Dataset containing future daily 'pr', 'tasmin', 'tasmax'.
+        ds_input (xr.Dataset): Dataset containing future daily 'pr', 'tasmin', 'tasmax'.
                                 Must include 'lat' coordinate. Assumes 'time' coordinate.
+        ds_historical (xr.Dataset): Dataset containing historical daily 'pr', 'tasmin', 'tasmax'.
+                               Must include 'lat' coordinate. Assumes 'time' coordinate.
         spei_scale (int): The timescale for SPEI calculation in months.
         baseline_years (tuple): Start and end year (inclusive) for the calibration period.
 
@@ -207,17 +207,17 @@ def calculate_spei(ds_hist, ds_future, spei_scale, baseline_years):
 
     # 1. Ensure correct units and variable presence
     print("Step 1: Checking variables and converting units...")
-    ds_hist = ensure_correct_units(
-        ds_hist.copy()
+    ds_historical = ensure_correct_units(
+        ds_historical.copy()
     )  # Use copy to avoid modifying original
-    ds_future = ensure_correct_units(ds_future.copy())
+    ds_input = ensure_correct_units(ds_input.copy())
 
     # 2. Concatenate historical and future datasets along time
     print("Step 2: Concatenating historical and future data...")
     # Ensure time coordinates are compatible before concatenating
     # This might require converting calendars if they differ, though NEX-GDDP-CMIP6 is usually consistent
     try:
-        ds_full = xr.concat([ds_hist, ds_future], dim="time")
+        ds_full = xr.concat([ds_historical, ds_input], dim="time")
         # Sort by time just in case concatenation order wasn't chronological
         ds_full = ds_full.sortby("time")
     except Exception as e:
@@ -322,7 +322,7 @@ def calculate_spei(ds_hist, ds_future, spei_scale, baseline_years):
     spei_daily_da.attrs["frequency"] = "daily (monthly value forward-filled)"
 
     spei_daily_ds = spei_daily_da.to_dataset()
-    spei_daily_ds = spei_daily_ds.where(spei_daily_ds.time.isin(ds_future.time), drop=True)
+    spei_daily_ds = spei_daily_ds.where(spei_daily_ds.time.isin(ds_input.time), drop=True)
     print("SPEI calculation finished.")
     return spei_daily_ds
 
@@ -330,7 +330,7 @@ def calculate_spei(ds_hist, ds_future, spei_scale, baseline_years):
 # --- Example Usage ---
 if __name__ == "__main__":
     # This is a placeholder for loading your actual data.
-    # Replace this with loading your ds_hist and ds_future xarray datasets.
+    # Replace this with loading your ds_historical and ds_input xarray datasets.
     print("\n--- Running Example ---")
     print("Creating dummy data for demonstration...")
 
@@ -353,7 +353,7 @@ if __name__ == "__main__":
         + np.random.rand(len(times_hist), len(lats), len(lons)) * 5
     )  # K
 
-    ds_hist = xr.Dataset(
+    ds_historical = xr.Dataset(
         {
             "pr": (("time", "lat", "lon"), pr_hist_data, {"units": "mm/day"}),
             "tasmin": (("time", "lat", "lon"), tasmin_hist_data, {"units": "K"}),
@@ -375,7 +375,7 @@ if __name__ == "__main__":
         + np.random.rand(len(times_future), len(lats), len(lons)) * 5
     )  # K
 
-    ds_future = xr.Dataset(
+    ds_input = xr.Dataset(
         {
             "pr": (("time", "lat", "lon"), pr_future_data, {"units": "mm/day"}),
             "tasmin": (("time", "lat", "lon"), tasmin_future_data, {"units": "K"}),
@@ -390,8 +390,8 @@ if __name__ == "__main__":
 
     # Calculate SPEI
     spei_results = calculate_spei(
-        ds_hist,
-        ds_future,
+        ds_historical,
+        ds_input,
         spei_scale=example_spei_scale,
         baseline_years=example_baseline_years,
     )

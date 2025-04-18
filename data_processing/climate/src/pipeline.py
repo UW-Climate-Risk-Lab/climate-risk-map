@@ -265,10 +265,7 @@ def run_pipeline_for_year(config: PipelineConfig):
     # If other indicators needed prior year context, load existing_ds here.
 
     # --- Special Handling for FWI Initial Conditions ---
-    if (
-        "fwi" in indicators_to_run
-        and constants.INDICATOR_REGISTRY["fwi"]["requires_initial_conditions"]
-    ):
+    if "fwi" in indicators_to_run:
         prior_year = config.year - 1
         # Construct prior year's Zarr path (assuming same naming convention)
         prior_year_output_uri = config.zarr_output_uri.replace(
@@ -400,6 +397,9 @@ def run_pipeline_for_year(config: PipelineConfig):
                 kwargs["pr_baseline_mean"] = config.indicator_context[
                     "precip_baseline_mean"
                 ]
+            if name == "spei":
+                kwargs["ds_historical"] = ds_historical
+                kwargs["spei_scale"] = constants.INDICATOR_REGISTRY["spei"]["spei_scale"]
 
             # Add other context items as needed based on indicator requirements
 

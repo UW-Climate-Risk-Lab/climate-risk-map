@@ -36,22 +36,17 @@ INDICATOR_REGISTRY = {
         "module": "indicators.fwi",
         "function": "calculate_fwi",
         "output_vars": ["dc", "dmc", "ffmc", "fwi"],
-        "requires_initial_conditions": True # Specific flag for FWI
     },
     "precip_percent_change": {
         "module": "indicators.precip",
         "function": "calculate_precip_percent_change",
         "output_vars": ["pr_change_percent"],
-        "requires_initial_conditions": False,
-        # Add flags if it requires historical baseline data
-        # "requires_historical_baseline": True 
     },
     "spei": {
         "module": "indicators.spei",
         "function": "calculate_spei",
-        "spei_scale": 6,
-        "output_vars": ["spei_6month"],
-        "requires_initial_conditions": False 
+        "spei_scale": 12,
+        "output_vars": ["spei_12month"],
     }
 }
 
