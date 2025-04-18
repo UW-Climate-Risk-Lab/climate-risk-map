@@ -193,6 +193,40 @@ def run_pipeline_for_year(config: PipelineConfig):
     all_req_vars = set()
     indicators_to_run = {}
 
+    print("Loading historical file...")
+    cache_historical_prefix = PurePosixPath(
+        constants.OUTPUT_BUCKET,
+        constants.OUTPUT_PREFIX,  # Use updated OUTPUT_PREFIX
+        constants.INPUT_PREFIX,  # Keep structure similar
+        config.model,
+        "historical",
+        config.ensemble_member,
+    )
+    cache_historical_file = (
+        f"day_{config.model}_historical_{config.ensemble_member}_gn.zarr"
+    )
+    cached_historical_uri = f"s3://{cache_historical_prefix / cache_historical_file}"
+
+    if file_utils.s3_uri_exists(s3_uri=cached_historical_uri, check_zattrs=True):
+        ds_historical = xr.load_dataset(cache_historical_file)
+    else:
+        ds_historical = load_historical_data(
+            model=config.model,
+            ensemble_member=config.ensemble_member,
+            required_vars=constants.VAR_LIST,
+            years=constants.VALID_YEARS["historical"],
+        )
+
+        output_historical_mapper = s3fs.S3Map(
+            root=cached_historical_uri, s3=fs_s3, check=False
+        )
+        ds_historical.to_zarr(
+            store=output_historical_mapper,
+            mode="w",  # Overwrite mode
+            consolidated=True,
+            compute=True,  # Trigger computation and writing
+        )
+
     # Determine which indicators need to be run
     print("Checking existing variables in Zarr store...")
     all_output_vars_needed = [
@@ -297,17 +331,13 @@ def run_pipeline_for_year(config: PipelineConfig):
             cached_pr_baseline_uri = (
                 f"s3://{cache_pr_baseline_prefix / cache_pr_baseline_file}"
             )
-            if file_utils.s3_uri_exists(s3_uri=cached_pr_baseline_uri, check_zattrs=True):
+            if file_utils.s3_uri_exists(
+                s3_uri=cached_pr_baseline_uri, check_zattrs=True
+            ):
                 pr_baseline = xr.load_dataset(cached_pr_baseline_uri)
             else:
-                ds_pr_historical = load_historical_data(
-                    model=args.model,
-                    ensemble_member=args.ensemble_member,
-                    required_vars=["pr"],
-                    years=constants.HISTORICAL_BASELINE_YEARS,
-                )
                 pr_baseline = get_historical_baseline(
-                    ds_hist=ds_pr_historical,
+                    ds_hist=ds_historical,
                     model=config.model,
                     ensemble_member=config.ensemble_member,
                     bbox=bbox_dict,
@@ -322,7 +352,7 @@ def run_pipeline_for_year(config: PipelineConfig):
                     consolidated=True,
                     compute=True,  # Trigger computation and writing
                 )
-            
+
             pr_baseline = pr_baseline["pr"]
             config.indicator_context["precip_baseline_mean"] = pr_baseline
             print("Precipitation baseline loaded/calculated.")
