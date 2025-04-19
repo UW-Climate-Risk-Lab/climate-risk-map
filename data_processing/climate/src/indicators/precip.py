@@ -4,7 +4,7 @@ import s3fs
 
 from typing import Optional
 
-import constants
+import src.constants as constants
 
 
 def get_historical_baseline(
@@ -56,7 +56,7 @@ def get_historical_baseline(
 
 
 def calculate_precip_percent_change(
-    ds_input: xr.Dataset, pr_baseline_mean: xr.DataArray, **kwargs
+    ds_input: xr.Dataset, pr_baseline_mean: xr.DataArray
 ) -> xr.Dataset:
     """
     Calculates the percentage change in daily precipitation relative to a baseline mean.
@@ -69,7 +69,7 @@ def calculate_precip_percent_change(
         **kwargs: Catches unused arguments like initial_conditions.
 
     Returns:
-        Dataset with the 'pr_change_percent' variable, retaining only
+        Dataset with the 'pr_percent_change' variable, retaining only
         ('time', 'lat', 'lon') dimensions from ds_input.
     """
     ds_input_pr = ds_input["pr"].copy()  # Should have dims (time, lat, lon)
@@ -140,34 +140,34 @@ def calculate_precip_percent_change(
     print("Calculating percentage change...")
 
     # Calculate percentage change where baseline is sufficiently large
-    pr_change_percent = (
+    pr_percent_change = (
         ds_input_pr - baseline_aligned_to_input
     ) / baseline_aligned_to_input
     print("Percentage change calculation complete.")
 
     # --- Step 3: Prepare Output Dataset ---
     # Rename the output DataArray
-    pr_change_percent = pr_change_percent.rename("pr_percent_change")
+    pr_percent_change = pr_percent_change.rename("pr_percent_change")
 
     # Set standard attributes
-    pr_change_percent.attrs["units"] = "%"
-    pr_change_percent.attrs["long_name"] = (
+    pr_percent_change.attrs["units"] = "%"
+    pr_percent_change.attrs["long_name"] = (
         f"Percentage change in daily precipitation relative to "
         f"{constants.HISTORICAL_BASELINE_YEARS[0]}-{constants.HISTORICAL_BASELINE_YEARS[-1]} baseline"
     )
-    pr_change_percent.attrs["baseline_period"] = (
+    pr_percent_change.attrs["baseline_period"] = (
         f"{constants.HISTORICAL_BASELINE_YEARS[0]}-{constants.HISTORICAL_BASELINE_YEARS[-1]}"
     )
     
     # Preserve input variable attributes if desired (e.g., grid mapping)
     for attr_name, attr_val in ds_input_pr.attrs.items():
-        if attr_name not in pr_change_percent.attrs:  # Avoid overwriting specific attrs
-            pr_change_percent.attrs[attr_name] = attr_val
+        if attr_name not in pr_percent_change.attrs:  # Avoid overwriting specific attrs
+            pr_percent_change.attrs[attr_name] = attr_val
 
-    pr_change_percent = pr_change_percent.reset_coords(names="dayofyear", drop=True)
+    pr_percent_change = pr_percent_change.reset_coords(names="dayofyear", drop=True)
 
     # Create the output dataset
-    ds_output = pr_change_percent.to_dataset()
+    ds_output = pr_percent_change.to_dataset()
 
     # Final check on estimated size (only works well if data is loaded/computed)
     # print(f"Estimated size of output dataset in memory: {ds_output.nbytes / 1e9:.3f} GB")

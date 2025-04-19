@@ -5,7 +5,7 @@ import s3fs
 from urllib.parse import urlparse
 from pathlib import PurePosixPath
 
-import constants
+import src.constants as constants
 
 def find_best_input_file(s3_client, model, scenario, ensemble_member, year, variable):
     """

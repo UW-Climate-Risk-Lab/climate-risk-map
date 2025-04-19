@@ -16,12 +16,12 @@ import fsspec
 import time
 
 # Assuming structure src/constants.py, src/indicators/fwi.py etc.
-import constants
-import file_utils
+import src.constants as constants
+import src.file_utils as file_utils
 
 # Import specific indicator calculation dataclasses if needed
-from indicators.fwi import FwiInitialConditions
-from indicators.precip import get_historical_baseline
+from src.indicators.fwi import FwiInitialConditions
+from src.indicators.precip import get_historical_baseline
 
 
 @dataclass
@@ -95,7 +95,7 @@ def load_historical_data(
 
     # Use open_mfdataset carefully - ensure chunks are sensible
     # Use preprocess function if needed for unit conversion, renaming coords etc.
-    storage_options = {'anon': True}
+    storage_options = {"anon": True}
     ds_historical = xr.open_mfdataset(
         uris_to_load,
         engine="h5netcdf",  # Assuming NetCDF4/HDF5
@@ -103,7 +103,7 @@ def load_historical_data(
         combine="by_coords",
         chunks={},  # Let xarray decide initial chunks, rechunk later
         parallel=True,  # Enable parallel reading
-        backend_kwargs={'storage_options': storage_options}
+        backend_kwargs={"storage_options": storage_options},
     )
 
     return ds_historical
@@ -195,7 +195,6 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
     all_req_vars = set()
     indicators_to_run = {}
 
-    
     # Determine which indicators need to be run
     print("Checking existing variables in Zarr store...")
     all_output_vars_needed = [
@@ -279,7 +278,7 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
 
     # --- Special Handling for Precipitation Baseline (if needed) ---
     # Only calculate baseline if the precip_percent_change indicator is running
-    if "precip_percent_change" in indicators_to_run:
+    if "pr_percent_change" in indicators_to_run:
         # This assumes the indicator needs the baseline. Add flag in registry if needed.
         try:
             # Pass necessary info to get baseline function
@@ -320,7 +319,7 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
                 )
 
             pr_baseline = pr_baseline["pr"]
-            config.indicator_context["precip_baseline_mean"] = pr_baseline
+            config.indicator_context["pr_baseline_mean"] = pr_baseline
             print("Precipitation baseline loaded/calculated.")
         except Exception as e:
             print(
@@ -360,15 +359,17 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
                     "fwi_initial_conditions"
                 ]
             if (
-                name == "precip_percent_change"
-                and "precip_baseline_mean" in config.indicator_context
+                name == "pr_percent_change"
+                and "pr_baseline_mean" in config.indicator_context
             ):
                 kwargs["pr_baseline_mean"] = config.indicator_context[
-                    "precip_baseline_mean"
+                    "pr_baseline_mean"
                 ]
             if name == "spei":
                 kwargs["ds_historical"] = ds_historical[["pr", "tasmin", "tasmax"]]
-                kwargs["spei_scale"] = constants.INDICATOR_REGISTRY["spei"]["spei_scale"]
+                kwargs["spei_scale"] = constants.INDICATOR_REGISTRY["spei"][
+                    "spei_scale"
+                ]
                 kwargs["baseline_years"] = constants.HISTORICAL_BASELINE_YEARS
 
             # Add other context items as needed based on indicator requirements
@@ -468,15 +469,27 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
     )
 
 
-def main(args):
+def main(
+    model,
+    scenario,
+    ensemble_member,
+    lat_chunk=constants.DEFAULT_LAT_CHUNK,
+    lon_chunk=constants.DEFAULT_LON_CHUNK,
+    threads=constants.DEFAULT_THREADS,
+    memory_available=constants.DEFAULT_MEMORY,
+    x_min=None,
+    x_max=None,
+    y_min=None,
+    y_max=None,
+):
     """Main function to set up Dask and process years."""
 
     # --- Dask Client Setup ---
     # Use LocalCluster for single-node execution within the Batch job
     # Adjust memory_limit based on Batch job's allocation
     n_workers = min(multiprocessing.cpu_count(), 24)
-    memory_limit_gb = int(args.memory_available or constants.DEFAULT_MEMORY) / n_workers
-    threads_per_worker = int(args.threads or constants.DEFAULT_THREADS)
+    memory_limit_gb = int(memory_available or constants.DEFAULT_MEMORY) / n_workers
+    threads_per_worker = int(threads or constants.DEFAULT_THREADS)
 
     print(
         f"Setting up Dask LocalCluster: {n_workers} workers, {threads_per_worker} threads/worker, {memory_limit_gb}GB total memory limit"
@@ -496,22 +509,22 @@ def main(args):
     s3_client = boto3.client("s3")  # Used for finding files initially
 
     # --- Determine Years to Process ---
-    if args.scenario == "historical":
+    if scenario == "historical":
         years = constants.VALID_YEARS["historical"]
-    elif args.scenario.startswith("ssp"):
+    elif scenario.startswith("ssp"):
         years = constants.VALID_YEARS["ssp"]
     else:
-        raise ValueError(f"Invalid scenario: {args.scenario}")
+        raise ValueError(f"Invalid scenario: {scenario}")
 
     # --- Determine Bounding Box ---
     bbox = None
-    if all([args.x_min, args.y_min, args.x_max, args.y_max]):
+    if all([x_min, y_min, x_max, y_max]):
         try:
             bbox = BoundingBox(
-                x_min=float(args.x_min),
-                y_min=float(args.y_min),
-                x_max=float(args.x_max),
-                y_max=float(args.y_max),
+                x_min=float(x_min),
+                y_min=float(y_min),
+                x_max=float(x_max),
+                y_max=float(y_max),
             )
             print(f"Using bounding box: {bbox}")
         except ValueError:
@@ -528,13 +541,11 @@ def main(args):
         constants.OUTPUT_BUCKET,
         constants.OUTPUT_PREFIX,  # Use updated OUTPUT_PREFIX
         constants.INPUT_PREFIX,  # Keep structure similar
-        args.model,
+        model,
         "historical",
-        args.ensemble_member,
+        ensemble_member,
     )
-    cache_historical_file = (
-        f"day_{args.model}_historical_{args.ensemble_member}_gn_{str(baseline_years[0])}-{str(baseline_years[-1])}.zarr"
-    )
+    cache_historical_file = f"day_{model}_historical_{ensemble_member}_gn_{str(baseline_years[0])}-{str(baseline_years[-1])}.zarr"
     cached_historical_uri = f"s3://{cache_historical_prefix / cache_historical_file}"
 
     if file_utils.s3_uri_exists(s3_uri=cached_historical_uri, check_zattrs=True):
@@ -543,8 +554,8 @@ def main(args):
     else:
         print("No historical file found, loading from source..")
         ds_historical = load_historical_data(
-            model=args.model,
-            ensemble_member=args.ensemble_member,
+            model=model,
+            ensemble_member=ensemble_member,
             required_vars=constants.VAR_LIST,
             years=baseline_years,
         )
@@ -559,7 +570,6 @@ def main(args):
             compute=True,  # Trigger computation and writing
         )
 
-
     # --- Iterate Through Years ---
     for year in years:
         print(f"\n===== Processing Year: {year} =====")
@@ -573,9 +583,9 @@ def main(args):
             for var_name in required_vars_all_indicators:
                 input_uri = file_utils.find_best_input_file(
                     s3_client,
-                    args.model,
-                    args.scenario,
-                    args.ensemble_member,
+                    model,
+                    scenario,
+                    ensemble_member,
                     year,
                     var_name,
                 )
@@ -593,30 +603,30 @@ def main(args):
             else:  # Only execute if the inner loop completed without break (all vars found)
                 # 2. Construct Output Path
                 # Use a more generic name than 'fwi_day_...'
-                output_file = f"indicators_day_{args.model}_{args.scenario}_{args.ensemble_member}_gn_{year}.zarr"
+                output_file = f"indicators_day_{model}_{scenario}_{ensemble_member}_gn_{year}.zarr"
                 base_s3_path = PurePosixPath(
                     constants.OUTPUT_BUCKET,
                     constants.OUTPUT_PREFIX,  # Use updated OUTPUT_PREFIX
                     constants.INPUT_PREFIX,  # Keep structure similar
-                    args.model,
-                    args.scenario,
-                    args.ensemble_member,
+                    model,
+                    scenario,
+                    ensemble_member,
                 )
                 zarr_output_uri = f"s3://{base_s3_path / output_file}"
                 print(f"Target output Zarr store: {zarr_output_uri}")
 
                 # 3. Create Configuration for the Year
                 config = PipelineConfig(
-                    model=args.model,
-                    scenario=args.scenario,
-                    ensemble_member=args.ensemble_member,
+                    model=model,
+                    scenario=scenario,
+                    ensemble_member=ensemble_member,
                     year=year,
                     n_workers=n_workers,
                     threads_per_worker=threads_per_worker,
                     memory_limit_gb=memory_limit_gb,
                     time_chunk=constants.TIME_CHUNK,  # Or adjust based on memory/needs
-                    lat_chunk=int(args.lat_chunk or constants.DEFAULT_LAT_CHUNK),
-                    lon_chunk=int(args.lon_chunk or constants.DEFAULT_LON_CHUNK),
+                    lat_chunk=int(lat_chunk or constants.DEFAULT_LAT_CHUNK),
+                    lon_chunk=int(lon_chunk or constants.DEFAULT_LON_CHUNK),
                     bbox=bbox,
                     input_uris=input_uris,
                     zarr_output_uri=zarr_output_uri,
@@ -706,4 +716,14 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    main(args)
+    main(model=args.model,
+         scenario=args.scenario,
+         ensemble_member=args.ensemble_member,
+         lat_chunk=args.lat_chunk,
+         lon_chunk=args.lon_chunk,
+         threads=args.threads,
+         memory_available=args.memory_available,
+         x_min=args.x_min,
+         y_min=args.y_min,
+         x_max=args.x_max,
+         y_max=args.y_max)

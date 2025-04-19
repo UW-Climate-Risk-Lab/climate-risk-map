@@ -33,14 +33,14 @@ HISTORICAL_BASELINE_YEARS = list(range(1981, 2014)) # Example: 30-year baseline
 # and lists the output variables they produce.
 INDICATOR_REGISTRY = {
     "fwi": {
-        "module": "indicators.fwi",
+        "module": "src.indicators.fwi",
         "function": "calculate_fwi",
         "output_vars": ["dc", "dmc", "ffmc", "fwi"],
     },
-    "precip_percent_change": {
-        "module": "indicators.precip",
+    "pr_percent_change": {
+        "module": "src.indicators.precip",
         "function": "calculate_precip_percent_change",
-        "output_vars": ["pr_change_percent"],
+        "output_vars": ["pr_percent_change"],
     },
     # SPEI used too much memory for calculation, need to optimze later
     # "spei": {
