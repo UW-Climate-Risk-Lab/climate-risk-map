@@ -7,7 +7,7 @@ MODELS = [
             "model": "ACCESS-CM2",
             "scenario": ["historical", "ssp126", "ssp245", "ssp370", "ssp585"],
             "ensemble_member": "r1i1p1f1",
-            "use": False
+            "use": True
         },
         {
             "model": "ACCESS-ESM1-5",
