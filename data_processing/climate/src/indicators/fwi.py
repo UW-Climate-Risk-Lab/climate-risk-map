@@ -5,6 +5,8 @@ import xclim
 from dataclasses import dataclass
 from typing import Optional
 
+import src.constants as constants
+
 @dataclass
 class FwiInitialConditions:
     """Specific initial conditions needed for FWI."""
@@ -54,7 +56,7 @@ def calculate_fwi(ds_input: xr.Dataset, initial_conditions: FwiInitialConditions
     )
 
     # Package results into a Dataset
-    fwi_var_names = ["dc", "dmc", "ffmc", "isi", "bui", "fwi"]
+    fwi_var_names = constants.INDICATOR_REGISTRY["fwi"]["output_vars"]
     ds_fwi_output = xr.Dataset(
         {name: da for name, da in zip(fwi_var_names, out_fwi_indices)}
         )

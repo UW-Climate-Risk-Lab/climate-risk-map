@@ -101,7 +101,7 @@ def load_historical_data(
         engine="h5netcdf",  # Assuming NetCDF4/HDF5
         decode_times=True,
         combine="by_coords",
-        chunks={},  # Let xarray decide initial chunks, rechunk later
+        chunks={}, 
         parallel=True,  # Enable parallel reading
         backend_kwargs={"storage_options": storage_options},
     )
@@ -383,6 +383,8 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
             # Clean metadata before merge (optional but recommended)
             ds_result = file_utils.clean_metadata_for_merge(ds_result)
 
+            ds_result = ds_result.resample(time="M").mean()
+
             results_to_merge.append(ds_result)
             calc_elapsed = time.time() - calc_start_time
             print(f"Indicator '{name}' calculation finished in {calc_elapsed:.2f}s.")
@@ -602,8 +604,8 @@ def main(
 
             else:  # Only execute if the inner loop completed without break (all vars found)
                 # 2. Construct Output Path
-                # Use a more generic name than 'fwi_day_...'
-                output_file = f"indicators_day_{model}_{scenario}_{ensemble_member}_gn_{year}.zarr"
+                # Use a more generic name than 'fwi_month_...'
+                output_file = f"indicators_month_{model}_{scenario}_{ensemble_member}_gn_{year}.zarr"
                 base_s3_path = PurePosixPath(
                     constants.OUTPUT_BUCKET,
                     constants.OUTPUT_PREFIX,  # Use updated OUTPUT_PREFIX

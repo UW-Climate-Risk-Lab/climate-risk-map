@@ -141,8 +141,8 @@ def calculate_precip_percent_change(
 
     # Calculate percentage change where baseline is sufficiently large
     pr_percent_change = (
-        ds_input_pr - baseline_aligned_to_input
-    ) / baseline_aligned_to_input
+        (ds_input_pr - baseline_aligned_to_input) / baseline_aligned_to_input
+    ) * 100
     print("Percentage change calculation complete.")
 
     # --- Step 3: Prepare Output Dataset ---
@@ -158,7 +158,7 @@ def calculate_precip_percent_change(
     pr_percent_change.attrs["baseline_period"] = (
         f"{constants.HISTORICAL_BASELINE_YEARS[0]}-{constants.HISTORICAL_BASELINE_YEARS[-1]}"
     )
-    
+
     # Preserve input variable attributes if desired (e.g., grid mapping)
     for attr_name, attr_val in ds_input_pr.attrs.items():
         if attr_name not in pr_percent_change.attrs:  # Avoid overwriting specific attrs

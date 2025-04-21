@@ -1,11 +1,13 @@
 from src import pipeline
+from src.constants import INDICATOR_REGISTRY, OUTPUT_BUCKET, OUTPUT_PREFIX
+from src import ensemble
 
 MODELS = [
         {
             "model": "ACCESS-CM2",
             "scenario": ["historical", "ssp126", "ssp245", "ssp370", "ssp585"],
             "ensemble_member": "r1i1p1f1",
-            "use": True
+            "use": False
         },
         {
             "model": "ACCESS-ESM1-5",
@@ -198,6 +200,13 @@ def main():
                 pipeline.main(model=model_config["model"], scenario=scenario, ensemble_member=model_config["ensemble_member"])
         else:
             continue
+    
+    all_scenarios = ["historical", "ssp126", "ssp245", "ssp370", "ssp585"]
+
+    for indicator in INDICATOR_REGISTRY:
+        for scenario in all_scenarios:
+            ensemble.main(scenario=scenario, s3_bucket=OUTPUT_BUCKET, s3_prefix=OUTPUT_PREFIX, climate_variable=indicator)
+            
 
 
 
