@@ -24,6 +24,63 @@ logging.basicConfig(level=logging.INFO)
 ID_COLUMN = "osm_id"
 GEOMETRY_COLUMN = "geometry"
 
+def convert_small_polygons(
+    gdf: gpd.GeoDataFrame, 
+    polygon_area_threshold: float
+) -> gpd.GeoDataFrame:
+    """
+    Converts polygons with area less than the threshold to points (centroids).
+    
+    Args:
+        gdf (gpd.GeoDataFrame): GeoDataFrame containing geometries
+        polygon_area_threshold (float): Area threshold in square kilometers
+        
+    Returns:
+        gpd.GeoDataFrame: GeoDataFrame with small polygons converted to points
+    """
+    # Create a copy to avoid modifying the original
+    result_gdf = gdf.copy()
+    
+    # Filter only polygon geometries
+    polygon_mask = result_gdf.geom_type.isin(["Polygon", "MultiPolygon"])
+    
+    if polygon_mask.any():
+        # Get polygons
+        polygons = result_gdf[polygon_mask]
+        
+        # Create a temporary GDF in a suitable projected CRS for area calculation
+        temp_gdf = polygons.copy()
+        orig_crs = temp_gdf.crs
+        
+        # Convert to appropriate CRS for area calculation if needed
+        if orig_crs.is_geographic:
+            # Use Equal Area projection for area calculation. This will be fairly accurate but not exact, only need estimate
+            center = polygons.unary_union.centroid
+            proj_crs = f"+proj=aea +lat_1=10 +lat_2=60 +lat_0={center.y} +lon_0={center.x} +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+            temp_gdf = temp_gdf.to_crs(proj_crs)
+        
+        # Calculate areas in square kilometers
+        # If CRS is in meters, divide by 1,000,000 to get sq km
+        area_conv_factor = 1_000_000  # Default: from sq meters to sq km
+        
+        # Check for other units
+        if not orig_crs.is_geographic:  # Only check if it's a projected CRS
+            unit = orig_crs.axis_info[0].unit_name.lower()
+            if unit in ['foot', 'feet', 'ft']:
+                area_conv_factor = 10_763_910.4  # from sq feet to sq km
+            elif unit not in ['metre', 'meter', 'm']:
+                logger.warning(f"Unsupported CRS unit: {unit}. Assuming meters.")
+        
+        # Calculate areas and identify small polygons
+        small_indices = temp_gdf.index[temp_gdf.area / area_conv_factor < polygon_area_threshold]
+        
+        # Convert small polygons to centroids
+        if len(small_indices) > 0:
+            result_gdf.loc[small_indices, GEOMETRY_COLUMN] = polygons.loc[small_indices].centroid
+            logger.info(f"Converted {len(small_indices)} small polygons to points (area < {polygon_area_threshold} sq km)")
+    
+    return result_gdf
+
 
 def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
     """Converts a DataArray to a Dataframe.
@@ -143,13 +200,13 @@ def zonal_aggregation_linestring(
         df_linestring = (
             df_linestring.drop_duplicates()
             .groupby([ID_COLUMN, "decade", "month"])
-            .agg({"value_mean": "mean",
-                  "value_median": "mean",
-                  "value_stddev": "mean",
-                  "value_min": "min",
-                  "value_max": "max",
-                  "value_q1": "min",
-                  "value_q3": "max"})
+            .agg({"ensemble_mean": "mean",
+                  "ensemble_median": "mean",
+                  "ensemble_stddev": "mean",
+                  "ensemble_min": "min",
+                  "ensemble_max": "max",
+                  "ensemble_q1": "min",
+                  "ensemble_q3": "max"})
             .reset_index()
         )
     else:
@@ -167,7 +224,8 @@ def zonal_aggregation_polygon(
 
     climate_computed = climate.compute() # Parallel task did not work unless data was computed
     # The following parallelizes the zonal aggregation of polygon geometry features
-    workers = min(os.cpu_count(), len(infra.geometry))
+    # Limit workers for memory considerations.
+    workers = min(os.cpu_count(), len(infra.geometry), 4)
     futures = []
     results = []
     geometry_chunks = np.array_split(infra.geometry, workers)
@@ -286,72 +344,62 @@ def zonal_aggregation(
 
 
 def create_pgosm_flex_query(
-    osm_category: str, osm_type: str, osm_subtype: str, crs: str, point_only: bool
+    climate_variable: str, crs: str
 ) -> Tuple[sql.SQL, Tuple[str]]:
     """Creates SQL query to get all features of a given type from PG OSM Flex Schema
 
-
-    Example:
-
-    SELECT osm_id AS id, ST_AsText(ST_Transform(geom, 4326)) AS geometry
-        FROM osm.infrastructure
-    WHERE osm_type = 'power'
-
-
     Args:
-        osm_category (str): OpenStreetMap Category (Will be the prefix of the tables names)
-        osm_type (str): OpenStreetMap feature type
+        climate_variable (str): Climate variable being queried, determines table name
+        crs (str): Coordinate Reference System
 
     Returns:
         Tuple[sql.SQL, Tuple[str]]: Query in SQL object and params of given query
     """
     schema = "osm"  # Always schema name in PG OSM Flex
+    table = f"unexposed_ids_nasa_nex_{climate_variable}"
 
-    if point_only:
-        query = sql.SQL(
-        "SELECT main.osm_id AS {id}, ST_AsText(ST_Centroid(ST_Transform(main.geom, %s))) AS {geometry} FROM {schema}.{table} main WHERE osm_type = %s"
-        ).format(
-            schema=sql.Identifier(schema),
-            table=sql.Identifier(osm_category),
-            id=sql.Identifier(ID_COLUMN),
-            geometry=sql.Identifier(GEOMETRY_COLUMN),
-        )
-    else:
-        query = sql.SQL(
-            "SELECT main.osm_id AS {id}, ST_AsText(ST_Transform(main.geom, %s)) AS {geometry} FROM {schema}.{table} main WHERE osm_type = %s"
-        ).format(
-            schema=sql.Identifier(schema),
-            table=sql.Identifier(osm_category),
-            id=sql.Identifier(ID_COLUMN),
-            geometry=sql.Identifier(GEOMETRY_COLUMN),
-        )
-    params = [int(crs), osm_type]
-
-    if osm_subtype:
-        query = sql.SQL(" ").join([query, sql.SQL("AND osm_subtype = %s")])
-        params.append(osm_subtype)
+    query = sql.SQL(
+        "SELECT main.osm_id AS {id}, ST_AsText(ST_Transform(main.geom, %s)) AS {geometry} FROM {schema}.{table} main"
+    ).format(
+        schema=sql.Identifier(schema),
+        table=sql.Identifier(table),
+        id=sql.Identifier(ID_COLUMN),
+        geometry=sql.Identifier(GEOMETRY_COLUMN),
+    )
+    params = [int(crs),]
 
     return query, tuple(params)
 
 
 def main(
     climate_ds: xr.Dataset,
-    osm_category: str,
-    osm_type: str,
-    osm_subtype: str,
+    climate_variable: str,
     crs: str,
     zonal_agg_method: List[str] | str,
-    point_only: bool,
+    polygon_area_threshold: float,  # Changed from point_only
     conn: pg.extensions.connection,
-    metadata: Dict,  # Add metadata parameter
+    metadata: Dict,
 ) -> pd.DataFrame:
-
+    """Main function to perform climate and infrastructure intersection.
+    
+    Args:
+        climate_ds (xr.Dataset): Climate dataset
+        climate_variable (str): Climate variable being queried
+        crs (str): Coordinate Reference System
+        zonal_agg_method (List[str] | str): Method(s) for zonal aggregation
+        polygon_area_threshold (float): Threshold in square kilometers below which 
+                                       polygons will be converted to points
+        conn (pg.extensions.connection): Database connection
+        metadata (Dict): Metadata to be included in the output
+        
+    Returns:
+        pd.DataFrame: DataFrame with aggregated climate data for infrastructure
+    """
     query, params = create_pgosm_flex_query(
-        osm_category=osm_category, osm_type=osm_type, osm_subtype=osm_subtype, point_only=point_only, crs=crs
+        climate_variable=climate_variable, crs=crs
     )
     infra_data = utils.query_db(query=query, params=params, conn=conn)
     
-
     infra_df = pd.DataFrame(infra_data, columns=[ID_COLUMN, GEOMETRY_COLUMN]).set_index(
         ID_COLUMN
     )
@@ -359,6 +407,10 @@ def main(
     logger.info(f"{str(num_features)} OSM features queried successfully")
     infra_df[GEOMETRY_COLUMN] = infra_df[GEOMETRY_COLUMN].apply(wkt.loads)
     infra_gdf = gpd.GeoDataFrame(infra_df, geometry=GEOMETRY_COLUMN, crs=crs)
+    
+    # Convert small polygons to points if threshold is provided
+    if polygon_area_threshold is not None and polygon_area_threshold > 0:
+        infra_gdf = convert_small_polygons(infra_gdf, polygon_area_threshold)
 
     logger.info("Starting Zonal Aggregation...")
     df = zonal_aggregation(
@@ -370,13 +422,13 @@ def main(
     )
     logger.info("Zonal Aggregation Computed")
 
-    failed_aggregations = df.loc[df["value_mean"].isna(), ID_COLUMN].nunique()
+    failed_aggregations = df.loc[df["ensemble_mean"].isna(), ID_COLUMN].nunique()
     logger.warning(
         f"{str(failed_aggregations)} osm_ids were unable to be zonally aggregated"
     )
     df = df.dropna()
     
-    # Before returning the DataFrame, add the metadata column
+    # Add the metadata column
     df['metadata'] = json.dumps(metadata)
     
     return df

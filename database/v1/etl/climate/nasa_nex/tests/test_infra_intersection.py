@@ -19,17 +19,15 @@ from src.infra_intersection import (
 
 
 def test_create_pgosm_flex_query():
-    osm_category = 'infrastructure'
-    osm_type = "power"
-    osm_subtype = None
+    climate_variable = "fwi"
     crs = "4326"
-    query, params = create_pgosm_flex_query(osm_category, osm_type, osm_subtype, crs, False)
+    query, params = create_pgosm_flex_query(climate_variable, crs)
 
     # Check that the query is of type sql.SQL
     assert isinstance(query, sql.Composed)
 
     # Check that the parameters are correct
-    expected_params = (4326, osm_type)
+    expected_params = (4326,)
     assert params == expected_params
 
 
@@ -52,13 +50,13 @@ def sample_climate_data():
     y = np.array([0, 1, 2, 3, 4])
     dims = ["decade_month", "y", "x"]
     ds = xr.Dataset(
-        data_vars={"value_mean": (dims, data),
-                    "value_median": (dims, data),
-                    "value_stddev": (dims, data),
-                    "value_min": (dims, data),
-                    "value_max": (dims, data),
-                    "value_q1": (dims, data),
-                    "value_q3": (dims, data)},
+        data_vars={"ensemble_mean": (dims, data),
+                    "ensemble_median": (dims, data),
+                    "ensemble_stddev": (dims, data),
+                    "ensemble_min": (dims, data),
+                    "ensemble_max": (dims, data),
+                    "ensemble_q1": (dims, data),
+                    "ensemble_q3": (dims, data)},
         coords={"decade_month": times, "y": y, "x": x}
     )
     return ds
@@ -84,13 +82,13 @@ def test_zonal_aggregation_max(sample_climate_data, sample_infra_data):
     expected_df = pd.DataFrame(
         data={
             "osm_id": [1, 2, 3, 4],
-            "value_mean": [200.0, 17.0, 4000.0, 805.0],
-            "value_median": [200.0, 17.0, 4000.0, 805.0],
-            "value_stddev": [200.0, 17.0, 4000.0, 805.0],
-            "value_min": [200.0, 17.0, 4000.0, 10.0],
-            "value_max": [200.0, 17.0, 4000.0, 3000.0],
-            "value_q1": [200.0, 17.0, 4000.0, 10.0],
-            "value_q3": [200.0, 17.0, 4000.0, 3000.0],
+            "ensemble_mean": [200.0, 17.0, 4000.0, 805.0],
+            "ensemble_median": [200.0, 17.0, 4000.0, 805.0],
+            "ensemble_stddev": [200.0, 17.0, 4000.0, 805.0],
+            "ensemble_min": [200.0, 17.0, 4000.0, 10.0],
+            "ensemble_max": [200.0, 17.0, 4000.0, 3000.0],
+            "ensemble_q1": [200.0, 17.0, 4000.0, 10.0],
+            "ensemble_q3": [200.0, 17.0, 4000.0, 3000.0],
             "decade": [2020, 2020, 2020, 2020],
             "month": [1, 1, 1, 1],
         }
@@ -113,13 +111,13 @@ def test_zonal_aggregation_mean(sample_climate_data, sample_infra_data):
     expected_df = pd.DataFrame(
         data={
             "osm_id": [1, 2, 3, 4],
-            "value_mean": [200.0, 17.0, 1755.25, 805.0],
-            "value_median": [200.0, 17.0, 1755.25, 805.0],
-            "value_stddev": [200.0, 17.0, 1755.25, 805.0],
-            "value_min": [200.0, 17.0, 1755.25, 10.0],
-            "value_max": [200.0, 17.0, 1755.25, 3000.0],
-            "value_q1": [200.0, 17.0, 1755.25, 10.0],
-            "value_q3": [200.0, 17.0, 1755.25, 3000.0],
+            "ensemble_mean": [200.0, 17.0, 1755.25, 805.0],
+            "ensemble_median": [200.0, 17.0, 1755.25, 805.0],
+            "ensemble_stddev": [200.0, 17.0, 1755.25, 805.0],
+            "ensemble_min": [200.0, 17.0, 1755.25, 10.0],
+            "ensemble_max": [200.0, 17.0, 1755.25, 3000.0],
+            "ensemble_q1": [200.0, 17.0, 1755.25, 10.0],
+            "ensemble_q3": [200.0, 17.0, 1755.25, 3000.0],
             "decade": [2020, 2020, 2020, 2020],
             "month": [1, 1, 1, 1],
         }

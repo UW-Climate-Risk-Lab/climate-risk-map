@@ -67,8 +67,7 @@ Required arguments:
 - `--crs`: Coordinate Reference System
 - `--ssp`: SSP scenario
 - `--zonal-agg-method`: Method for zonal aggregation
-- `--osm-category`: OpenStreetMap feature category
-- `--osm-type`: OpenStreetMap feature type
+- `--polygon-area-threshold`: km^2, Any polygon below this threshold is converted to a point for exposure calc, for performance
 
 ### Environment Variables
 
@@ -100,11 +99,9 @@ PG_PORT=5432
     docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm --env-file .env exposure-nasa-nex \
     --s3-zarr-store-uri=s3://my-bucket/path/to/zarr/fwi_decade_month_ssp126.zarr \
     --climate-variable=fwi \
-    --crs=4326 \ 
     --ssp=126 \
     --zonal-agg-method=max \
-    --osm-category=infrastructure \
-    --osm-type=power
+    --polygon-area-threshold
     ```
 
 ## Dependencies

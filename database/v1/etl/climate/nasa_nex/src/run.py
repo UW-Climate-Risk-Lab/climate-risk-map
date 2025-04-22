@@ -14,27 +14,34 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 PG_DBNAME = os.environ["PG_DBNAME"]
-PG_USER = os.environ["PG_USER"]
-PG_PASSWORD = os.environ["PG_PASSWORD"]
-PG_HOST = os.environ["PG_HOST"]
-PG_PORT = os.environ["PG_PORT"]
+PG_USER = os.environ["PGUSER"]
+PG_PASSWORD = os.environ["PGPASSWORD"]
+PG_HOST = os.environ["PGHOST"]
+PG_PORT = os.environ["PGPORT"]
+
 
 def setup_args():
     parser = argparse.ArgumentParser(description="Process climate data for a given SSP")
 
-    parser.add_argument("--s3-zarr-store-uri", required=True, help="S3 URI to zarr store containing climate dataset ")
     parser.add_argument(
-        "--climate-variable", required=True, help="Climate variable to process in zarr store"
+        "--s3-zarr-store-uri",
+        required=True,
+        help="S3 URI to zarr store containing climate dataset ",
     )
-    parser.add_argument("--crs", required=True, help="Coordinate reference system")
+    parser.add_argument(
+        "--climate-variable",
+        required=True,
+        help="Climate variable to process in zarr store",
+    )
     parser.add_argument("--ssp", required=True, help="SSP of climate hazard data")
     parser.add_argument(
         "--zonal-agg-method", required=True, help="Zonal aggregation method"
     )
-    parser.add_argument("--osm-category", required=True, help="OSM category")
-    parser.add_argument("--osm-type", required=True, help="OSM type")
-    parser.add_argument("--osm-subtype", required=False, help="OSM subtype")
-    parser.add_argument("--point-only", required=False, help="Convert all geometries to points for zonal aggregation speed up")
+    parser.add_argument(
+        "--polygon-area-threshold",
+        required=True,
+        help="Polygons below this threshold are converted to points for zonal aggregation. Units are Square Kilometers",
+    )
     return parser.parse_args()
 
 
@@ -42,19 +49,18 @@ def main(
     s3_zarr_store_uri: str,
     climate_variable: str,
     ssp: str,
-    crs: str,
-    point_only: str,
     zonal_agg_method: str,
-    osm_category: str,
-    osm_type: str,
-    osm_subtype: str
+    polygon_area_threshold: str,
 ):
     """Runs a processing pipeline for a given zarr store"""
 
-    if point_only.lower() == "true":
-        point_only=True
-    else:
-        point_only=False
+    try:
+        polygon_area_threshold = float(polygon_area_threshold)
+    except Exception as e:
+        logger.error(
+            f"Could not convert '{polygon_area_threshold}' to a float, defaulting to 20 sq km: {str(e)}"
+        )
+        polygon_area_threshold = 20.0
 
     # Create connection pool with passed parameters
     connection_pool = pool.SimpleConnectionPool(
@@ -69,12 +75,10 @@ def main(
 
     ds = process_climate.main(
         s3_zarr_store_uri=s3_zarr_store_uri,
-        crs=crs,
+        crs=constants.CRS,
     )
 
-    metadata = utils.create_metadata(
-        ds=ds
-    )
+    metadata = utils.create_metadata(ds=ds)
 
     metadata[constants.METADATA_KEY]["zonal_agg_method"] = zonal_agg_method
 
@@ -83,14 +87,12 @@ def main(
     infra_intersection_conn = connection_pool.getconn()
     df = infra_intersection.main(
         climate_ds=ds,
-        osm_category=osm_category,
-        osm_type=osm_type,
-        osm_subtype=osm_subtype,
-        crs=crs,
-        point_only=point_only,
+        climate_variable=climate_variable,
+        crs=constants.CRS,
         zonal_agg_method=zonal_agg_method,
+        polygon_area_threshold=polygon_area_threshold,
         conn=infra_intersection_conn,
-        metadata=metadata
+        metadata=metadata,
     )
     connection_pool.putconn(infra_intersection_conn)
     logger.info("Infrastructure Intersection Complete")
@@ -112,11 +114,7 @@ if __name__ == "__main__":
         s3_zarr_store_uri=args.s3_zarr_store_uri,
         climate_variable=args.climate_variable,
         ssp=args.ssp,
-        crs=args.crs,
         zonal_agg_method=args.zonal_agg_method,
-        osm_category=args.osm_category,
-        osm_type=args.osm_type,
-        osm_subtype=args.osm_subtype,
-        point_only=args.point_only
+        polygon_area_threshold=args.polygon_area_threshold,
     )
     logger.info(f"EXPOSURE SUCCEEDED FOR {args.s3_zarr_store_uri}")

@@ -19,13 +19,13 @@ TEMP_TABLE_COLUMNS = [
     "month",
     "decade",
     "ssp",
-    "value_mean",
-    "value_median",
-    "value_stddev",
-    "value_min",
-    "value_max",
-    "value_q1",
-    "value_q3",
+    "ensemble_mean",
+    "ensemble_median",
+    "ensemble_stddev",
+    "ensemble_min",
+    "ensemble_max",
+    "ensemble_q1",
+    "ensemble_q3",
     "metadata",
 ]
 
@@ -64,13 +64,13 @@ def main(
         month INT,
         decade INT,
         ssp int,
-        value_mean FLOAT NOT NULL,
-        value_median FLOAT NOT NULL,
-        value_stddev FLOAT NOT NULL,
-        value_min FLOAT NOT NULL,
-        value_max FLOAT NOT NULL,
-        value_q1 FLOAT NOT NULL,
-        value_q3 FLOAT NOT NULL,
+        ensemble_mean FLOAT NOT NULL,
+        ensemble_median FLOAT NOT NULL,
+        ensemble_stddev FLOAT NOT NULL,
+        ensemble_min FLOAT NOT NULL,
+        ensemble_max FLOAT NOT NULL,
+        ensemble_q1 FLOAT NOT NULL,
+        ensemble_q3 FLOAT NOT NULL,
         metadata JSONB
     );
     """
@@ -91,8 +91,8 @@ def main(
 
     insert_nasa_nex = sql.SQL(
     """
-    INSERT INTO {climate_schema}.{table} (osm_id, month, decade, ssp, value_mean, value_median, value_stddev, value_min, value_max, value_q1, value_q3, metadata)
-            SELECT temp.osm_id, temp.month, temp.decade, temp.ssp, temp.value_mean, temp.value_median, temp.value_stddev, temp.value_min, temp.value_max, temp.value_q1, temp.value_q3, temp.metadata 
+    INSERT INTO {climate_schema}.{table} (osm_id, month, decade, ssp, ensemble_mean, ensemble_median, ensemble_stddev, ensemble_min, ensemble_max, ensemble_q1, ensemble_q3, metadata)
+            SELECT temp.osm_id, temp.month, temp.decade, temp.ssp, temp.ensemble_mean, temp.ensemble_median, temp.ensemble_stddev, temp.ensemble_min, temp.ensemble_max, temp.ensemble_q1, temp.ensemble_q3, temp.metadata 
             FROM {temp_table} temp
     ON CONFLICT DO NOTHING
     """

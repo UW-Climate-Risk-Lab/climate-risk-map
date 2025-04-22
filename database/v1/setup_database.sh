@@ -58,7 +58,7 @@ fi
 PGOSMFLEX_SRID=${PGOSMFLEX_SRID:-4326}
 
 # Check required environment variables
-required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "PGOSMFLEX_USER" "PGOSMFLEX_PASSWORD" "PGOSMFLEX_RAM" "PGOSMFLEX_REGION" "PGOSMFLEX_SUBREGION" "PGOSMFLEX_LAYERSET" "PGOSMFLEX_PGOSM_LANGUAGE" "PGOSMFLEX_SRID")
+required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSMFLEX_USER" "PGOSMFLEX_PASSWORD" "PGOSMFLEX_RAM" "PGOSMFLEX_REGION" "PGOSMFLEX_SUBREGION" "PGOSMFLEX_LAYERSET" "PGOSMFLEX_PGOSM_LANGUAGE" "PGOSMFLEX_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -85,7 +85,8 @@ PG_SUPER_PASSWORD=${PG_SUPER_PASSWORD:-$PGPASSWORD}
 # Define directory paths
 ROOT_DIR=$(pwd)
 MIGRATIONS_DIR="$ROOT_DIR/migrations"
-ETL_DIR="$ROOT_DIR/etl"
+OSM_ETL_DIR="$ROOT_DIR/etl/osm"
+CLIMATE_ETL_DIR="$ROOT_DIR/etl/climate/nasa_nex"
 ASSET_GROUP_DIR="$ROOT_DIR/materialized_views/asset_groups"
 UNEXPOSED_DIR="$ROOT_DIR/materialized_views/unexposed_ids"
 
@@ -131,7 +132,7 @@ init_database() {
 }
 
 # Step 2: Run ETL Process
-run_etl() {
+run_osm_etl() {
     echo "===== STEP 2: RUNNING ETL PROCESS ====="
     echo "Using Region: $PGOSMFLEX_REGION, Subregion: $PGOSMFLEX_SUBREGION"
     
@@ -142,19 +143,19 @@ run_etl() {
     fi
     
     # Check if ETL directory exists
-    if [ ! -d "$ETL_DIR" ]; then
-        echo "Error: ETL directory not found at $ETL_DIR"
+    if [ ! -d "$OSM_ETL_DIR" ]; then
+        echo "Error: ETL directory not found at $OSM_ETL_DIR"
         exit 1
     fi
     
     # Check if Dockerfile exists in ETL directory
-    if [ ! -f "$ETL_DIR/Dockerfile" ]; then
+    if [ ! -f "$OSM_ETL_DIR/Dockerfile" ]; then
         echo "Error: Dockerfile not found in ETL directory"
         exit 1
     fi
     
     # Navigate to ETL directory
-    cd "$ETL_DIR"
+    cd "$OSM_ETL_DIR"
     
     # Build Docker image
     echo "Building ETL Docker image..."
@@ -168,7 +169,7 @@ run_etl() {
     
     # Run Docker container with environment variables
     echo "Running ETL process to load OSM data..."
-    echo "DEBUG: $PG_HOST"
+
     docker run --rm \
         -e POSTGRES_USER=$PGOSMFLEX_USER \
         -e POSTGRES_PASSWORD=$PGOSMFLEX_PASSWORD \
@@ -200,26 +201,19 @@ run_etl() {
 run_migrations() {
     echo "===== STEP 3: RUNNING MIGRATIONS ====="
     
-    # Set PGDATABASE for migrations if not already set
-    export PGDATABASE=$PG_DBNAME
-    
-    # Check if run_migrations.sh exists and is executable
-    if [ ! -f "$ROOT_DIR/run_migrations.sh" ]; then
-        echo "Error: run_migrations.sh not found at $ROOT_DIR/run_migrations.sh"
-        exit 1
-    fi
-    
-    if [ ! -x "$ROOT_DIR/run_migrations.sh" ]; then
-        chmod +x "$ROOT_DIR/run_migrations.sh"
-    fi
-    
-    echo "Running migrations..."
-    "$ROOT_DIR/run_migrations.sh"
-    
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to run migrations"
-        exit 1
-    fi
+    # Loop over each SQL file in the directory
+    for FILE in $(ls $MIGRATIONS_DIR/*.sql | sort)
+    do
+        if [[ $FILE == *"init_db"* ]]; then
+            continue
+        fi  
+        # Execute the SQL file with explicit connection parameters
+        echo "Executing $FILE..."
+        if ! psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" -f "$FILE"; then
+            echo "Error executing $FILE"
+            exit 1
+        fi
+    done
     
     echo "Migrations completed successfully"
 }
@@ -270,6 +264,113 @@ create_views() {
     echo "Views created/refreshed successfully"
 }
 
+# Step 6: Run Climate ETL Process
+run_climate_etl() {
+    echo "===== STEP 6: RUNNING CLIMATE ETL PROCESS ====="
+    
+    # Define path to climate datasets JSON file
+    CLIMATE_DATASETS_JSON="$ROOT_DIR/climate_datasets.json"
+    
+    # Check if JSON file exists
+    if [ ! -f "$CLIMATE_DATASETS_JSON" ]; then
+        echo "Error: Climate datasets JSON file not found at $CLIMATE_DATASETS_JSON"
+        exit 1
+    fi
+    
+    # Check if Docker is installed
+    if ! command -v docker &> /dev/null; then
+        echo "Error: Docker is not installed or not in PATH"
+        exit 1
+    fi
+    
+    # Check if ETL directory exists
+    if [ ! -d "$CLIMATE_ETL_DIR" ]; then
+        echo "Error: ETL directory not found at $CLIMATE_ETL_DIR"
+        exit 1
+    fi
+    
+    # Check if Dockerfile exists in ETL directory
+    if [ ! -f "$CLIMATE_ETL_DIR/Dockerfile" ]; then
+        echo "Error: Dockerfile not found in Climate ETL directory"
+        exit 1
+    fi
+    
+    # Check if jq is installed (needed for JSON parsing)
+    if ! command -v jq &> /dev/null; then
+        echo "Error: jq is required but not installed. Please install jq before continuing."
+        echo "  - For MacOS: brew install jq"
+        echo "  - For Ubuntu/Debian: apt-get install jq"
+        echo "  - For Amazon Linux/CentOS: yum install jq"
+        exit 1
+    fi
+    
+    # Navigate to ETL directory
+    cd "$CLIMATE_ETL_DIR"
+    
+    # Build Docker image
+    echo "Building Climate ETL Docker image..."
+    docker build -t database-v1-climate-etl .
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to build Climate ETL Docker image"
+        cd "$ROOT_DIR"  # Return to root directory
+        exit 1
+    fi
+    
+    # Get the number of datasets
+    DATASET_COUNT=$(jq '.datasets | length' "$CLIMATE_DATASETS_JSON")
+    echo "Found $DATASET_COUNT climate datasets to process"
+    
+    # Loop through each dataset in the JSON file
+    for ((i=0; i<$DATASET_COUNT; i++)); do
+        # Extract dataset properties
+        ZARR_STORE_PATH=$(jq -r ".datasets[$i].zarr_store_path" "$CLIMATE_DATASETS_JSON")
+        S3_ZARR_STORE_URI="s3://${S3_BUCKET}/${ZARR_STORE_PATH}"
+
+        CLIMATE_VARIABLE=$(jq -r ".datasets[$i].climate_variable" "$CLIMATE_DATASETS_JSON")
+        SSP=$(jq -r ".datasets[$i].ssp" "$CLIMATE_DATASETS_JSON")
+        ZONAL_AGG_METHOD=$(jq -r ".datasets[$i].zonal_agg_method" "$CLIMATE_DATASETS_JSON")
+        POLYGON_AREA_THRESHOLD=$(jq -r ".datasets[$i].polygon_area_threshold" "$CLIMATE_DATASETS_JSON")
+        
+        echo "Processing dataset $((i+1))/$DATASET_COUNT:"
+        echo "  - Zarr Store URI: $S3_ZARR_STORE_URI"
+        echo "  - Climate Variable: $CLIMATE_VARIABLE"
+        echo "  - SSP: $SSP"
+        echo "  - Zonal Aggregation Method: $ZONAL_AGG_METHOD"
+        echo "  - Polygon Area Threshold: $POLYGON_AREA_THRESHOLD"
+        
+        # Run Docker container with environment variables and arguments
+        echo "Running ETL process for climate dataset $((i+1))..."
+        
+        docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+            -e PG_DBNAME=$PG_DBNAME \
+            -e PGUSER=$PGCLIMATE_USER \
+            -e PGPASSWORD=$PGCLIMATE_PASSWORD \
+            -e PGHOST=$PGCLIMATE_HOST \
+            -e PGPORT=$PGPORT \
+            database-v1-climate-etl \
+            --s3-zarr-store-uri "$S3_ZARR_STORE_URI" \
+            --climate-variable "$CLIMATE_VARIABLE" \
+            --ssp "$SSP" \
+            --zonal-agg-method "$ZONAL_AGG_METHOD" \
+            --polygon-area-threshold "$POLYGON_AREA_THRESHOLD"
+        
+        if [ $? -ne 0 ]; then
+            echo "Error: ETL process failed for dataset $((i+1))"
+            cd "$ROOT_DIR"  # Return to root directory
+            exit 1
+        fi
+        
+        echo "Dataset $((i+1)) processed successfully"
+    done
+    
+    # Return to root directory
+    cd "$ROOT_DIR"
+    
+    echo "Climate ETL process completed successfully for all datasets"
+}
+
+
 # Main execution
 main() {
     echo "Starting climate database setup for region: $PG_DBNAME"
@@ -291,8 +392,8 @@ main() {
 
     fi
 
-    # Run ETL process
-    run_etl
+    # Run OSM ETL process
+    run_osm_etl
 
     # Run migrations
     run_migrations
@@ -300,6 +401,9 @@ main() {
     # Create views
     create_views
     
+    # Run Climate ETL process
+    run_climate_etl
+
     echo "===== SETUP COMPLETE ====="
     echo "Climate database $PG_DBNAME is now ready for use!"
 }

@@ -17,6 +17,32 @@ logger = logging.getLogger(__name__)
 # INFO:botocore.httpchecksum:Skipping checksum validation. Response did not contain one of the following algorithms: ['crc32', 'sha1', 'sha256']
 logging.getLogger("botocore.httpchecksum").setLevel(logging.WARNING)
 
+def rename_value_variables(ds: xr.Dataset) -> xr.Dataset:
+    """
+    Renames any data variables starting with 'value_' to start with 'ensemble_' instead.
+    
+    Args:
+        ds (xr.Dataset): Input dataset with variables to rename
+        
+    Returns:
+        xr.Dataset: Dataset with renamed variables
+    """
+    # Find all variables starting with 'value_'
+    value_vars = [var for var in ds.data_vars if var.startswith('value_')]
+    
+    if not value_vars:
+        logger.info("No variables found starting with 'value_'")
+        return ds
+    
+    # Create a rename mapping dictionary
+    rename_dict = {var: f"ensemble_{var[6:]}" for var in value_vars}
+    
+    # Log variables being renamed
+    logger.info(f"Renaming variables: {rename_dict}")
+    
+    # Rename the variables
+    return ds.rename(rename_dict)
+
 def main(
     s3_zarr_store_uri: str,
     crs: str,
@@ -48,6 +74,9 @@ def main(
     ds.rio.write_crs(crs, inplace=True)
     ds.rio.set_spatial_dims(x_dim=constants.X_DIM, y_dim=constants.Y_DIM, inplace=True)
     ds.rio.write_coordinate_system(inplace=True)
+
+    # Rename variables from value_* to ensemble_*
+    ds = rename_value_variables(ds)
 
     return ds
 
