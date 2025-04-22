@@ -1,6 +1,35 @@
 #!/bin/bash
 set -e  # Exit immediately if a command exits with a non-zero status
 
+# Function to display usage information
+show_usage() {
+    echo "Usage: $0 [database_name] [osm_region] [osm_subregion]"
+    echo
+    echo "Arguments:"
+    echo "  database_name  - Name of the PostgreSQL database to create/update"
+    echo "  osm_region     - OSM Flex region (e.g., north-america, europe, asia)"
+    echo "  osm_subregion  - OSM Flex subregion (e.g., us/california, france, japan)"
+    echo
+    echo "If arguments are not provided, values will be read from environment variables."
+    echo "Required environment variables if not using command line arguments:"
+    echo "  PG_DBNAME, PGOSMFLEX_REGION, PGOSMFLEX_SUBREGION"
+    echo
+    echo "Other required environment variables:"
+    echo "  PGUSER, PGPASSWORD, PGHOST, PGPORT, PGOSMFLEX_USER, PGOSMFLEX_PASSWORD,"
+    echo "  PGOSMFLEX_RAM, PGOSMFLEX_LAYERSET, PGOSMFLEX_PGOSM_LANGUAGE, PGOSMFLEX_SRID"
+}
+
+# Process command line arguments
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_usage
+    exit 0
+fi
+
+# Assign command line arguments to variables, if provided
+CLI_DB_NAME=$1
+CLI_REGION=$2
+CLI_SUBREGION=$3
+
 # Load environment variables from .env file
 if [ -f .env ]; then
     source .env
@@ -9,15 +38,45 @@ else
     echo "Warning: .env file not found. Using existing environment variables."
 fi
 
+# Override environment variables with command line arguments if provided
+if [ -n "$CLI_DB_NAME" ]; then
+    PG_DBNAME=$CLI_DB_NAME
+    echo "Using database name from command line: $PG_DBNAME"
+fi
+
+if [ -n "$CLI_REGION" ]; then
+    PGOSMFLEX_REGION=$CLI_REGION
+    echo "Using OSM region from command line: $PGOSMFLEX_REGION"
+fi
+
+if [ -n "$CLI_SUBREGION" ]; then
+    PGOSMFLEX_SUBREGION=$CLI_SUBREGION
+    echo "Using OSM subregion from command line: $PGOSMFLEX_SUBREGION"
+fi
+
+# Set default for SRID if not defined
+PGOSMFLEX_SRID=${PGOSMFLEX_SRID:-4326}
+
 # Check required environment variables
-PGOSMFLEX_SRID=4326
 required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "PGOSMFLEX_USER" "PGOSMFLEX_PASSWORD" "PGOSMFLEX_RAM" "PGOSMFLEX_REGION" "PGOSMFLEX_SUBREGION" "PGOSMFLEX_LAYERSET" "PGOSMFLEX_PGOSM_LANGUAGE" "PGOSMFLEX_SRID")
+missing_vars=()
+
 for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
-        echo "Error: $var environment variable is not set"
-        exit 1
+        missing_vars+=("$var")
     fi
 done
+
+if [ ${#missing_vars[@]} -gt 0 ]; then
+    echo "Error: The following required environment variables are not set:"
+    for var in "${missing_vars[@]}"; do
+        echo "  - $var"
+    done
+    echo
+    echo "Please set these variables in the .env file or provide them via command line arguments."
+    echo "Run '$0 --help' for usage information."
+    exit 1
+fi
 
 # Store the superuser credentials for init_db
 PG_SUPER_USER=${PG_SUPER_USER:-$PGUSER}
@@ -74,6 +133,7 @@ init_database() {
 # Step 2: Run ETL Process
 run_etl() {
     echo "===== STEP 2: RUNNING ETL PROCESS ====="
+    echo "Using Region: $PGOSMFLEX_REGION, Subregion: $PGOSMFLEX_SUBREGION"
     
     # Check if Docker is installed
     if ! command -v docker &> /dev/null; then
@@ -108,6 +168,7 @@ run_etl() {
     
     # Run Docker container with environment variables
     echo "Running ETL process to load OSM data..."
+    echo "DEBUG: $PG_HOST"
     docker run --rm \
         -e POSTGRES_USER=$PGOSMFLEX_USER \
         -e POSTGRES_PASSWORD=$PGOSMFLEX_PASSWORD \
@@ -212,6 +273,8 @@ create_views() {
 # Main execution
 main() {
     echo "Starting climate database setup for region: $PG_DBNAME"
+    echo "OSM Region: $PGOSMFLEX_REGION"
+    echo "OSM Subregion: $PGOSMFLEX_SUBREGION"
     
     if database_exists "$PG_DBNAME"; then
         read -p "Database $PG_DBNAME already exists. Do you want to continue with migrations and view creation? (y/n): " confirm
@@ -225,10 +288,11 @@ main() {
     else
         # Initialize the database
         init_database
-        
-        # Run ETL process
-        run_etl
+
     fi
+
+    # Run ETL process
+    run_etl
 
     # Run migrations
     run_migrations
