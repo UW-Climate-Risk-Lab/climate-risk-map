@@ -176,6 +176,23 @@ def convert_to_serializable(value: Any) -> Any:
         return value.decode("utf-8")
     else:
         return value
+    
+def validate_and_convert_coords(x_min, x_max, y_min, y_max):
+    x_min = float(x_min)
+    x_max = float(x_max)
+    y_min = float(y_min)
+    y_max = float(y_max)
+
+    if not (-180 <= x_min <= 180):
+        raise ValueError("x_min must be between -180 and 180")
+    if not (-180 <= x_max <= 180):
+        raise ValueError("x_max must be between -180 and 180")
+    if not (-90 <= y_min <= 90):
+        raise ValueError("y_min must be between -90 and 90")
+    if not (-90 <= y_max <= 90):
+        raise ValueError("y_max must be between -90 and 90")
+
+    return x_min, x_max, y_min, y_max
 
 
 def create_metadata(

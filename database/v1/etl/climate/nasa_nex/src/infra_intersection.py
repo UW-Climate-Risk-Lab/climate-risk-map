@@ -221,8 +221,6 @@ def zonal_aggregation_polygon(
     y_dim: str,
     zonal_agg_method: str,
 ) -> pd.DataFrame:
-
-    climate_computed = climate.compute() # Parallel task did not work unless data was computed
     # The following parallelizes the zonal aggregation of polygon geometry features
     # Limit workers for memory considerations.
     workers = min(os.cpu_count(), len(infra.geometry), 4)
@@ -234,7 +232,7 @@ def zonal_aggregation_polygon(
             futures.append(
                 executor.submit(
                     task_xvec_zonal_stats,
-                    climate_computed,
+                    climate,
                     geometry_chunks[i],
                     x_dim,
                     y_dim,
@@ -404,6 +402,11 @@ def main(
         ID_COLUMN
     )
     num_features = len(infra_df)
+
+    if num_features <= 0:
+        logger.info("No OSM features need exposure calculation")
+        return pd.DataFrame()
+    
     logger.info(f"{str(num_features)} OSM features queried successfully")
     infra_df[GEOMETRY_COLUMN] = infra_df[GEOMETRY_COLUMN].apply(wkt.loads)
     infra_gdf = gpd.GeoDataFrame(infra_df, geometry=GEOMETRY_COLUMN, crs=crs)

@@ -12,11 +12,11 @@ show_usage() {
     echo
     echo "If arguments are not provided, values will be read from environment variables."
     echo "Required environment variables if not using command line arguments:"
-    echo "  PG_DBNAME, PGOSMFLEX_REGION, PGOSMFLEX_SUBREGION"
+    echo "  PG_DBNAME, PGOSM_REGION, PGOSM_SUBREGION"
     echo
     echo "Other required environment variables:"
-    echo "  PGUSER, PGPASSWORD, PGHOST, PGPORT, PGOSMFLEX_USER, PGOSMFLEX_PASSWORD,"
-    echo "  PGOSMFLEX_RAM, PGOSMFLEX_LAYERSET, PGOSMFLEX_PGOSM_LANGUAGE, PGOSMFLEX_SRID"
+    echo "  PGUSER, PGPASSWORD, PGHOST, PGPORT, PGOSM_USER, PGOSM_PASSWORD,"
+    echo "  PGOSM_RAM, PGOSM_LAYERSET, PGOSM_PGOSM_LANGUAGE, PGOSM_SRID"
 }
 
 # Process command line arguments
@@ -25,10 +25,22 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     exit 0
 fi
 
+# Define directory paths
+ROOT_DIR=$(pwd)
+MIGRATIONS_DIR="$ROOT_DIR/migrations"
+OSM_ETL_DIR="$ROOT_DIR/etl/osm"
+CLIMATE_ETL_DIR="$ROOT_DIR/etl/climate/nasa_nex"
+ASSET_GROUP_DIR="$ROOT_DIR/materialized_views/asset_groups"
+UNEXPOSED_DIR="$ROOT_DIR/materialized_views/unexposed_ids"
+CONFIG_JSON="$ROOT_DIR/config.json"
+
+if [ ! -f "$CONFIG_JSON" ]; then
+    echo "Error: Config JSON file not found at $CONFIG_JSON"
+    exit 1
+fi
+
 # Assign command line arguments to variables, if provided
 CLI_DB_NAME=$1
-CLI_REGION=$2
-CLI_SUBREGION=$3
 
 # Load environment variables from .env file
 if [ -f .env ]; then
@@ -42,23 +54,20 @@ fi
 if [ -n "$CLI_DB_NAME" ]; then
     PG_DBNAME=$CLI_DB_NAME
     echo "Using database name from command line: $PG_DBNAME"
-fi
-
-if [ -n "$CLI_REGION" ]; then
-    PGOSMFLEX_REGION=$CLI_REGION
-    echo "Using OSM region from command line: $PGOSMFLEX_REGION"
-fi
-
-if [ -n "$CLI_SUBREGION" ]; then
-    PGOSMFLEX_SUBREGION=$CLI_SUBREGION
-    echo "Using OSM subregion from command line: $PGOSMFLEX_SUBREGION"
+    # Check if the database name exists in config.json
+    if ! jq -e --arg dbname "$PG_DBNAME" '.databases | has($dbname)' "$CONFIG_JSON" > /dev/null; then
+        echo "Error: Database name '$PG_DBNAME' not found in config.json."
+        exit 1
+    fi
+    PGOSM_REGION=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].osm_region' "$CONFIG_JSON")
+    PGOSM_SUBREGION=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].osm_subregion' "$CONFIG_JSON")
 fi
 
 # Set default for SRID if not defined
-PGOSMFLEX_SRID=${PGOSMFLEX_SRID:-4326}
+PGOSM_SRID=${PGOSM_SRID:-4326}
 
 # Check required environment variables
-required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSMFLEX_USER" "PGOSMFLEX_PASSWORD" "PGOSMFLEX_RAM" "PGOSMFLEX_REGION" "PGOSMFLEX_SUBREGION" "PGOSMFLEX_LAYERSET" "PGOSMFLEX_PGOSM_LANGUAGE" "PGOSMFLEX_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST")
+required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_REGION" "PGOSM_SUBREGION" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -82,13 +91,15 @@ fi
 PG_SUPER_USER=${PG_SUPER_USER:-$PGUSER}
 PG_SUPER_PASSWORD=${PG_SUPER_PASSWORD:-$PGPASSWORD}
 
-# Define directory paths
-ROOT_DIR=$(pwd)
-MIGRATIONS_DIR="$ROOT_DIR/migrations"
-OSM_ETL_DIR="$ROOT_DIR/etl/osm"
-CLIMATE_ETL_DIR="$ROOT_DIR/etl/climate/nasa_nex"
-ASSET_GROUP_DIR="$ROOT_DIR/materialized_views/asset_groups"
-UNEXPOSED_DIR="$ROOT_DIR/materialized_views/unexposed_ids"
+
+# Check if jq is installed (needed for JSON parsing)
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is required but not installed. Please install jq before continuing."
+    echo "  - For MacOS: brew install jq"
+    echo "  - For Ubuntu/Debian: apt-get install jq"
+    echo "  - For Amazon Linux/CentOS: yum install jq"
+    exit 1
+fi
 
 # Check if database already exists
 database_exists() {
@@ -134,7 +145,7 @@ init_database() {
 # Step 2: Run ETL Process
 run_osm_etl() {
     echo "===== STEP 2: RUNNING ETL PROCESS ====="
-    echo "Using Region: $PGOSMFLEX_REGION, Subregion: $PGOSMFLEX_SUBREGION"
+    echo "Using Region: $PGOSM_REGION, Subregion: $PGOSM_SUBREGION"
     
     # Check if Docker is installed
     if ! command -v docker &> /dev/null; then
@@ -171,17 +182,17 @@ run_osm_etl() {
     echo "Running ETL process to load OSM data..."
 
     docker run --rm \
-        -e POSTGRES_USER=$PGOSMFLEX_USER \
-        -e POSTGRES_PASSWORD=$PGOSMFLEX_PASSWORD \
-        -e POSTGRES_HOST=$PGOSMFLEX_HOST \
+        -e POSTGRES_USER=$PGOSM_USER \
+        -e POSTGRES_PASSWORD=$PGOSM_PASSWORD \
+        -e POSTGRES_HOST=$PGOSM_HOST \
         -e POSTGRES_DB=$PG_DBNAME \
         -e POSTGRES_PORT=$PGPORT \
-        -e RAM=$PGOSMFLEX_RAM \
-        -e REGION=$PGOSMFLEX_REGION \
-        -e SUBREGION=$PGOSMFLEX_SUBREGION \
-        -e LAYERSET=$PGOSMFLEX_LAYERSET \
-        -e SRID=$PGOSMFLEX_SRID \
-        -e PGOSM_LANGUAGE=$PGOSMFLEX_PGOSM_LANGUAGE \
+        -e RAM=$PGOSM_RAM \
+        -e REGION=$PGOSM_REGION \
+        -e SUBREGION=$PGOSM_SUBREGION \
+        -e LAYERSET=$PGOSM_LAYERSET \
+        -e SRID=$PGOSM_SRID \
+        -e PGOSM_LANGUAGE=$PGOSM_LANGUAGE \
         -p 5433:$PGPORT \
         database-v1-osm-etl
     
@@ -264,18 +275,39 @@ create_views() {
     echo "Views created/refreshed successfully"
 }
 
-# Step 6: Run Climate ETL Process
+# Step 4a: Refresh Asset Views (alternative to creating views)
+
+refresh_asset_views() {
+    echo "===== STEP 4a: REFRESHING ASSET VIEWS ====="
+
+    for VIEW in administrative agriculture commercial_real_estate data_center power_grid residential_real_estate
+    do
+        echo "Refreshing osm.$VIEW..."
+        psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
+            -c "REFRESH MATERIALIZED VIEW osm.$VIEW;"
+    done
+}
+
+# Step 4b: Refresh Unexposed ID Views (alternative to creating views)
+
+refresh_unexposed_id_views() {
+    echo "===== STEP 4b: REFRESHING UNEXPOSED ID VIEWS ====="
+
+    # Refresh all unexposed_ids views
+    # Note, does not check if exposure exists for every SSP scenario and time step
+
+    for VIEW in unexposed_ids_nasa_nex_fwi unexposed_ids_nasa_nex_pr_percent_change
+    do
+        echo "Refreshing osm.$VIEW..."
+        psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
+            -c "REFRESH MATERIALIZED VIEW osm.$VIEW;"
+    done
+}
+
+
+# Step 5: Run Climate ETL Process
 run_climate_etl() {
     echo "===== STEP 6: RUNNING CLIMATE ETL PROCESS ====="
-    
-    # Define path to climate datasets JSON file
-    CLIMATE_DATASETS_JSON="$ROOT_DIR/climate_datasets.json"
-    
-    # Check if JSON file exists
-    if [ ! -f "$CLIMATE_DATASETS_JSON" ]; then
-        echo "Error: Climate datasets JSON file not found at $CLIMATE_DATASETS_JSON"
-        exit 1
-    fi
     
     # Check if Docker is installed
     if ! command -v docker &> /dev/null; then
@@ -295,14 +327,6 @@ run_climate_etl() {
         exit 1
     fi
     
-    # Check if jq is installed (needed for JSON parsing)
-    if ! command -v jq &> /dev/null; then
-        echo "Error: jq is required but not installed. Please install jq before continuing."
-        echo "  - For MacOS: brew install jq"
-        echo "  - For Ubuntu/Debian: apt-get install jq"
-        echo "  - For Amazon Linux/CentOS: yum install jq"
-        exit 1
-    fi
     
     # Navigate to ETL directory
     cd "$CLIMATE_ETL_DIR"
@@ -318,19 +342,25 @@ run_climate_etl() {
     fi
     
     # Get the number of datasets
-    DATASET_COUNT=$(jq '.datasets | length' "$CLIMATE_DATASETS_JSON")
+    DATASET_COUNT=$(jq '.climate_exposure_args | length' "$CONFIG_JSON")
     echo "Found $DATASET_COUNT climate datasets to process"
+
+    # Get Bounding Box for Database
+    X_MIN=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.x_min' "$CONFIG_JSON")
+    Y_MIN=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.y_min' "$CONFIG_JSON")
+    X_MAX=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.x_max' "$CONFIG_JSON")
+    Y_MAX=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.y_max' "$CONFIG_JSON")
     
     # Loop through each dataset in the JSON file
     for ((i=0; i<$DATASET_COUNT; i++)); do
         # Extract dataset properties
-        ZARR_STORE_PATH=$(jq -r ".datasets[$i].zarr_store_path" "$CLIMATE_DATASETS_JSON")
+        ZARR_STORE_PATH=$(jq -r ".climate_exposure_args[$i].zarr_store_path" "$CONFIG_JSON")
         S3_ZARR_STORE_URI="s3://${S3_BUCKET}/${ZARR_STORE_PATH}"
 
-        CLIMATE_VARIABLE=$(jq -r ".datasets[$i].climate_variable" "$CLIMATE_DATASETS_JSON")
-        SSP=$(jq -r ".datasets[$i].ssp" "$CLIMATE_DATASETS_JSON")
-        ZONAL_AGG_METHOD=$(jq -r ".datasets[$i].zonal_agg_method" "$CLIMATE_DATASETS_JSON")
-        POLYGON_AREA_THRESHOLD=$(jq -r ".datasets[$i].polygon_area_threshold" "$CLIMATE_DATASETS_JSON")
+        CLIMATE_VARIABLE=$(jq -r ".climate_exposure_args[$i].climate_variable" "$CONFIG_JSON")
+        SSP=$(jq -r ".climate_exposure_args[$i].ssp" "$CONFIG_JSON")
+        ZONAL_AGG_METHOD=$(jq -r ".climate_exposure_args[$i].zonal_agg_method" "$CONFIG_JSON")
+        POLYGON_AREA_THRESHOLD=$(jq -r ".climate_exposure_args[$i].polygon_area_threshold" "$CONFIG_JSON")
         
         echo "Processing dataset $((i+1))/$DATASET_COUNT:"
         echo "  - Zarr Store URI: $S3_ZARR_STORE_URI"
@@ -338,6 +368,10 @@ run_climate_etl() {
         echo "  - SSP: $SSP"
         echo "  - Zonal Aggregation Method: $ZONAL_AGG_METHOD"
         echo "  - Polygon Area Threshold: $POLYGON_AREA_THRESHOLD"
+        echo "  - X min: $X_MIN"
+        echo "  - Y min: $Y_MIN"
+        echo "  - X max: $X_MAX"
+        echo "  - Y max: $Y_MAX"
         
         # Run Docker container with environment variables and arguments
         echo "Running ETL process for climate dataset $((i+1))..."
@@ -353,7 +387,11 @@ run_climate_etl() {
             --climate-variable "$CLIMATE_VARIABLE" \
             --ssp "$SSP" \
             --zonal-agg-method "$ZONAL_AGG_METHOD" \
-            --polygon-area-threshold "$POLYGON_AREA_THRESHOLD"
+            --polygon-area-threshold "$POLYGON_AREA_THRESHOLD" \
+            --x_min "$X_MIN" \
+            --y_min "$Y_MIN" \
+            --x_max "$X_MAX" \
+            --y_max "$Y_MAX" \
         
         if [ $? -ne 0 ]; then
             echo "Error: ETL process failed for dataset $((i+1))"
@@ -371,41 +409,59 @@ run_climate_etl() {
 }
 
 
+
 # Main execution
 main() {
     echo "Starting climate database setup for region: $PG_DBNAME"
-    echo "OSM Region: $PGOSMFLEX_REGION"
-    echo "OSM Subregion: $PGOSMFLEX_SUBREGION"
+    echo "OSM Region: $PGOSM_REGION"
+    echo "OSM Subregion: $PGOSM_SUBREGION"
     
+    # Here, we allow for two paths. If the database does not exist, we intialize a new database and load it with data,
+    # run all migrations and create views from scratch. If the database does exist, we give the user the option to continue
+    # with a data update, which reruns the ETL (to capture the latest OSM data), refreshes our views, and reruns exposure calcs.
+
     if database_exists "$PG_DBNAME"; then
-        read -p "Database $PG_DBNAME already exists. Do you want to continue with migrations and view creation? (y/n): " confirm
-        if [[ $confirm != [yY] ]]; then
-            echo "Setup aborted."
-            exit 0
-        fi
-        
-        # Skip database initialization and ETL if it already exists
-        echo "Skipping database initialization and ETL process."
+        echo "Database $PG_DBNAME already exists, skipping database intialization and running data refresh"
+
+        # Run OSM ETL process
+        run_osm_etl
+
+        # Refresh Asset Views (capture new IDs from OSM)
+        refresh_asset_views
+
+        # Refresh Unexposed ID views (capture new IDs from OSM)
+        refresh_unexposed_id_views
+
+        # Run Climate ETL process
+        run_climate_etl
+
+        # Refresh Unexposed ID views
+        refresh_unexposed_id_views
+
     else
         # Initialize the database
         init_database
 
+        # Run OSM ETL process
+        run_osm_etl
+
+        # Run migrations
+        run_migrations
+        
+        # Create views
+        create_views
+        
+        # Run Climate ETL process
+        run_climate_etl
+
+        # Refresh Unexposed ID views
+        refresh_unexposed_id_views
+
     fi
-
-    # Run OSM ETL process
-    run_osm_etl
-
-    # Run migrations
-    run_migrations
-    
-    # Create views
-    create_views
-    
-    # Run Climate ETL process
-    run_climate_etl
 
     echo "===== SETUP COMPLETE ====="
     echo "Climate database $PG_DBNAME is now ready for use!"
+    
 }
 
 # Execute main function

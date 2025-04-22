@@ -42,6 +42,18 @@ def setup_args():
         required=True,
         help="Polygons below this threshold are converted to points for zonal aggregation. Units are Square Kilometers",
     )
+    parser.add_argument(
+        "--x_min", type=str, required=True, help="For bounding box, minimum Longitude"
+    )
+    parser.add_argument(
+        "--y_min", type=str, required=True, help="For bounding box, minimum Latitude"
+    )
+    parser.add_argument(
+        "--x_max", type=str, required=True, help="For bounding box, maximum Longitude"
+    )
+    parser.add_argument(
+        "--y_max", type=str, required=True, help="For bounding box, maximum Latitude"
+    )
     return parser.parse_args()
 
 
@@ -51,6 +63,10 @@ def main(
     ssp: str,
     zonal_agg_method: str,
     polygon_area_threshold: str,
+    x_min: str,
+    y_min: str,
+    x_max: str,
+    y_max: str,
 ):
     """Runs a processing pipeline for a given zarr store"""
 
@@ -61,6 +77,10 @@ def main(
             f"Could not convert '{polygon_area_threshold}' to a float, defaulting to 20 sq km: {str(e)}"
         )
         polygon_area_threshold = 20.0
+
+    x_min, x_max, y_min, y_max = utils.validate_and_convert_coords(
+        x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max
+    )
 
     # Create connection pool with passed parameters
     connection_pool = pool.SimpleConnectionPool(
@@ -75,7 +95,13 @@ def main(
 
     ds = process_climate.main(
         s3_zarr_store_uri=s3_zarr_store_uri,
+        x_dim=constants.X_DIM,
+        y_dim=constants.Y_DIM,
         crs=constants.CRS,
+        x_min=x_min,
+        y_min=y_min,
+        x_max=x_max,
+        y_max=y_max,
     )
 
     metadata = utils.create_metadata(ds=ds)
@@ -97,14 +123,15 @@ def main(
     connection_pool.putconn(infra_intersection_conn)
     logger.info("Infrastructure Intersection Complete")
 
-    infra_intersection_load_conn = connection_pool.getconn()
-    infra_intersection_load.main(
-        df=df,
-        ssp=ssp,
-        climate_variable=climate_variable,
-        conn=infra_intersection_load_conn,
-    )
-    connection_pool.putconn(infra_intersection_load_conn)
+    if len(df) > 0:
+        infra_intersection_load_conn = connection_pool.getconn()
+        infra_intersection_load.main(
+            df=df,
+            ssp=ssp,
+            climate_variable=climate_variable,
+            conn=infra_intersection_load_conn,
+        )
+        connection_pool.putconn(infra_intersection_load_conn)
 
 
 if __name__ == "__main__":
@@ -116,5 +143,9 @@ if __name__ == "__main__":
         ssp=args.ssp,
         zonal_agg_method=args.zonal_agg_method,
         polygon_area_threshold=args.polygon_area_threshold,
+        x_min=args.x_min,
+        x_max=args.x_max,
+        y_min=args.y_min,
+        y_max=args.y_max,
     )
     logger.info(f"EXPOSURE SUCCEEDED FOR {args.s3_zarr_store_uri}")

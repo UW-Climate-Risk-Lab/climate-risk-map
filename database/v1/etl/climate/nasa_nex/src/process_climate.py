@@ -37,25 +37,30 @@ def rename_value_variables(ds: xr.Dataset) -> xr.Dataset:
     # Create a rename mapping dictionary
     rename_dict = {var: f"ensemble_{var[6:]}" for var in value_vars}
     
-    # Log variables being renamed
-    logger.info(f"Renaming variables: {rename_dict}")
-    
     # Rename the variables
     return ds.rename(rename_dict)
 
 def main(
     s3_zarr_store_uri: str,
     crs: str,
+    x_dim: str,
+    y_dim: str,
+    x_min: float,
+    y_min: float,
+    x_max: float,
+    y_max: float,
 ) -> xr.Dataset:
     """Processes climate data
 
     Args:
-        file_directory (str): Directory to open files from
+        s3_zarr_store_uri (str): Directory to open file from
         crs (str): Coordinate Refernce System of climate data
-        bbox (dict): Dict with keys (min_lon, min_lat, max_lon, max_lat) to filter data
-        time_dim (str): The name of the time dimension in the dataset
-        climatology_mean_method (str): The method by which to average climate variable over time.
-        derived_metadata_key (str): Keyname to store custom metadata in
+        x_dim (str): Dimension name for longitude
+        y_dim (str): Dimension name for latitude
+        x_min (str): For bounding box, longitude minimum
+        y_min (str): For bounding box, latitude minimum
+        x_max (str): For bounding box, longitude maximum
+        y_max (str): For bounding box, latitude maximum
 
     Returns:
         xr.Dataset: Xarray dataset of processed climate data
@@ -66,17 +71,22 @@ def main(
         engine="zarr"
     )
 
+
     # Converts 0-360 longitude to -180-180 longitude. In line with OpenStreetMap database
-    ds = ds.assign_coords({constants.X_DIM: (((ds[constants.X_DIM] + 180) % 360) - 180)})
-    ds = ds.sortby(constants.X_DIM)
+    ds = ds.assign_coords({x_dim: (((ds[x_dim] + 180) % 360) - 180)})
+    ds = ds.sortby(x_dim)
 
     # Sets the CRS based on the provided CRS
     ds.rio.write_crs(crs, inplace=True)
     ds.rio.set_spatial_dims(x_dim=constants.X_DIM, y_dim=constants.Y_DIM, inplace=True)
     ds.rio.write_coordinate_system(inplace=True)
 
+    ds = ds.sel({x_dim: slice(x_min, x_max), y_dim: slice(y_min, y_max)})
+
     # Rename variables from value_* to ensemble_*
     ds = rename_value_variables(ds)
+
+    ds = ds.compute()
 
     return ds
 
