@@ -12,7 +12,7 @@ import s3fs
 from typing import List, Set
 
 import src.constants as constants
-from src.file_utils import s3_uri_exists
+from src.utils import s3_uri_exists
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

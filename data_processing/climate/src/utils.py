@@ -5,7 +5,49 @@ import s3fs
 from urllib.parse import urlparse
 from pathlib import PurePosixPath
 
+from typing import List
+
 import src.constants as constants
+
+def load_historical_data(
+    model: str, ensemble_member: str, required_vars: list[str], years: List[int]
+) -> xr.Dataset:
+    """Loads required historical variables into a single Dataset more efficiently."""
+    # 2) collect all the URIs via your helper
+    uris_to_load: List[str] = []
+    missing: List[str] = []
+    s3 = boto3.client("s3")
+    for year in years:
+        for v in required_vars:
+            uri = find_best_input_file(
+                s3_client=s3,
+                model=model,
+                scenario="historical",
+                ensemble_member=ensemble_member,
+                year=year,
+                variable=v,
+            )
+            if uri:
+                # rewrite s3:// to filecache:// so fsspec caches it
+                uris_to_load.append(uri)
+            else:
+                missing.append(v)
+    if missing:
+        raise FileNotFoundError(f"Missing vars: {missing}")
+
+    # 3) open with the faster netCDF4 engine, chunk coarsely
+    storage_options = {"anon": True}
+    ds = xr.open_mfdataset(
+        uris_to_load,
+        engine="h5netcdf",
+        decode_times=True,
+        combine="by_coords",
+        parallel=True,
+        backend_kwargs={"storage_options": storage_options},
+    )
+
+    return ds
+    
 
 def find_best_input_file(s3_client, model, scenario, ensemble_member, year, variable):
     """

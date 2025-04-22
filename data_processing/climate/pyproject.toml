@@ -12,6 +12,7 @@ dependencies = [
     "distributed>=2025.3.0",
     "fsspec>=2025.3.2",
     "h5netcdf>=1.6.1",
+    "netcdf4>=1.7.2",
     "s3fs>=2025.3.2",
     "scipy>=1.15.2",
     "xarray>=2025.3.1",

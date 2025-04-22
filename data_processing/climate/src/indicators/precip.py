@@ -5,10 +5,11 @@ import s3fs
 from typing import Optional
 
 import src.constants as constants
+from src.utils import load_historical_data
 
 
-def get_historical_baseline(
-    ds_hist: xr.Dataset, model: str, ensemble_member: str, bbox: Optional[dict] = None
+def get_pr_historical_baseline(
+    model: str, ensemble_member: str, bbox: Optional[dict] = None
 ) -> xr.DataArray:
     """
     Loads and calculates the mean daily precipitation baseline for the historical period.
@@ -26,6 +27,9 @@ def get_historical_baseline(
         DataArray containing the mean daily precipitation over the baseline period.
     """
     print(f"Calculating precip historical baseline for {model}/{ensemble_member}...")
+
+    ds_hist = load_historical_data(model=model, ensemble_member=ensemble_member, required_vars=["pr"], years=constants.HISTORICAL_BASELINE_YEARS)
+
     if bbox:
         ds_hist = ds_hist.sel(
             lat=slice(bbox["y_min"], bbox["y_max"]),
@@ -139,9 +143,12 @@ def calculate_precip_percent_change(
     # dimensions and coordinates, allowing for direct element-wise operations.
     print("Calculating percentage change...")
 
+    # Avoid division by zero by replacing baseline zeros with NaNs
+    safe_baseline = baseline_aligned_to_input.where(baseline_aligned_to_input != 0)
+
     # Calculate percentage change where baseline is sufficiently large
     pr_percent_change = (
-        (ds_input_pr - baseline_aligned_to_input) / baseline_aligned_to_input
+        (ds_input_pr - safe_baseline) / safe_baseline
     ) * 100
     print("Percentage change calculation complete.")
 

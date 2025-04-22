@@ -17,11 +17,11 @@ import time
 
 # Assuming structure src/constants.py, src/indicators/fwi.py etc.
 import src.constants as constants
-import src.file_utils as file_utils
+import src.utils as utils
 
 # Import specific indicator calculation dataclasses if needed
 from src.indicators.fwi import FwiInitialConditions
-from src.indicators.precip import get_historical_baseline
+from src.indicators.precip import get_pr_historical_baseline
 
 
 @dataclass
@@ -58,55 +58,6 @@ class PipelineConfig:
 
 
 # --- Utility Functions (Keep or adapt from original pipeline.py) ---
-
-
-def load_historical_data(
-    model: str, ensemble_member: str, required_vars: list[str], years: List[int]
-):
-    """Loads required historical variables into a single Dataset."""
-    fs = fsspec.filesystem("s3", anon=True)
-    s3_client = boto3.client("s3")
-
-    uris_to_load = []
-    missing_vars = []
-    for year in years:
-        for var in required_vars:
-            uri = file_utils.find_best_input_file(
-                s3_client=s3_client,
-                model=model,
-                scenario="historical",
-                ensemble_member=ensemble_member,
-                year=year,
-                variable=var,
-            )
-            if uri:
-                uris_to_load.append(uri)
-            else:
-                missing_vars.append(var)
-
-    if missing_vars:
-        # This indicates an issue with input file discovery upstream
-        raise FileNotFoundError(
-            f"Missing required input URIs for variables: {missing_vars}"
-        )
-
-    if not uris_to_load:
-        raise ValueError("No input URIs provided to load_input_data.")
-
-    # Use open_mfdataset carefully - ensure chunks are sensible
-    # Use preprocess function if needed for unit conversion, renaming coords etc.
-    storage_options = {"anon": True}
-    ds_historical = xr.open_mfdataset(
-        uris_to_load,
-        engine="h5netcdf",  # Assuming NetCDF4/HDF5
-        decode_times=True,
-        combine="by_coords",
-        chunks={}, 
-        parallel=True,  # Enable parallel reading
-        backend_kwargs={"storage_options": storage_options},
-    )
-
-    return ds_historical
 
 
 def load_input_data(config: PipelineConfig, required_vars: list[str]) -> xr.Dataset:
@@ -181,7 +132,7 @@ def load_input_data(config: PipelineConfig, required_vars: list[str]) -> xr.Data
 # --- Main Pipeline Logic ---
 
 
-def run_pipeline_for_year(ds_historical, config: PipelineConfig):
+def run_pipeline_for_year(config: PipelineConfig):
     """Runs the indicator calculation pipeline for a single year."""
 
     year_start_time = time.time()
@@ -202,7 +153,7 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
         for ind_cfg in constants.INDICATOR_REGISTRY.values()
         for var in ind_cfg["output_vars"]
     ]
-    vars_exist_map = file_utils.check_vars_exist(
+    vars_exist_map = utils.check_vars_exist(
         config.zarr_output_uri, all_output_vars_needed
     )
 
@@ -245,7 +196,7 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
         )
         # Check if prior year exists *and* contains necessary FWI vars
         fwi_vars = constants.INDICATOR_REGISTRY["fwi"]["output_vars"]
-        prior_vars_exist = file_utils.check_vars_exist(prior_year_output_uri, fwi_vars)
+        prior_vars_exist = utils.check_vars_exist(prior_year_output_uri, fwi_vars)
 
         fwi_ic = FwiInitialConditions()  # Start with None
         if all(prior_vars_exist.get(var, False) for var in ["ffmc", "dmc", "dc"]):
@@ -296,13 +247,12 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
             cached_pr_baseline_uri = (
                 f"s3://{cache_pr_baseline_prefix / cache_pr_baseline_file}"
             )
-            if file_utils.s3_uri_exists(
+            if utils.s3_uri_exists(
                 s3_uri=cached_pr_baseline_uri, check_zattrs=True
             ):
-                pr_baseline = xr.load_dataset(cached_pr_baseline_uri)
+                pr_baseline = xr.load_dataset(cached_pr_baseline_uri, engine="zarr")
             else:
-                pr_baseline = get_historical_baseline(
-                    ds_hist=ds_historical,
+                pr_baseline = get_pr_historical_baseline(
                     model=config.model,
                     ensemble_member=config.ensemble_member,
                     bbox=bbox_dict,
@@ -317,7 +267,6 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
                     consolidated=True,
                     compute=True,  # Trigger computation and writing
                 )
-
             pr_baseline = pr_baseline["pr"]
             config.indicator_context["pr_baseline_mean"] = pr_baseline
             print("Precipitation baseline loaded/calculated.")
@@ -365,12 +314,6 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
                 kwargs["pr_baseline_mean"] = config.indicator_context[
                     "pr_baseline_mean"
                 ]
-            if name == "spei":
-                kwargs["ds_historical"] = ds_historical[["pr", "tasmin", "tasmax"]]
-                kwargs["spei_scale"] = constants.INDICATOR_REGISTRY["spei"][
-                    "spei_scale"
-                ]
-                kwargs["baseline_years"] = constants.HISTORICAL_BASELINE_YEARS
 
             # Add other context items as needed based on indicator requirements
 
@@ -381,7 +324,7 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
             ds_result = ds_result.chunk(ds_input.chunks)
 
             # Clean metadata before merge (optional but recommended)
-            ds_result = file_utils.clean_metadata_for_merge(ds_result)
+            ds_result = utils.clean_metadata_for_merge(ds_result)
 
             ds_result = ds_result.resample(time="M").mean()
 
@@ -405,7 +348,7 @@ def run_pipeline_for_year(ds_historical, config: PipelineConfig):
         try:
             ds_existing = xr.open_zarr(output_mapper, consolidated=True)
             # Clean existing metadata as well before merge
-            ds_existing = file_utils.clean_metadata_for_merge(ds_existing)
+            ds_existing = utils.clean_metadata_for_merge(ds_existing)
             print("Loaded existing Zarr store for merging.")
             # Ensure chunks match what we calculated with, important for merge/write
             ds_existing = ds_existing.chunk(ds_input.chunks)
@@ -489,7 +432,7 @@ def main(
     # --- Dask Client Setup ---
     # Use LocalCluster for single-node execution within the Batch job
     # Adjust memory_limit based on Batch job's allocation
-    n_workers = min(multiprocessing.cpu_count(), 24)
+    n_workers = min(multiprocessing.cpu_count(), 16)
     memory_limit_gb = int(memory_available or constants.DEFAULT_MEMORY) / n_workers
     threads_per_worker = int(threads or constants.DEFAULT_THREADS)
 
@@ -536,41 +479,6 @@ def main(
     else:
         print("No bounding box provided, processing global data.")
 
-    print("Loading historical file...")
-    baseline_years = constants.HISTORICAL_BASELINE_YEARS
-    fs_s3 = s3fs.S3FileSystem(anon=False)
-    cache_historical_prefix = PurePosixPath(
-        constants.OUTPUT_BUCKET,
-        constants.OUTPUT_PREFIX,  # Use updated OUTPUT_PREFIX
-        constants.INPUT_PREFIX,  # Keep structure similar
-        model,
-        "historical",
-        ensemble_member,
-    )
-    cache_historical_file = f"day_{model}_historical_{ensemble_member}_gn_{str(baseline_years[0])}-{str(baseline_years[-1])}.zarr"
-    cached_historical_uri = f"s3://{cache_historical_prefix / cache_historical_file}"
-
-    if file_utils.s3_uri_exists(s3_uri=cached_historical_uri, check_zattrs=True):
-        print("Cached historical file found, loading..")
-        ds_historical = xr.open_dataset(cached_historical_uri, engine="zarr")
-    else:
-        print("No historical file found, loading from source..")
-        ds_historical = load_historical_data(
-            model=model,
-            ensemble_member=ensemble_member,
-            required_vars=constants.VAR_LIST,
-            years=baseline_years,
-        )
-
-        output_historical_mapper = s3fs.S3Map(
-            root=cached_historical_uri, s3=fs_s3, check=False
-        )
-        ds_historical.to_zarr(
-            store=output_historical_mapper,
-            mode="w",  # Overwrite mode
-            consolidated=True,
-            compute=True,  # Trigger computation and writing
-        )
 
     # --- Iterate Through Years ---
     for year in years:
@@ -583,7 +491,7 @@ def main(
                 var for var in constants.VAR_LIST
             )  # Get unique var names
             for var_name in required_vars_all_indicators:
-                input_uri = file_utils.find_best_input_file(
+                input_uri = utils.find_best_input_file(
                     s3_client,
                     model,
                     scenario,
@@ -636,7 +544,7 @@ def main(
                 )
 
                 # 4. Run the Pipeline for this year
-                run_pipeline_for_year(ds_historical=ds_historical, config=config)
+                run_pipeline_for_year(config=config)
 
         except Exception as e:
             print(f"FATAL ERROR processing year {year}: {e}")
@@ -718,14 +626,16 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    main(model=args.model,
-         scenario=args.scenario,
-         ensemble_member=args.ensemble_member,
-         lat_chunk=args.lat_chunk,
-         lon_chunk=args.lon_chunk,
-         threads=args.threads,
-         memory_available=args.memory_available,
-         x_min=args.x_min,
-         y_min=args.y_min,
-         x_max=args.x_max,
-         y_max=args.y_max)
+    main(
+        model=args.model,
+        scenario=args.scenario,
+        ensemble_member=args.ensemble_member,
+        lat_chunk=args.lat_chunk,
+        lon_chunk=args.lon_chunk,
+        threads=args.threads,
+        memory_available=args.memory_available,
+        x_min=args.x_min,
+        y_min=args.y_min,
+        x_max=args.x_max,
+        y_max=args.y_max,
+    )
