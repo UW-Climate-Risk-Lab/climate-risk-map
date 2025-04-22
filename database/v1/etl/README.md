@@ -22,17 +22,7 @@ docker build -t pgosm-flex-run .
 
 3. Run a container using the built image and environment variables. This will load the data into the database specified. Load time varies depending on how large the region/subregion are.
 ```bash
-docker run --name pgosm-flex-run --rm \
-  -e POSTGRES_USER=$POSTGRES_USER \
-  -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
-  -e POSTGRES_HOST=$POSTGRES_HOST \
-  -e POSTGRES_DB=$POSTGRES_DB \
-  -e POSTGRES_PORT=$POSTGRES_PORT \
-  -e RAM=$RAM \
-  -e REGION=$REGION \
-  -e SUBREGION=$SUBREGION \
-  -e LAYERSET=$LAYERSET \
-  -e SRID=$SRID \
-  -p 5433:5432 \
+docker run --rm \
+  --env-file .env
   pgosm-flex-run
 ```

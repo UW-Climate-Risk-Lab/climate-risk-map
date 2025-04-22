@@ -11,4 +11,6 @@ CMD ["sh", "-c", "python3 docker/pgosm_flex.py \
     --region=$REGION \
     --subregion=$SUBREGION \
     --srid=$SRID \
+    --language=$PGOSM_LANGUAGE \
+    --skip-nested \
     --replication"]

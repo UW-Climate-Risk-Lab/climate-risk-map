@@ -9,7 +9,8 @@ else
 fi
 
 # Directory containing the SQL files
-DIR="views"
+ASSET_GROUP_DIR="materialized_views/asset_groups"
+UNEXPOSED_DIR="materialized_views/unexposed_ids"
 
 # Check required environment variables
 required_vars=("PGDATABASE" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT")
@@ -24,7 +25,21 @@ done
 # PGDATABASE, PGUSER, PGPASSWORD, PGHOST, and PGPORT should be set in the environment
 
 # Loop over each SQL file in the directory
-for FILE in $(ls $DIR/*.sql | sort)
+for FILE in $(ls $ASSET_GROUP_DIR/*.sql | sort)
+do
+    if [[ $FILE == *"init_db"* ]]; then
+        continue
+    fi  
+    # Execute the SQL file with explicit connection parameters
+    echo "Executing $FILE..."
+    if ! psql -U "$PGUSER" -d "$PGDATABASE" -h "$PGHOST" -p "$PGPORT" -f "$FILE"; then
+        echo "Error executing $FILE"
+        exit 1
+    fi
+done
+
+# Loop over each SQL file in the directory
+for FILE in $(ls $UNEXPOSED_DIR/*.sql | sort)
 do
     if [[ $FILE == *"init_db"* ]]; then
         continue

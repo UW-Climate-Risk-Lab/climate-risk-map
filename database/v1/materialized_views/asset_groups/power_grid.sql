@@ -11,8 +11,8 @@ SELECT
     i.geom,
     t.tags
 FROM osm.infrastructure_point i
-WHERE i.osm_type = 'power'
 JOIN osm.tags t ON i.osm_id = t.osm_id
+WHERE i.osm_type = 'power'
 UNION ALL
 SELECT
     i.osm_id,
@@ -22,8 +22,8 @@ SELECT
     i.geom,
     t.tags
 FROM osm.infrastructure_line i
-WHERE i.osm_type = 'power'
 JOIN osm.tags t ON i.osm_id = t.osm_id
+WHERE i.osm_type = 'power'
 UNION ALL
 SELECT
     i.osm_id,
@@ -33,8 +33,8 @@ SELECT
     i.geom,
     t.tags
 FROM osm.infrastructure_polygon i
-WHERE i.osm_type = 'power'
-JOIN osm.tags t ON i.osm_id = t.osm_id;
+JOIN osm.tags t ON i.osm_id = t.osm_id
+WHERE i.osm_type = 'power';
 
 CREATE INDEX power_grid_idx_osm_id ON osm.power_grid (osm_id);
 CREATE INDEX power_grid_idx_geom ON osm.power_grid USING GIST (geom);

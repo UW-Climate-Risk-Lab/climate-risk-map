@@ -36,3 +36,7 @@ CREATE INDEX data_center_idx_osm_subtype ON osm.data_center (osm_subtype);
 CREATE INDEX data_center_idx_osm_type_subtype ON osm.data_center (osm_type, osm_subtype);
 CREATE INDEX data_center_idx_osm_operator ON osm.data_center (operator);
 CREATE INDEX data_center_idx_geom_type ON osm.data_center (geom_type);
+
+-- Grant SELECT on the materialized view to osm_ro_user and climate_user
+GRANT SELECT ON osm.data_center TO osm_ro_user;
+GRANT SELECT ON osm.data_center TO climate_user;
