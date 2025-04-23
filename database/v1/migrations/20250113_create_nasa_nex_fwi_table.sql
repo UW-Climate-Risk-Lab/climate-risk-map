@@ -8,13 +8,13 @@ CREATE TABLE climate.nasa_nex_fwi (
     month SMALLINT NOT NULL,
     decade SMALLINT NOT NULL,
     ssp SMALLINT NOT NULL, -- ssp -999 is for 'historical' values
-    value_mean FLOAT NOT NULL,
-    value_median FLOAT NOT NULL,
-    value_stddev FLOAT NOT NULL,
-    value_min FLOAT NOT NULL,
-    value_max FLOAT NOT NULL,
-    value_q1 FLOAT NOT NULL,
-    value_q3 FLOAT NOT NULL,  
+    ensemble_mean FLOAT NOT NULL,
+    ensemble_median FLOAT NOT NULL,
+    ensemble_stddev FLOAT NOT NULL,
+    ensemble_min FLOAT NOT NULL,
+    ensemble_max FLOAT NOT NULL,
+    ensemble_q1 FLOAT NOT NULL,
+    ensemble_q3 FLOAT NOT NULL,  
     metadata JSONB
 
 );

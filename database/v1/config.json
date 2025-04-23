@@ -1,0 +1,61 @@
+{
+  "databases": {
+    "washington": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "washington",
+      "bounding_box": {
+        "x_min": "-126.1",
+        "y_min": "44.4",
+        "x_max": "-114.0",
+        "y_max": "49.5"
+      }
+    },
+    "us-virgin-islands": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "us-virgin-islands",
+      "bounding_box": {
+        "x_min": "-67.8",
+        "y_min": "17.1",
+        "x_max": "-63.5",
+        "y_max": "19.1"
+      }
+    }
+  },
+  "climate_exposure_args": [
+    {
+      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/historical/fwi_decade_month_historical.zarr",
+      "climate_variable": "fwi",
+      "ssp": "historical",
+      "zonal_agg_method": "mean",
+      "polygon_area_threshold": "20.0"
+    },
+    {
+      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp126/fwi_decade_month_ssp126.zarr",
+      "climate_variable": "fwi",
+      "ssp": "126",
+      "zonal_agg_method": "mean",
+      "polygon_area_threshold": "20.0"
+    },
+    {
+      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp245/fwi_decade_month_ssp245.zarr",
+      "climate_variable": "fwi",
+      "ssp": "245",
+      "zonal_agg_method": "mean",
+      "polygon_area_threshold": "20.0"
+    },
+    {
+      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp370/fwi_decade_month_ssp370.zarr",
+      "climate_variable": "fwi",
+      "ssp": "370",
+      "zonal_agg_method": "mean",
+      "polygon_area_threshold": "20.0"
+    },
+    {
+      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp585/fwi_decade_month_ssp585.zarr",
+      "climate_variable": "fwi",
+      "ssp": "585",
+      "zonal_agg_method": "mean",
+      "polygon_area_threshold": "20.0"
+    }
+  ]
+}

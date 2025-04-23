@@ -1,39 +1,172 @@
-Contains database setup and migrations for v1 of the Climate Risk Map API
+# Climate Risk Map Database (v1)
 
-Databases are populated initially with the PgOSM Flex ETL Tool. Databases are segmented by region. This is done because once a database is populated with data from the ETL tool for a given region, it becomes difficult to switch regions. This should also allow for more efficient queries by region.
+Welcome to the Climate Risk Map Database! This environment is designed to organize and serve geospatial data for infrastructure and climate risk analyses across different regions. This README provides a high-level overview and explains how to manage this database in your local or production setting.
 
-## Database Setup
+## Overview
 
-1. **Initialize the Database**:
-   Run the `init_db.sql` script to create the database, roles, and schemas. The region name provided will be the name of the database.
-   ```sh
-   psql -v region_name=<name> -f /path/to/database/v1/init_db.sql
+• **Regional Segmentation**  
+  Each database is bound to a specific region to keep data ingest efficient and queries focused. Migrations and ETL processes are repeated per region.
+
+• **Data Layers**  
+  We use PgOSM Flex for ingesting OpenStreetMap (OSM) content. Additional climate data is placed under a separate `climate` schema. Various materialized views assemble assets into logical groups (e.g., commercial real estate, agriculture).
+
+• **Roles & Permissions**  
+  Multiple user roles control database access:  
+  - `pgosm_flex` manages OSM data ingestion.  
+  - `osm_ro_user` is intended for read-only queries of OSM data.  
+  - `climate_user` handles writing and reading climate data.
+
+• **Configuration**  
+  A `config.json` file defines database regions, bounding boxes, and climate dataset parameters. This centralizes configuration for consistent database creation and ETL processes.
+
+## Quick Setup Guide
+
+**Note** If the database specified already exists, steps 1 and 2 will be skipped.
+
+1. **Create/Initialize Database**  
+   Use the `database.sh` script in this directory to create and configure the database if it does not yet exist. When prompted, supply region info, credentials, etc.
    ```
-
-2. **Run Migrations**:
-   Use the `run_migrations.sh` script to execute all migration scripts in the `migrations` directory.
-   ```sh
-   ./run_migrations.sh
+   ./database.sh washington
    ```
+   The script reads region specifications from `config.json` and environment variables from `.env`.
 
-3. **Create Materialized Views**:
-   Run the scripts to create materialized views.
-   ```sh
-   psql -f /path/to/database/v1/views/20250122_create_place_materialized_view.sql
-   psql -f /path/to/database/v1/views/20250122_create_landuse_materialized_view.sql
-   psql -f /path/to/database/v1/views/20250122_create_amenity_materialized_view.sql
-   psql -f /path/to/database/v1/views/20240912181938_create_infrastructure_materialized_view.sql
-   psql -f /path/to/database/v1/views/20250124_create_nasa_nex_fwi_metadata_materialized_view.sql
-   ```
+2. **Run Migrations**  
+   After initialization, migrations ensure schema consistency. The `database.sh` script automatically executes SQL files placed in the `migrations` folder.
 
-4. **Refresh Materialized Views**:
-   Use the `refresh_materialized_views.sql` script to refresh all materialized views.
-   ```sh
-   psql -f /path/to/database/v1/views/refresh_materialized_views.sql
-   ```
+3. **Load OSM Data**  
+   Docker-based ETL scripts build a container to ingest OSM data for your chosen region. Verify everything in your `.env` file, then let the script pull and populate OSM data.
+   This is set to run in replication mode, meaning that if we rerun this with a database that has already been initialized and loaded, it will attempt to load any new osm ids
+   from the latest osm download file. This allows us to keep the database up to date with the latest OSM data.
 
-## Notes
+4. **Create Asset Views**  
+   Multiple materialized views represent asset categories. These are created through the `database.sh` script to organize infrastructure into logical groupings.
+   
+5. **Load Climate Data**  
+   The `database.sh` script also handles climate data ETL using the NASA NEX processing pipeline, which calculates exposure metrics for each infrastructure asset.
 
-- Ensure that the roles and permissions are correctly set up as per the `init_db.sql` script.
-- Materialized views should be refreshed periodically to ensure data consistency.
-- Ensure that the `.env` file is correctly set up with the necessary database connection details before running the `run_migrations.sh` script.
+## Asset Categories
+
+The database organizes infrastructure into the following asset groups (materialized views):
+
+• **Administrative**  
+  Government boundaries, cities, towns, and other administrative entities.
+  
+• **Agriculture**  
+  Farmland, orchards, vineyards, and agricultural buildings.
+  
+• **Commercial Real Estate**  
+  Shops, offices, restaurants, hotels, and other commercial properties.
+  
+• **Data Centers**  
+  Buildings and facilities tagged as data centers or telecommunications infrastructure.
+  
+• **Power Grid**  
+  Power generation, transmission, and distribution infrastructure.
+  
+• **Residential Real Estate**  
+  Houses, apartments, and other residential buildings.
+
+## Climate Data Processing
+
+The system includes an exposure processing pipeline that:
+
+1. Retrieves climate data from S3 zarr stores (NASA NEX datasets)
+2. Performs spatial intersection with OSM infrastructure 
+3. Calculates zonal statistics for each asset
+4. Loads results into the `climate` schema
+
+Current supported climate variables:
+- `fwi` (Fire Weather Index)
+- `pr_percent_change` (Precipitation Percent Change)
+
+Includes data for multiple climate scenarios (historical, SSP126, SSP245, SSP370, SSP585).
+
+## Helpful Commands
+
+• **Initialize Database**  
+  ```
+  ./database.sh washington
+  ```
+
+• **Refresh Materialized Views**  
+  ```
+  psql -U <user> -d <database_name> -c "REFRESH MATERIALIZED VIEW osm.power_grid;"
+  ```
+
+• **Track Unexposed Assets**  
+  ```
+  psql -U <user> -d <database_name> -c "SELECT COUNT(*) FROM osm.unexposed_ids_nasa_nex_fwi;"
+  ```
+
+• **Inspect Loaded Data**  
+  ```
+  psql -U <user> -d <database_name> -c "\dt osm.*"
+  ```
+
+• **Docker ETL Process**  
+  Set environment variables (or `.env`), then:
+  ```
+  cd etl/osm
+  docker build -t pgosm-flex-run .
+  docker run --rm --env-file ../.env pgosm-flex-run
+  ```
+
+• **NASA NEX Climate Data ETL**  
+  ```
+  cd etl/exposure/nasa_nex
+  docker build -t data_processing/exposure/nasa-nex .
+  docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm --env-file .env data_processing/exposure/nasa-nex \
+    --s3-zarr-store-uri=s3://bucket/path/to/zarr \
+    --climate-variable=fwi \
+    --ssp=126 \
+    --zonal-agg-method=mean \
+    --polygon-area-threshold=20.0 \
+    --x_min=-125.0 \
+    --y_min=45.5 \
+    --x_max=-115.9 \
+    --y_max=49.1
+  ```
+
+## Environment Setup
+
+Create a `.env` file with the following properties:
+PGUSER=super-user 
+PGPASSWORD=mypassword 
+PGHOST=localhost 
+PGPORT=5432 
+PG_DBNAME=my_database
+
+S3_BUCKET=bucket-name
+
+PGOSM_USER=pgosm_flex 
+PGOSM_PASSWORD=mysecretpassword 
+PGOSM_HOST=host.docker.internal 
+PGOSM_RAM=8 
+PGOSM_LAYERSET=categories 
+PGOSM_LANGUAGE=en 
+PGOSM_SRID=4326
+
+PGCLIMATE_USER=climate_user 
+PGCLIMATE_PASSWORD=mysecretpassword 
+PGCLIMATE_HOST=host.docker.internal
+
+
+## Project Structure
+
+**migrations/**  
+  Contains SQL files that create or alter schemas, permissions, and tables, ensuring each region remains consistent with the unified data model.
+
+**materialized_views/**  
+  - **asset_groups/** - Views that organize infrastructure into categories
+  - **unexposed_ids/** - Views that track assets missing climate exposure data
+
+**etl/**  
+  - **osm/** - Docker-based ETL for loading OpenStreetMap data
+  - **exposure/nasa_nex/** - Pipeline for processing climate data and calculating exposure
+
+**config.json**  
+  Central configuration file containing database region definitions and climate dataset parameters.
+
+---
+
+Feel free to customize and adapt the scripts for your workflow. For more advanced details, refer to comments in the `.sql` and `.sh` files or reach out to the maintainers.
