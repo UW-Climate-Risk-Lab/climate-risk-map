@@ -29,12 +29,12 @@ jobs:
 
       - name: Install Dependencies with Poetry
         run: |
-          cd data_processing/exposure/nasa_nex
+          cd database/v1/etl/exposure/nasa_nex
           poetry install
 
       - name: Run Unit Tests
         run: |
-          cd data_processing/exposure/nasa_nex
+          cd database/v1/etl/exposure/nasa_nex
           export PYTHONPATH=$PYTHONPATH:.
           poetry run pytest
 
@@ -44,7 +44,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Builds data_processing/exposure/nasa_nex
-      run: docker build --tag data_processing/exposure/nasa_nex:$(date +%s) ./data_processing/exposure/nasa_nex
+    - name: Builds database/v1/etl/exposure/nasa_nex
+      run: docker build --tag database/v1/etl/exposure/nasa_nex:$(date +%s) ./database/v1/etl/exposure/nasa_nex
   
   
