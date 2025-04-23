@@ -27,10 +27,12 @@ Processes climate data from Zarr stores using Xarray:
 - Loads data from S3 Zarr store
 - Converts longitude coordinates from 0-360 to -180-180
 - Sets proper CRS and spatial dimensions
+- Renames variables from 'value_' prefix to 'ensemble_' prefix
 
 ### `infra_intersection.py`
 Handles the core spatial operations:
 - Queries OpenStreetMap features from PostGIS
+- Converts small polygons to points based on area threshold for better performance
 - Performs parallel zonal statistics for different geometry types:
   - Points: Direct value extraction
   - Lines: Converts to points and aggregates values
@@ -49,12 +51,13 @@ Provides utility functions for:
 - Database queries
 - Data type conversions
 - Metadata handling
+- Coordinate validation
 
 ### `constants.py`
 Defines key constants for:
 - Coordinate dimensions
 - Metadata keys
-- SSP scenarios
+- CRS
 
 ## Configuration
 
@@ -64,28 +67,31 @@ Required arguments:
 
 - `--s3-zarr-store-uri`: S3 URI to zarr store containing climate dataset
 - `--climate-variable`: Climate variable of the zarr
-- `--crs`: Coordinate Reference System
 - `--ssp`: SSP scenario
 - `--zonal-agg-method`: Method for zonal aggregation
 - `--polygon-area-threshold`: km^2, Any polygon below this threshold is converted to a point for exposure calc, for performance
+- `--x_min`: Minimum longitude for bounding box
+- `--y_min`: Minimum latitude for bounding box
+- `--x_max`: Maximum longitude for bounding box
+- `--y_max`: Maximum latitude for bounding box
 
 ### Environment Variables
 
 Required environment variables in `.env`:
 
 - `PG_DBNAME`: PostGIS database name
-- `PG_USER`: PostGIS username with proper privileges
-- `PG_HOST`: Host for the PostGIS server
-- `PG_PASSWORD`: Password for the PostGIS user
-- `PG_PORT`: Port for the PostGIS server
+- `PGUSER`: PostGIS username with proper privileges
+- `PGHOST`: Host for the PostGIS server
+- `PGPASSWORD`: Password for the PostGIS user
+- `PGPORT`: Port for the PostGIS server
 
 Example `.env`:
 ```properties
 PG_DBNAME=washington
-PG_USER=climate_user
-PG_HOST=host.docker.internal
-PG_PASSWORD=mysecretpassword
-PG_PORT=5432
+PGUSER=climate_user
+PGHOST=host.docker.internal
+PGPASSWORD=mysecretpassword
+PGPORT=5432
 ```
 
 ## Build & Run
@@ -96,12 +102,16 @@ PG_PORT=5432
    ```
 2. Execute the Docker container:
    ```bash
-    docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm --env-file .env exposure-nasa-nex \
+    docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm --env-file .env data_processing/exposure/nasa-nex \
     --s3-zarr-store-uri=s3://my-bucket/path/to/zarr/fwi_decade_month_ssp126.zarr \
     --climate-variable=fwi \
     --ssp=126 \
     --zonal-agg-method=max \
-    --polygon-area-threshold
+    --polygon-area-threshold=20.0 \
+    --x_min=-125.0 \
+    --y_min=45.5 \
+    --x_max=-115.9 \
+    --y_max=49.1
     ```
 
 ## Dependencies
