@@ -29,7 +29,7 @@ fi
 ROOT_DIR=$(pwd)
 MIGRATIONS_DIR="$ROOT_DIR/migrations"
 OSM_ETL_DIR="$ROOT_DIR/etl/osm"
-CLIMATE_ETL_DIR="$ROOT_DIR/etl/climate/nasa_nex"
+EXPOSURE_ETL_DIR="$ROOT_DIR/etl/exposure/nasa_nex"
 ASSET_GROUP_DIR="$ROOT_DIR/materialized_views/asset_groups"
 UNEXPOSED_DIR="$ROOT_DIR/materialized_views/unexposed_ids"
 CONFIG_JSON="$ROOT_DIR/config.json"
@@ -306,7 +306,7 @@ refresh_unexposed_id_views() {
 
 
 # Step 5: Run Climate ETL Process
-run_climate_etl() {
+run_exposure_etl() {
     echo "===== STEP 6: RUNNING CLIMATE ETL PROCESS ====="
     
     # Check if Docker is installed
@@ -316,20 +316,20 @@ run_climate_etl() {
     fi
     
     # Check if ETL directory exists
-    if [ ! -d "$CLIMATE_ETL_DIR" ]; then
-        echo "Error: ETL directory not found at $CLIMATE_ETL_DIR"
+    if [ ! -d "$EXPOSURE_ETL_DIR" ]; then
+        echo "Error: ETL directory not found at $EXPOSURE_ETL_DIR"
         exit 1
     fi
     
     # Check if Dockerfile exists in ETL directory
-    if [ ! -f "$CLIMATE_ETL_DIR/Dockerfile" ]; then
+    if [ ! -f "$EXPOSURE_ETL_DIR/Dockerfile" ]; then
         echo "Error: Dockerfile not found in Climate ETL directory"
         exit 1
     fi
     
     
     # Navigate to ETL directory
-    cd "$CLIMATE_ETL_DIR"
+    cd "$EXPOSURE_ETL_DIR"
     
     # Build Docker image
     echo "Building Climate ETL Docker image..."
@@ -432,8 +432,8 @@ main() {
         # Refresh Unexposed ID views (capture new IDs from OSM)
         refresh_unexposed_id_views
 
-        # Run Climate ETL process
-        run_climate_etl
+        # Run Climate Exposure ETL process
+        run_exposure_etl
 
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
@@ -452,7 +452,7 @@ main() {
         create_views
         
         # Run Climate ETL process
-        run_climate_etl
+        run_exposure_etl
 
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
