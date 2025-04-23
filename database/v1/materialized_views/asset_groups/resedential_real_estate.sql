@@ -6,37 +6,46 @@ SET ROLE pgosm_flex;
 DROP MATERIALIZED VIEW IF EXISTS osm.residential_real_estate;
 
 CREATE MATERIALIZED VIEW osm.residential_real_estate AS
+SELECT DISTINCT ON (osm_id) 
+    osm_id,
+    osm_type,
+    osm_subtype,
+    geom_type,
+    geom,
+    tags
+FROM (
 
--- Residential Buildings (Points and Polygons)
-SELECT
-    b.osm_id,
-    'building' AS osm_type,
-    b.osm_subtype, -- Use the subtype from the building table (e.g., 'house', 'apartments')
-    ST_GeometryType(b.geom) AS geom_type,
-    b.geom,
-    t.tags
-FROM osm.building_point b
-JOIN osm.tags t ON b.osm_id = t.osm_id
-WHERE t.tags ->> 'building' IN (
-    'house', 'detached', 'semidetached_house', 'terrace', -- Single/multi-family houses
-    'residential', 'apartments', 'bungalow', 'cabin', 'dormitory', -- Other residential types
-    'static_caravan', 'hut' -- Include potentially less permanent dwellings
-)
-UNION ALL
-SELECT
-    b.osm_id,
-    'building' AS osm_type,
-    b.osm_subtype,
-    ST_GeometryType(b.geom) AS geom_type,
-    b.geom,
-    t.tags
-FROM osm.building_polygon b
-JOIN osm.tags t ON b.osm_id = t.osm_id
-WHERE t.tags ->> 'building' IN (
-    'house', 'detached', 'semidetached_house', 'terrace',
-    'residential', 'apartments', 'bungalow', 'cabin', 'dormitory',
-    'static_caravan', 'hut'
-);
+    -- Residential Buildings (Points and Polygons)
+    SELECT
+        b.osm_id,
+        'building' AS osm_type,
+        b.osm_subtype, -- Use the subtype from the building table (e.g., 'house', 'apartments')
+        ST_GeometryType(b.geom) AS geom_type,
+        b.geom,
+        t.tags
+    FROM osm.building_point b
+    JOIN osm.tags t ON b.osm_id = t.osm_id
+    WHERE t.tags ->> 'building' IN (
+        'house', 'detached', 'semidetached_house', 'terrace', -- Single/multi-family houses
+        'residential', 'apartments', 'bungalow', 'cabin', 'dormitory', -- Other residential types
+        'static_caravan', 'hut' -- Include potentially less permanent dwellings
+    )
+    UNION ALL
+    SELECT
+        b.osm_id,
+        'building' AS osm_type,
+        b.osm_subtype,
+        ST_GeometryType(b.geom) AS geom_type,
+        b.geom,
+        t.tags
+    FROM osm.building_polygon b
+    JOIN osm.tags t ON b.osm_id = t.osm_id
+    WHERE t.tags ->> 'building' IN (
+        'house', 'detached', 'semidetached_house', 'terrace',
+        'residential', 'apartments', 'bungalow', 'cabin', 'dormitory',
+        'static_caravan', 'hut'
+    )
+) AS combined_data;
 
 
 -- Create Indexes

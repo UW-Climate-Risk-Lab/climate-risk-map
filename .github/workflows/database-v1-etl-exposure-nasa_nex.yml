@@ -1,13 +1,13 @@
-name: data_processing/exposure/nasa-nex CI-CD
+name: database/v1/etl/exposure/nasa-nex CI-CD
 
 on:
   push:
     branches: [ "main" ]
-    paths: [ "data_processing/exposure/nasa_nex/**" ]
+    paths: [ "database/v1/etl/exposure/nasa-nex/**" ]
   
   pull_request:
     branches: [ "main" ]
-    paths: [ "data_processing/exposure/nasa_nex/**" ]
+    paths: [ "database/v1/etl/exposure/nasa-nex/**" ]
 
 jobs:
 

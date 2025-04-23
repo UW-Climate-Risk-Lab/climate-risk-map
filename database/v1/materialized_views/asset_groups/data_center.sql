@@ -3,31 +3,42 @@
 SET ROLE pgosm_flex;
 DROP MATERIALIZED VIEW IF EXISTS osm.data_center;
 CREATE MATERIALIZED VIEW osm.data_center AS
-SELECT
-    a.osm_id,
-    a.osm_type,
-    a.osm_subtype,
-    a.name,
-    a.operator,
-    ST_GeometryType(a.geom) AS geom_type,
-    a.geom,
-    t.tags
-FROM osm.building_point a
-JOIN osm.tags t ON a.osm_id = t.osm_id
-WHERE t.tags ->> 'telecom' = 'data_center'
-UNION ALL
-SELECT
-    a.osm_id,
-    a.osm_type,
-    a.osm_subtype,
-    a.name,
-    a.operator,
-    ST_GeometryType(a.geom) AS geom_type,
-    a.geom,
-    t.tags
-FROM osm.building_polygon a
-JOIN osm.tags t ON a.osm_id = t.osm_id
-WHERE t.tags ->> 'telecom' = 'data_center';
+SELECT DISTINCT ON (osm_id) 
+    osm_id,
+    osm_type,
+    osm_subtype,
+    name,
+    operator,
+    geom_type,
+    geom,
+    tags
+FROM (
+    SELECT
+        a.osm_id,
+        a.osm_type,
+        a.osm_subtype,
+        a.name,
+        a.operator,
+        ST_GeometryType(a.geom) AS geom_type,
+        a.geom,
+        t.tags
+    FROM osm.building_point a
+    JOIN osm.tags t ON a.osm_id = t.osm_id
+    WHERE t.tags ->> 'telecom' = 'data_center'
+    UNION ALL
+    SELECT
+        a.osm_id,
+        a.osm_type,
+        a.osm_subtype,
+        a.name,
+        a.operator,
+        ST_GeometryType(a.geom) AS geom_type,
+        a.geom,
+        t.tags
+    FROM osm.building_polygon a
+    JOIN osm.tags t ON a.osm_id = t.osm_id
+    WHERE t.tags ->> 'telecom' = 'data_center'
+) AS combined_data;
 
 CREATE INDEX data_center_idx_osm_id ON osm.data_center (osm_id);
 CREATE INDEX data_center_idx_geom ON osm.data_center USING GIST (geom);

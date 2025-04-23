@@ -14,7 +14,7 @@ WITH all_assets AS (
     UNION ALL
     SELECT osm_id, geom FROM osm.residential_real_estate
 )
-SELECT a.osm_id, a.geom
+SELECT DISTINCT a.osm_id, a.geom
 FROM all_assets a
 LEFT JOIN climate.nasa_nex_fwi fwi ON fwi.osm_id = a.osm_id
 WHERE fwi.osm_id IS NULL;

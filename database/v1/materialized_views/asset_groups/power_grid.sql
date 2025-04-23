@@ -3,38 +3,47 @@
 SET ROLE pgosm_flex;
 DROP MATERIALIZED VIEW IF EXISTS osm.power_grid;
 CREATE MATERIALIZED VIEW osm.power_grid AS
-SELECT
-    i.osm_id,
-    i.osm_type,
-    i.osm_subtype,
-    ST_GeometryType(i.geom) AS geom_type,
-    i.geom,
-    t.tags
-FROM osm.infrastructure_point i
-JOIN osm.tags t ON i.osm_id = t.osm_id
-WHERE i.osm_type = 'power'
-UNION ALL
-SELECT
-    i.osm_id,
-    i.osm_type,
-    i.osm_subtype,
-    ST_GeometryType(i.geom) AS geom_type,
-    i.geom,
-    t.tags
-FROM osm.infrastructure_line i
-JOIN osm.tags t ON i.osm_id = t.osm_id
-WHERE i.osm_type = 'power'
-UNION ALL
-SELECT
-    i.osm_id,
-    i.osm_type,
-    i.osm_subtype,
-    ST_GeometryType(i.geom) AS geom_type,
-    i.geom,
-    t.tags
-FROM osm.infrastructure_polygon i
-JOIN osm.tags t ON i.osm_id = t.osm_id
-WHERE i.osm_type = 'power';
+SELECT DISTINCT ON (osm_id) 
+    osm_id,
+    osm_type,
+    osm_subtype,
+    geom_type,
+    geom,
+    tags
+FROM (
+    SELECT
+        i.osm_id,
+        i.osm_type,
+        i.osm_subtype,
+        ST_GeometryType(i.geom) AS geom_type,
+        i.geom,
+        t.tags
+    FROM osm.infrastructure_point i
+    JOIN osm.tags t ON i.osm_id = t.osm_id
+    WHERE i.osm_type = 'power'
+    UNION ALL
+    SELECT
+        i.osm_id,
+        i.osm_type,
+        i.osm_subtype,
+        ST_GeometryType(i.geom) AS geom_type,
+        i.geom,
+        t.tags
+    FROM osm.infrastructure_line i
+    JOIN osm.tags t ON i.osm_id = t.osm_id
+    WHERE i.osm_type = 'power'
+    UNION ALL
+    SELECT
+        i.osm_id,
+        i.osm_type,
+        i.osm_subtype,
+        ST_GeometryType(i.geom) AS geom_type,
+        i.geom,
+        t.tags
+    FROM osm.infrastructure_polygon i
+    JOIN osm.tags t ON i.osm_id = t.osm_id
+    WHERE i.osm_type = 'power'
+) AS combined_data;
 
 CREATE INDEX power_grid_idx_osm_id ON osm.power_grid (osm_id);
 CREATE INDEX power_grid_idx_geom ON osm.power_grid USING GIST (geom);
