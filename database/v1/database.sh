@@ -220,7 +220,7 @@ run_migrations() {
         fi  
         # Execute the SQL file with explicit connection parameters
         echo "Executing $FILE..."
-        if ! psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" -f "$FILE"; then
+        if ! PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" -f "$FILE"; then
             echo "Error executing $FILE"
             exit 1
         fi
@@ -242,7 +242,7 @@ create_views() {
         for SQL_FILE in "$ASSET_GROUP_DIR"/*.sql; do
             if [ -f "$SQL_FILE" ]; then
                 echo "Processing $SQL_FILE..."
-                psql $DB_CONN -f "$SQL_FILE"
+                PGPASSWORD=$PG_SUPER_PASSWORD psql $DB_CONN -f "$SQL_FILE"
                 
                 if [ $? -ne 0 ]; then
                     echo "Error: Failed to execute $SQL_FILE"
@@ -260,7 +260,7 @@ create_views() {
         for SQL_FILE in "$UNEXPOSED_DIR"/*.sql; do
             if [ -f "$SQL_FILE" ]; then
                 echo "Processing $SQL_FILE..."
-                psql $DB_CONN -f "$SQL_FILE"
+                PGPASSWORD=$PG_SUPER_PASSWORD psql $DB_CONN -f "$SQL_FILE"
                 
                 if [ $? -ne 0 ]; then
                     echo "Error: Failed to execute $SQL_FILE"
@@ -283,7 +283,7 @@ refresh_asset_views() {
     for VIEW in administrative agriculture commercial_real_estate data_center power_grid residential_real_estate
     do
         echo "Refreshing osm.$VIEW..."
-        psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
+        PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
             -c "REFRESH MATERIALIZED VIEW osm.$VIEW;"
     done
 }
@@ -299,7 +299,7 @@ refresh_unexposed_id_views() {
     for VIEW in unexposed_ids_nasa_nex_fwi unexposed_ids_nasa_nex_pr_percent_change
     do
         echo "Refreshing osm.$VIEW..."
-        psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
+        PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
             -c "REFRESH MATERIALIZED VIEW osm.$VIEW;"
     done
 }
