@@ -35,6 +35,8 @@ Welcome to the Climate Risk Map Database! This environment is designed to organi
 
 3. **Load OSM Data**  
    Docker-based ETL scripts build a container to ingest OSM data for your chosen region. Verify everything in your `.env` file, then let the script pull and populate OSM data.
+   This is set to run in replication mode, meaning that if we rerun this with a database that has already been initialized and loaded, it will attempt to load any new osm ids
+   from the latest osm download file. This allows us to keep the database up to date with the latest OSM data.
 
 4. **Create Asset Views**  
    Multiple materialized views represent asset categories. These are created through the `database.sh` script to organize infrastructure into logical groupings.
