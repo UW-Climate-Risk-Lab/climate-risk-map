@@ -1,5 +1,15 @@
 {
   "databases": {
+    "usa": {
+      "osm_region": "north-america",
+      "osm_subregion": "us",
+      "bounding_box": {
+        "x_min": "-126.1",
+        "y_min": "23.6",
+        "x_max": "-65.1",
+        "y_max": "50.2"
+      }
+    },
     "washington": {
       "osm_region": "north-america/us",
       "osm_subregion": "washington",
@@ -10,7 +20,7 @@
         "y_max": "49.5"
       }
     },
-    "us-virgin-islands": {
+    "us_virgin_islands": {
       "osm_region": "north-america/us",
       "osm_subregion": "us-virgin-islands",
       "bounding_box": {
@@ -18,6 +28,546 @@
         "y_min": "17.1",
         "x_max": "-63.5",
         "y_max": "19.1"
+      }
+    },
+    "alabama": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "alabama",
+      "bounding_box": {
+        "x_min": "-88.5",
+        "y_min": "30.2",
+        "x_max": "-84.9",
+        "y_max": "35.0"
+      }
+    },
+    "alaska": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "alaska",
+      "bounding_box": {
+        "x_min": "-179.1",
+        "y_min": "51.2",
+        "x_max": "-130.0",
+        "y_max": "71.5"
+      }
+    },
+    "arizona": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "arizona",
+      "bounding_box": {
+        "x_min": "-114.8",
+        "y_min": "31.3",
+        "x_max": "-109.0",
+        "y_max": "37.0"
+      }
+    },
+    "arkansas": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "arkansas",
+      "bounding_box": {
+        "x_min": "-94.6",
+        "y_min": "33.0",
+        "x_max": "-89.6",
+        "y_max": "36.5"
+      }
+    },
+    "california": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "california",
+      "bounding_box": {
+        "x_min": "-124.4",
+        "y_min": "32.5",
+        "x_max": "-114.1",
+        "y_max": "42.0"
+      }
+    },
+    "colorado": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "colorado",
+      "bounding_box": {
+        "x_min": "-109.1",
+        "y_min": "37.0",
+        "x_max": "-102.0",
+        "y_max": "41.0"
+      }
+    },
+    "connecticut": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "connecticut",
+      "bounding_box": {
+        "x_min": "-73.7",
+        "y_min": "40.9",
+        "x_max": "-71.8",
+        "y_max": "42.1"
+      }
+    },
+    "delaware": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "delaware",
+      "bounding_box": {
+        "x_min": "-75.8",
+        "y_min": "38.4",
+        "x_max": "-75.0",
+        "y_max": "39.8"
+      }
+    },
+    "florida": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "florida",
+      "bounding_box": {
+        "x_min": "-87.6",
+        "y_min": "24.5",
+        "x_max": "-80.0",
+        "y_max": "31.0"
+      }
+    },
+    "georgia": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "georgia",
+      "bounding_box": {
+        "x_min": "-85.6",
+        "y_min": "30.4",
+        "x_max": "-80.8",
+        "y_max": "35.0"
+      }
+    },
+    "hawaii": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "hawaii",
+      "bounding_box": {
+        "x_min": "-178.3",
+        "y_min": "18.9",
+        "x_max": "-154.8",
+        "y_max": "28.4"
+      }
+    },
+    "idaho": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "idaho",
+      "bounding_box": {
+        "x_min": "-117.2",
+        "y_min": "42.0",
+        "x_max": "-111.0",
+        "y_max": "49.0"
+      }
+    },
+    "illinois": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "illinois",
+      "bounding_box": {
+        "x_min": "-91.5",
+        "y_min": "37.0",
+        "x_max": "-87.5",
+        "y_max": "42.5"
+      }
+    },
+    "indiana": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "indiana",
+      "bounding_box": {
+        "x_min": "-88.1",
+        "y_min": "37.8",
+        "x_max": "-84.8",
+        "y_max": "41.8"
+      }
+    },
+    "iowa": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "iowa",
+      "bounding_box": {
+        "x_min": "-96.6",
+        "y_min": "40.4",
+        "x_max": "-90.1",
+        "y_max": "43.5"
+      }
+    },
+    "kansas": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "kansas",
+      "bounding_box": {
+        "x_min": "-102.0",
+        "y_min": "37.0",
+        "x_max": "-94.6",
+        "y_max": "40.0"
+      }
+    },
+    "kentucky": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "kentucky",
+      "bounding_box": {
+        "x_min": "-89.6",
+        "y_min": "36.5",
+        "x_max": "-82.0",
+        "y_max": "39.2"
+      }
+    },
+    "louisiana": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "louisiana",
+      "bounding_box": {
+        "x_min": "-94.1",
+        "y_min": "29.0",
+        "x_max": "-89.0",
+        "y_max": "33.0"
+      }
+    },
+    "maine": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "maine",
+      "bounding_box": {
+        "x_min": "-71.1",
+        "y_min": "43.0",
+        "x_max": "-66.9",
+        "y_max": "47.5"
+      }
+    },
+    "maryland": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "maryland",
+      "bounding_box": {
+        "x_min": "-79.5",
+        "y_min": "37.9",
+        "x_max": "-75.0",
+        "y_max": "39.7"
+      }
+    },
+    "massachusetts": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "massachusetts",
+      "bounding_box": {
+        "x_min": "-73.5",
+        "y_min": "41.2",
+        "x_max": "-69.9",
+        "y_max": "42.9"
+      }
+    },
+    "michigan": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "michigan",
+      "bounding_box": {
+        "x_min": "-90.4",
+        "y_min": "41.7",
+        "x_max": "-82.4",
+        "y_max": "48.2"
+      }
+    },
+    "minnesota": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "minnesota",
+      "bounding_box": {
+        "x_min": "-97.2",
+        "y_min": "43.5",
+        "x_max": "-89.5",
+        "y_max": "49.4"
+      }
+    },
+    "mississippi": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "mississippi",
+      "bounding_box": {
+        "x_min": "-91.7",
+        "y_min": "30.2",
+        "x_max": "-88.1",
+        "y_max": "35.0"
+      }
+    },
+    "missouri": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "missouri",
+      "bounding_box": {
+        "x_min": "-95.8",
+        "y_min": "36.0",
+        "x_max": "-89.1",
+        "y_max": "40.6"
+      }
+    },
+    "montana": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "montana",
+      "bounding_box": {
+        "x_min": "-116.1",
+        "y_min": "44.4",
+        "x_max": "-104.0",
+        "y_max": "49.0"
+      }
+    },
+    "nebraska": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "nebraska",
+      "bounding_box": {
+        "x_min": "-104.1",
+        "y_min": "40.0",
+        "x_max": "-95.3",
+        "y_max": "43.0"
+      }
+    },
+    "nevada": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "nevada",
+      "bounding_box": {
+        "x_min": "-120.0",
+        "y_min": "35.0",
+        "x_max": "-114.0",
+        "y_max": "42.0"
+      }
+    },
+    "new_hampshire": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "new-hampshire",
+      "bounding_box": {
+        "x_min": "-72.6",
+        "y_min": "42.7",
+        "x_max": "-70.6",
+        "y_max": "45.3"
+      }
+    },
+    "new_jersey": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "new-jersey",
+      "bounding_box": {
+        "x_min": "-75.6",
+        "y_min": "38.9",
+        "x_max": "-73.9",
+        "y_max": "41.4"
+      }
+    },
+    "new_mexico": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "new-mexico",
+      "bounding_box": {
+        "x_min": "-109.0",
+        "y_min": "31.3",
+        "x_max": "-103.0",
+        "y_max": "37.0"
+      }
+    },
+    "new_york": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "new-york",
+      "bounding_box": {
+        "x_min": "-79.8",
+        "y_min": "40.5",
+        "x_max": "-71.8",
+        "y_max": "45.0"
+      }
+    },
+    "north_carolina": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "north-carolina",
+      "bounding_box": {
+        "x_min": "-84.3",
+        "y_min": "33.8",
+        "x_max": "-75.5",
+        "y_max": "36.6"
+      }
+    },
+    "north_dakota": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "north-dakota",
+      "bounding_box": {
+        "x_min": "-104.1",
+        "y_min": "45.9",
+        "x_max": "-96.6",
+        "y_max": "49.0"
+      }
+    },
+    "ohio": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "ohio",
+      "bounding_box": {
+        "x_min": "-84.8",
+        "y_min": "38.4",
+        "x_max": "-80.5",
+        "y_max": "42.0"
+      }
+    },
+    "oklahoma": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "oklahoma",
+      "bounding_box": {
+        "x_min": "-103.0",
+        "y_min": "33.6",
+        "x_max": "-94.4",
+        "y_max": "37.0"
+      }
+    },
+    "oregon": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "oregon",
+      "bounding_box": {
+        "x_min": "-124.6",
+        "y_min": "42.0",
+        "x_max": "-116.5",
+        "y_max": "46.3"
+      }
+    },
+    "pennsylvania": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "pennsylvania",
+      "bounding_box": {
+        "x_min": "-80.5",
+        "y_min": "39.7",
+        "x_max": "-74.7",
+        "y_max": "42.3"
+      }
+    },
+    "rhode_island": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "rhode-island",
+      "bounding_box": {
+        "x_min": "-71.9",
+        "y_min": "41.1",
+        "x_max": "-71.1",
+        "y_max": "42.0"
+      }
+    },
+    "south_carolina": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "south-carolina",
+      "bounding_box": {
+        "x_min": "-83.4",
+        "y_min": "32.0",
+        "x_max": "-78.5",
+        "y_max": "35.2"
+      }
+    },
+    "south_dakota": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "south-dakota",
+      "bounding_box": {
+        "x_min": "-104.1",
+        "y_min": "43.0",
+        "x_max": "-96.4",
+        "y_max": "46.0"
+      }
+    },
+    "tennessee": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "tennessee",
+      "bounding_box": {
+        "x_min": "-90.3",
+        "y_min": "35.0",
+        "x_max": "-81.7",
+        "y_max": "36.7"
+      }
+    },
+    "texas": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "texas",
+      "bounding_box": {
+        "x_min": "-106.7",
+        "y_min": "25.8",
+        "x_max": "-93.5",
+        "y_max": "36.5"
+      }
+    },
+    "utah": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "utah",
+      "bounding_box": {
+        "x_min": "-114.1",
+        "y_min": "37.0",
+        "x_max": "-109.0",
+        "y_max": "42.0"
+      }
+    },
+    "vermont": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "vermont",
+      "bounding_box": {
+        "x_min": "-73.4",
+        "y_min": "42.7",
+        "x_max": "-71.5",
+        "y_max": "45.0"
+      }
+    },
+    "virginia": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "virginia",
+      "bounding_box": {
+        "x_min": "-83.7",
+        "y_min": "36.5",
+        "x_max": "-75.2",
+        "y_max": "39.5"
+      }
+    },
+    "west_virginia": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "west-virginia",
+      "bounding_box": {
+        "x_min": "-82.7",
+        "y_min": "37.2",
+        "x_max": "-77.7",
+        "y_max": "40.6"
+      }
+    },
+    "wisconsin": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "wisconsin",
+      "bounding_box": {
+        "x_min": "-92.9",
+        "y_min": "42.5",
+        "x_max": "-86.8",
+        "y_max": "47.1"
+      }
+    },
+    "wyoming": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "wyoming",
+      "bounding_box": {
+        "x_min": "-111.1",
+        "y_min": "41.0",
+        "x_max": "-104.0",
+        "y_max": "45.0"
+      }
+    },
+    "district_of_columbia": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "district-of-columbia",
+      "bounding_box": {
+        "x_min": "-77.1",
+        "y_min": "38.8",
+        "x_max": "-76.9",
+        "y_max": "39.0"
+      }
+    },
+    "puerto_rico": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "puerto-rico",
+      "bounding_box": {
+        "x_min": "-67.9",
+        "y_min": "17.9",
+        "x_max": "-65.2",
+        "y_max": "18.5"
+      }
+    },
+    "guam": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "guam",
+      "bounding_box": {
+        "x_min": "144.6",
+        "y_min": "13.2",
+        "x_max": "144.9",
+        "y_max": "13.7"
+      }
+    },
+    "american_samoa": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "american-samoa",
+      "bounding_box": {
+        "x_min": "-171.1",
+        "y_min": "-14.4",
+        "x_max": "-168.1",
+        "y_max": "-11.0"
+      }
+    },
+    "northern_mariana_islands": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "northern-mariana-islands",
+      "bounding_box": {
+        "x_min": "144.5",
+        "y_min": "14.1",
+        "x_max": "146.1",
+        "y_max": "20.6"
       }
     }
   },

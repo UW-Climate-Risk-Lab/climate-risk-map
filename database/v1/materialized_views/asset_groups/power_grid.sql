@@ -20,7 +20,7 @@ FROM (
         t.tags
     FROM osm.infrastructure_point i
     JOIN osm.tags t ON i.osm_id = t.osm_id
-    WHERE i.osm_type = 'power'
+    WHERE i.osm_type = 'power' AND i.osm_subtype IN ('substation', 'line', 'plant', 'minor_line')
     UNION ALL
     SELECT
         i.osm_id,
@@ -31,7 +31,7 @@ FROM (
         t.tags
     FROM osm.infrastructure_line i
     JOIN osm.tags t ON i.osm_id = t.osm_id
-    WHERE i.osm_type = 'power'
+    WHERE i.osm_type = 'power' AND i.osm_subtype IN ('substation', 'line', 'plant', 'minor_line')
     UNION ALL
     SELECT
         i.osm_id,
@@ -42,7 +42,7 @@ FROM (
         t.tags
     FROM osm.infrastructure_polygon i
     JOIN osm.tags t ON i.osm_id = t.osm_id
-    WHERE i.osm_type = 'power'
+    WHERE i.osm_type = 'power' AND i.osm_subtype IN ('substation', 'line', 'plant', 'minor_line')
 ) AS combined_data;
 
 CREATE INDEX power_grid_idx_osm_id ON osm.power_grid (osm_id);

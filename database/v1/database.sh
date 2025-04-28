@@ -296,7 +296,7 @@ refresh_unexposed_id_views() {
     # Refresh all unexposed_ids views
     # Note, does not check if exposure exists for every SSP scenario and time step
 
-    for VIEW in unexposed_ids_nasa_nex_fwi unexposed_ids_nasa_nex_pr_percent_change
+    for VIEW in unexposed_ids_nasa_nex_fwi
     do
         echo "Refreshing osm.$VIEW..."
         PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
