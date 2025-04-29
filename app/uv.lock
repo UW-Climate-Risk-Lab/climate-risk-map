@@ -34,10 +34,12 @@ dependencies = [
     { name = "dash-bootstrap-components" },
     { name = "dash-extensions" },
     { name = "dash-leaflet" },
+    { name = "geobuf" },
     { name = "geojson-pydantic" },
     { name = "gunicorn" },
     { name = "httpx" },
     { name = "pandas" },
+    { name = "protobuf" },
     { name = "psycopg2-binary" },
 ]
 
@@ -53,10 +55,12 @@ requires-dist = [
     { name = "dash-bootstrap-components", specifier = "==1.6" },
     { name = "dash-extensions", specifier = "==1.0.16" },
     { name = "dash-leaflet", specifier = "==1.0.15" },
+    { name = "geobuf", specifier = ">=2.0.0" },
     { name = "geojson-pydantic", specifier = ">=1.1.1,<2.0.0" },
     { name = "gunicorn", specifier = ">=23.0.0,<24.0.0" },
     { name = "httpx", specifier = ">=0.27.2,<0.28.0" },
     { name = "pandas", specifier = ">=2.2.3,<3.0.0" },
+    { name = "protobuf", specifier = "==3.20.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.9,<2.10.0" },
 ]
 
@@ -298,6 +302,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e2/80/74846c8af58ed60972d64f23a6cd0c3ac0175677d7555dff9f51bf82c294/flask_caching-2.3.1.tar.gz", hash = "sha256:65d7fd1b4eebf810f844de7de6258254b3248296ee429bdcb3f741bcbf7b98c9", size = 67560 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/00/bb/82daa5e2fcecafadcc8659ce5779679d0641666f9252a4d5a2ae987b0506/Flask_Caching-2.3.1-py3-none-any.whl", hash = "sha256:d3efcf600e5925ea5a2fcb810f13b341ae984f5b52c00e9d9070392f3ca10761", size = 28916 },
+]
+
+[[package]]
+name = "geobuf"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "protobuf" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ed/a9/166da74c1e3b8c6b9644c244de75fa5e001b01fe06311721c84471b9296e/geobuf-2.0.0.tar.gz", hash = "sha256:96a347cd8443cc53a65f34f958b45b0e45c4cca8f1ca3b72078a3aec97605a72", size = 46155 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f3/ec/e174665e4b824ecfad1555746a5bc13eb26de85c66ec61f55eb097c433f0/geobuf-2.0.0-py3-none-any.whl", hash = "sha256:01e89318861a5f80a2980c1fe602c1f378439cbfd3a0d99f1991550956c4ecf6", size = 9718 },
 ]
 
 [[package]]
@@ -552,6 +570,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/96/2d/02d4312c973c6050a18b314a5ad0b3210edb65a906f868e31c111dede4a6/pluggy-1.5.0.tar.gz", hash = "sha256:2cffa88e94fdc978c4c574f15f9e59b7f4201d439195c3715ca9e2486f1d0cf1", size = 67955 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/5f/e351af9a41f866ac3f1fac4ca0613908d9a41741cfcf2228f4ad853b697d/pluggy-1.5.0-py3-none-any.whl", hash = "sha256:44e1ad92c8ca002de6377e165f3e0f1be63266ab4d554740532335b9d75ea669", size = 20556 },
+]
+
+[[package]]
+name = "protobuf"
+version = "3.20.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/3e/40c56d21154a1f3ababb69f675333d7fb70c8293f9ca42ea3e448327fc50/protobuf-3.20.0.tar.gz", hash = "sha256:71b2c3d1cd26ed1ec7c8196834143258b2ad7f444efff26fdc366c6f5e752702", size = 216509 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ae/80/9eaa62a2afcc5407a6b7d2652c208f073df3a5c83b5bff90bf99553fbcf2/protobuf-3.20.0-py2.py3-none-any.whl", hash = "sha256:4eda68bd9e2a4879385e6b1ea528c976f59cd9728382005cc54c28bcce8db983", size = 162127 },
 ]
 
 [[package]]
