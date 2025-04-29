@@ -5,7 +5,9 @@ The methods in the MapService class should return dash-leaflet component objects
 """
 
 import logging
+import base64
 import dash_leaflet as dl
+import dash_leaflet.express as dlx
 
 from typing import List, Tuple
 from dash import html
@@ -101,7 +103,7 @@ class MapService:
             zoom=default_region.map_zoom,
             style=config["style"],
             id=config["id"],
-            preferCanvas=config["preferCanvas"],
+            preferCanvas=config["preferCanvas"]
         )
 
         return map_component
@@ -142,7 +144,9 @@ class MapService:
         return layer
 
     @staticmethod
-    def get_asset_overlays(asset_group_name: str, region_name: str) -> Tuple[List[dl.Overlay], List[str]]:
+    def get_asset_overlays(
+        asset_group_name: str, region_name: str
+    ) -> Tuple[List[dl.Overlay], List[str]]:
         """Get asset overlays for the specified region, and return the overlay geojson
         data and the labels that are checked. We default to checking all asset layers
         when assets are loaded.
@@ -203,6 +207,10 @@ class MapService:
                     dict(weight=5, color="yellow", dashArray="")
                 )
 
+                # data = dlx.geojson_to_geobuf(data)
+                geobuf = dlx._try_import_geobuf()
+                data = base64.b64encode(geobuf.encode(data, 3)).decode()
+
                 layergroup_child = dl.GeoJSON(
                     id=f"{asset.name}-geojson",
                     data=data,
@@ -212,6 +220,7 @@ class MapService:
                     clusterToLayer=clusterToLayer,
                     superClusterOptions=superClusterOptions,
                     pointToLayer=pointToLayer,
+                    format="geobuf",
                 )
 
                 overlay = dl.Overlay(
@@ -231,7 +240,6 @@ class MapService:
 
     @staticmethod
     def get_color_bar(hazard_name: str) -> dl.Colorbar:
-
         hazard = HazardConfig.get_hazard(hazard_name=hazard_name)
 
         if not hazard:

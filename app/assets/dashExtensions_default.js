@@ -20,7 +20,7 @@ window.dashExtensions = Object.assign({}, window.dashExtensions, {
         },
         function1: function(feature, latlng) {
                 const custom_icon = L.icon({
-                    iconUrl: feature.icon_path,
+                    iconUrl: feature.properties.icon_path,
                     iconSize: [15, 15]
                 });
                 return L.marker(latlng, {
@@ -30,12 +30,7 @@ window.dashExtensions = Object.assign({}, window.dashExtensions, {
 
             ,
         function2: function(feature) {
-            return feature.style || {
-                color: feature.properties.style.color,
-                weight: feature.properties.style.weight,
-                fillColor: feature.properties.style.fillColor,
-                fillOpacity: feature.properties.style.fillOpacity
-            };
+            return feature.properties.style;
         }
 
     }

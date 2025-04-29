@@ -69,20 +69,32 @@ class Asset:
             )
 
             # Apply styling
-            feature = self._apply_feature_colors(feature=feature)
+            feature = self._create_feature_style(feature=feature)
 
             # Apply icon url
             feature = self._create_feature_icon_path(feature=feature)
 
             # Create tooltips
-            feature = self._create_feature_toolip(feature=feature)
+            # feature = self._create_feature_toolip(feature=feature)
 
             # Converts geometry to point for clustering 
             # (this improves performance when displaying points on dash-leaflet)
             if self.cluster:
                 feature = self._convert_feature_to_point(feature=feature)
+            
+            feature["properties"] = self._remove_feature_properties(feature["properties"], ["style", "icon_path"])
 
         return geojson
+    
+    def _remove_feature_properties(self, props: Dict, props_to_keep: List[str] = list()):
+
+        new_properties = {}
+
+        for key, value in props.items():
+            if key in props_to_keep:
+                new_properties[key] = value
+
+        return new_properties 
 
     def _create_feature_icon_path(self, feature: Dict):
         """Adds icon path to each feature
@@ -95,20 +107,20 @@ class Asset:
         
         prop_value = feature.get("properties", {}).get(self.custom_icon["property"])
         if prop_value is None:
-            feature["icon_path"] = DEFAULT_ICON_PATH
+            feature["properties"]["icon_path"] = DEFAULT_ICON_PATH
             return feature
         
         for category in self.custom_icon["categories"]:
             if prop_value == category["property_value"]:
-                feature["icon_path"] = category["icon_path"]
+                feature["properties"]["icon_path"] = category["icon_path"]
                 return feature
 
         # If icon path is not found based on property, return the default
-        feature["icon_path"] = DEFAULT_ICON_PATH
+        feature["properties"]["icon_path"] = DEFAULT_ICON_PATH
 
         return feature
 
-    def _apply_feature_colors(self, feature: Dict) -> Dict:
+    def _create_feature_style(self, feature: Dict) -> Dict:
         """
         Preprocesses a GeoJSON feature to include style information based on property values.
 
@@ -121,8 +133,8 @@ class Asset:
         # Make copy here to avoid pointing to instance-level property
         default_style = self.style.copy()
         # Add style information to feature properties
-        if "style" not in feature.keys():
-            feature["style"] = default_style.copy()
+        if "style" not in feature['properties'].keys():
+            feature['properties']["style"] = default_style.copy()
 
         if not self.custom_color:
             # No dynamic coloring configuration, return original
@@ -151,8 +163,8 @@ class Asset:
                 prop_value, self.style["color"]
             )
         if custom_color_code:
-            feature["style"]["color"] = custom_color_code
-            feature["style"]["fillColor"] = custom_color_code
+            feature["properties"]["style"]["color"] = custom_color_code
+            feature["properties"]["style"]["fillColor"] = custom_color_code
 
         return feature
 
@@ -254,7 +266,7 @@ TRANSPARENT_MARKER_CLUSTER = assign(
 CREATE_FEATURE_ICON = assign(
     """
     function(feature, latlng){
-    const custom_icon = L.icon({iconUrl: feature.icon_path, iconSize: [15, 15]});
+    const custom_icon = L.icon({iconUrl: feature.properties.icon_path, iconSize: [15, 15]});
     return L.marker(latlng, {icon: custom_icon})
     }
     """
@@ -263,12 +275,7 @@ CREATE_FEATURE_ICON = assign(
 CREATE_FEATURE_COLOR_STYLE = assign(
     """
     function(feature) {
-        return feature.style || {
-            color: feature.properties.style.color,
-            weight: feature.properties.style.weight,
-            fillColor: feature.properties.style.fillColor,
-            fillOpacity: feature.properties.style.fillOpacity
-        };
+        return feature.properties.style;
     }
     """
 )
