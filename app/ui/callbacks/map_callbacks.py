@@ -117,6 +117,7 @@ def register_map_callbacks(app):
     @app.callback(
         Output(MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"], "children"),
         Output(MapConfig.BASE_MAP_COMPONENT["asset_layer"]["id"], "overlays"),
+        Output("map-loading-placeholder", "children"),
         Input("region-features-change-signal", "data"),
         Input("exposure-select-dropdown", "value"),
         prevent_initial_call=True,
@@ -146,7 +147,7 @@ def register_map_callbacks(app):
             asset_group_name=selected_exposure, region_name=selected_region
         )
 
-        return overlays, overlay_names
+        return overlays, overlay_names, ""
 
     @app.callback(
         [

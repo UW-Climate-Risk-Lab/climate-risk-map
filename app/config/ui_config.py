@@ -221,6 +221,20 @@ LEGEND_BUTTON_STYLE = {
     "gap": "0px",
 }
 
+MAP_FEATURES_LOADING_SPINNER_STYLE = {
+    "position": "absolute",
+    "top": "50%",
+    "left": "50%",
+    "transform": "translate(-50%, -50%)",
+    "zIndex": 1500,  # Very high z-index
+    "backgroundColor": "rgba(255, 255, 255, 0.5)",  # Semi-transparent background
+    "borderRadius": "10px",
+    "padding": "20px",
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+}
+
 POWER_LINE_CUSTOM_COLOR_RANGES = [
     {"min": 0, "max": 100, "color": "#5b8f22", "label": "< 100 kV"},
     {"min": 100, "max": 300, "color": "#0046AD", "label": "100-300 kV"},
