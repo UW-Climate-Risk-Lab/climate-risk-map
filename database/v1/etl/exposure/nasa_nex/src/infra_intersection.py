@@ -11,7 +11,7 @@ import psycopg2 as pg
 import psycopg2.sql as sql
 import xarray as xr
 import xvec
-from shapely import wkt, Point
+from shapely import wkt, Point, LineString, MultiLineString
 
 import src.utils as utils
 import src.constants as constants
@@ -213,6 +213,272 @@ def zonal_aggregation_linestring(
         df_linestring = pd.DataFrame()
     return df_linestring
 
+def simplify_and_extract_points_from_geom(geom, tolerance, id_val, id_column, geometry_column):
+    """
+    Helper function to simplify a single geometry (LineString)
+    and extract points. Handles potential MultiLineStrings after simplification.
+
+    Args:
+        geom (BaseGeometry): A Shapely geometry object (expected LineString).
+        tolerance (float): Simplification tolerance.
+        id_val (any): The ID associated with this geometry.
+        id_column (str): Name for the ID column in the output.
+        geometry_column (str): Name for the geometry column in the output.
+
+    Returns:
+        list: A list of tuples, each containing (id_val, Point).
+              Returns empty list if geometry is invalid or becomes empty after simplification.
+    """
+    # Input validation for the geometry object
+    if geom is None or geom.is_empty or not isinstance(geom, (LineString, MultiLineString)):
+         # Silently ignore non-linestring geometries or handle as needed
+        return []
+
+    points_data = []
+
+    # Handle MultiLineString by iterating through its parts
+    if isinstance(geom, MultiLineString):
+        geoms_to_process = list(geom.geoms) # Process each LineString within the MultiLineString
+    else: # It's a LineString
+        geoms_to_process = [geom]
+
+    for line_geom in geoms_to_process:
+        if not isinstance(line_geom, LineString) or line_geom.is_empty:
+            continue # Skip invalid parts within a MultiLineString
+
+        # Simplify the line. preserve_topology=True prevents self-intersection.
+        # Apply simplification only if tolerance > 0
+        simplified_geom = line_geom.simplify(tolerance, preserve_topology=True) if tolerance > 0 else line_geom
+
+        if simplified_geom.is_empty:
+            continue # Skip if simplification resulted in an empty geometry
+
+        # Extract coordinates. Check if it's still a LineString after simplification.
+        if isinstance(simplified_geom, LineString):
+            coords = list(simplified_geom.coords)
+            points_data.extend([(id_val, Point(p)) for p in coords])
+        # Handle rare case where simplification might result in MultiLineString (e.g., complex self-touching lines)
+        elif isinstance(simplified_geom, MultiLineString):
+             for part in simplified_geom.geoms:
+                 if isinstance(part, LineString) and not part.is_empty:
+                     coords = list(part.coords)
+                     points_data.extend([(id_val, Point(p)) for p in coords])
+
+    return points_data
+
+
+def zonal_aggregation_linestring_optimized(
+    climate: xr.Dataset,
+    infra: gpd.GeoDataFrame,
+    x_dim: str,
+    y_dim: str,
+    simplify_tolerance: float = .001, # Key parameter: Adjust based on CRS units & desired accuracy vs speed. Set to 0 to disable.
+    id_column: str = 'osm_id', # Ensure this matches the ID column in 'infra'
+    geometry_column: str = 'geometry' # Ensure this matches the geometry column in 'infra'
+) -> pd.DataFrame:
+    """
+    Optimized zonal aggregation for linestrings using simplification.
+
+    This function simplifies linestrings before extracting climate data points,
+    reducing the computational load of the extraction and aggregation steps.
+
+    Args:
+        climate (xr.Dataset): Climate data (e.g., temperature, precipitation)
+                              with an `.xvec` accessor enabled. Must have dimensions
+                              specified by `x_dim` and `y_dim`, and temporal info
+                              (e.g., 'time' coord) for `convert_ds_to_df`.
+        infra (gpd.GeoDataFrame): GeoDataFrame containing linestring geometries
+                                  (e.g., roads, rivers). Must have a geometry
+                                  column and a unique ID column. CRS must be
+                                  compatible with `climate` data or projection handled
+                                  implicitly by `xarray-vectorize`.
+        x_dim (str): Name of the longitude/X dimension in the `climate` Dataset.
+        y_dim (str): Name of the latitude/Y dimension in the `climate` Dataset.
+        simplify_tolerance (float): Tolerance for `shapely.simplify` in the units
+                                   of the `infra` GeoDataFrame's CRS. Larger values
+                                   result in fewer points and faster processing, but
+                                   less detail. A value of 0 disables simplification.
+                                   Choose based on data resolution and requirements.
+        id_column (str): Name of the column in `infra` containing unique identifiers
+                         for each linestring feature.
+        geometry_column (str): Name of the active geometry column in `infra`.
+
+    Returns:
+        pd.DataFrame: A DataFrame with aggregated climate statistics (mean, min, max)
+                      grouped by the original linestring ID (`id_column`), 'decade',
+                      and 'month'. Returns an empty DataFrame if no valid data
+                      can be processed.
+
+    Raises:
+        ValueError: If `id_column` or `geometry_column` is not found in `infra`,
+                    or if essential columns for processing are missing.
+        AttributeError: If `climate` dataset lacks the `.xvec` accessor.
+        ImportError: If required libraries (xarray, geopandas, pandas, shapely)
+                     are not installed.
+    """
+    # --- Input Validation ---
+    if not isinstance(infra, gpd.GeoDataFrame) or infra.empty:
+        print("Input 'infra' must be a non-empty GeoDataFrame.")
+        return pd.DataFrame()
+    if not isinstance(climate, xr.Dataset):
+         print("Input 'climate' must be an xarray Dataset.")
+         return pd.DataFrame()
+
+    # Validate climate dimensions
+    if x_dim not in climate.dims and x_dim not in climate.coords:
+         raise ValueError(f"x_dim '{x_dim}' not found in climate dataset dimensions or coordinates.")
+    if y_dim not in climate.dims and y_dim not in climate.coords:
+         raise ValueError(f"y_dim '{y_dim}' not found in climate dataset dimensions or coordinates.")
+    
+    # Validate ID column (check both index and columns)
+    if infra.index.name == id_column:
+        id_series = infra.index # Get IDs from index
+        if id_series.hasnans: logger.warning(f"ID column '{id_column}' (index) contains NaN values.", UserWarning)
+        if not id_series.is_unique: logger.warning(f"ID column '{id_column}' (index) contains duplicate values.", UserWarning)
+    elif id_column in infra.columns:
+        id_series = infra[id_column] # Get IDs from column
+        if id_series.isnull().any(): logger.warning(f"ID column '{id_column}' contains NaN values.", UserWarning)
+        if not id_series.is_unique: logger.warning(f"ID column '{id_column}' contains duplicate values.", UserWarning)
+    else:
+        raise ValueError(f"ID column '{id_column}' not found in GeoDataFrame index or columns: {infra.columns.tolist()}")
+
+
+    print(f"Processing {len(infra)} LineString infrastructure features...")
+    print(f"Simplification tolerance: {simplify_tolerance if simplify_tolerance > 0 else 'Disabled'}")
+
+    # --- Step 1: Simplify Geometries and Extract Points ---
+    all_points_data = []
+    geometries = infra[geometry_column] # Get geometry series
+
+    # Use zip for efficient iteration over IDs and geometries
+    for id_val, geom in zip(id_series, geometries):
+        # Skip if ID is null/NaN
+        if pd.isna(id_val):
+            continue
+        # Use helper function to simplify and extract points
+        points = simplify_and_extract_points_from_geom(geom, simplify_tolerance, id_val, id_column, geometry_column)
+        all_points_data.extend(points)
+
+    if not all_points_data:
+        print("No valid points could be extracted from the geometries after simplification.")
+        return pd.DataFrame()
+
+    print(f"Extracted {len(all_points_data)} points from geometries.")
+
+    # --- Step 2: Create GeoDataFrame from Sampled Points ---
+    try:
+        df_sampled_points = pd.DataFrame(
+            all_points_data, columns=[id_column, geometry_column] # Use parameter names
+        )
+        # Important: Create GDF with correct CRS *before* setting index
+        gdf_sampled_points = gpd.GeoDataFrame(
+            df_sampled_points,
+            geometry=geometry_column, # Use parameter name
+            crs=infra.crs # Inherit CRS from original data
+        )
+        # Set index AFTER creation for compatibility with extract_points
+        # Use the specified id_column as the index name
+        gdf_sampled_points = gdf_sampled_points.set_index(id_column, drop=True) # Drop=True prevents id_column appearing twice
+
+    except Exception as e:
+        print(f"Error creating GeoDataFrame from sampled points: {e}")
+        return pd.DataFrame()
+
+    if gdf_sampled_points.empty:
+         print("GeoDataFrame of sampled points is empty.")
+         return pd.DataFrame()
+
+    # --- Step 3: Extract Climate Data at Point Locations ---
+    print("Extracting climate data at point locations...")
+    try:
+        # xarray-vectorize extracts data for each point using its index (id_column)
+        ds_linestring_points = climate.xvec.extract_points(
+            gdf_sampled_points.geometry, # Pass the GeoDataFrame directly
+            x_coords=x_dim,
+            y_coords=y_dim,
+            # index=gdf_sampled_points.index # Not needed, uses GDF index by default
+        )
+
+
+    except Exception as e:
+        print(f"Error during climate data extraction (climate.xvec.extract_points): {e}")
+        print("Check CRS compatibility between climate data and infrastructure data.")
+        print(f"Climate CRS (if available): {getattr(climate.rio, 'crs', 'Not spatial xarray/rio not available')}")
+        print(f"Infrastructure CRS: {infra.crs}")
+        # Check if bounds overlap roughly (assuming similar CRS for bounds check)
+        try:
+            print(f"Climate bounds (approx): lon={climate[x_dim].min().item()}-{climate[x_dim].max().item()}, lat={climate[y_dim].min().item()}-{climate[y_dim].max().item()}")
+            print(f"Sample points bounds: {gdf_sampled_points.total_bounds}")
+        except Exception as bounds_e:
+            print(f"Could not determine bounds for comparison: {bounds_e}")
+        return pd.DataFrame()
+
+    # --- Step 4: Convert Extracted Data to DataFrame ---
+    # Use the integrated and adapted function
+    df_linestring = convert_ds_to_df(ds=ds_linestring_points)
+
+    if df_linestring.empty:
+        print("DataFrame is empty after converting extracted climate data (convert_ds_to_df returned empty). Check logs.")
+        return pd.DataFrame()
+
+    # --- Step 5: Aggregate Results ---
+    print("Aggregating results...")
+    # Define the aggregations based on the original logic
+    # Consider if 'mean' of median/stddev is appropriate for your analysis.
+    agg_dict = {
+        "ensemble_mean": "mean",
+        "ensemble_median": "mean", # Mean of point medians along the line
+        "ensemble_stddev": "mean", # Mean of point stddevs along the line
+        "ensemble_min": "min",   # Minimum value found at any point along the line
+        "ensemble_max": "max",   # Maximum value found at any point along the line
+        "ensemble_q1": "min",    # Minimum lower quantile (Q1) along the line
+        "ensemble_q3": "max"     # Maximum upper quantile (Q3) along the line
+    }
+
+    # Filter aggregation dict to only include columns present in the DataFrame
+    agg_dict_filtered = {k: v for k, v in agg_dict.items() if k in df_linestring.columns}
+
+    if not agg_dict_filtered:
+        print(f"Error: None of the target ensemble columns found for aggregation in the DataFrame. "
+              f"Available columns: {df_linestring.columns.tolist()}")
+        return pd.DataFrame()
+    else:
+         print(f"Aggregating columns: {list(agg_dict_filtered.keys())}")
+
+
+    # Define grouping columns
+    grouping_cols = [id_column, "decade", "month"]
+    # We already checked these columns exist in convert_ds_to_df, but double-check
+    missing_group_cols = [col for col in grouping_cols if col not in df_linestring.columns]
+    if missing_group_cols:
+        # This shouldn't happen if convert_ds_to_df worked correctly
+        print(f"Critical Error: Missing required grouping columns post-conversion: {missing_group_cols}. DataFrame columns: {df_linestring.columns.tolist()}")
+        return pd.DataFrame()
+
+    try:
+        # Group by the original linestring ID, decade, and month
+        # `observed=True` can improve performance if grouping keys are like categories
+        # `dropna=False` would include groups with NA keys, but we dropped NAs earlier
+        grouped = df_linestring.groupby(grouping_cols, observed=True, dropna=True)
+
+        df_aggregated = grouped.agg(agg_dict_filtered)
+
+        # Optional: Add a count of unique points contributing to each aggregate
+        # df_aggregated['point_count'] = grouped.size()
+
+        df_aggregated = df_aggregated.reset_index()
+        print("Aggregation complete.")
+
+    except KeyError as e:
+        # Should be less likely now with checks, but handle just in case
+        print(f"Error during aggregation: Missing column {e}. Ensure columns {grouping_cols} and ensemble variables exist.")
+        print(f"Columns available for aggregation: {df_linestring.columns.tolist()}")
+        return pd.DataFrame()
+    except Exception as e:
+        print(f"An unexpected error occurred during aggregation: {e}")
+        return pd.DataFrame()
+
+    return df_aggregated
 
 def zonal_aggregation_polygon(
     climate: xr.DataArray,
@@ -304,7 +570,7 @@ def zonal_aggregation(
         df_point = pd.DataFrame()
 
     if len(line_infra != 0):
-        df_linestring = zonal_aggregation_linestring(
+        df_linestring = zonal_aggregation_linestring_optimized(
             climate=climate,
             infra=line_infra,
             x_dim=x_dim,

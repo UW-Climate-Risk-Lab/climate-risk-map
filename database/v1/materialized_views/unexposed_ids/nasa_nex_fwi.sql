@@ -2,9 +2,9 @@ DROP MATERIALIZED VIEW IF EXISTS osm.unexposed_ids_nasa_nex_fwi;
 
 CREATE MATERIALIZED VIEW osm.unexposed_ids_nasa_nex_fwi AS
 WITH all_assets AS (
-    SELECT osm_id, geom FROM osm.data_center
-    UNION ALL
     SELECT osm_id, geom FROM osm.power_grid
+    -- UNION ALL
+    --SELECT osm_id, geom FROM osm.data_center
     -- UNION ALL
     -- SELECT osm_id, geom FROM osm.administrative
     -- UNION ALL

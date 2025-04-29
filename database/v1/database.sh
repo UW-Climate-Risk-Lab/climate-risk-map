@@ -280,7 +280,7 @@ create_views() {
 refresh_asset_views() {
     echo "===== STEP 4a: REFRESHING ASSET VIEWS ====="
 
-    for VIEW in administrative agriculture commercial_real_estate data_center power_grid residential_real_estate
+    for VIEW in power_grid
     do
         echo "Refreshing osm.$VIEW..."
         PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
@@ -442,12 +442,12 @@ main() {
         # Initialize the database
         init_database
 
+        # Run migrations
+        run_migrations
+
         # Run OSM ETL process
         run_osm_etl
 
-        # Run migrations
-        run_migrations
-        
         # Create views
         create_views
         

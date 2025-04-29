@@ -580,23 +580,9 @@
       "polygon_area_threshold": "20.0"
     },
     {
-      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp126/fwi_decade_month_ssp126.zarr",
-      "climate_variable": "fwi",
-      "ssp": "126",
-      "zonal_agg_method": "mean",
-      "polygon_area_threshold": "20.0"
-    },
-    {
       "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp245/fwi_decade_month_ssp245.zarr",
       "climate_variable": "fwi",
       "ssp": "245",
-      "zonal_agg_method": "mean",
-      "polygon_area_threshold": "20.0"
-    },
-    {
-      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp370/fwi_decade_month_ssp370.zarr",
-      "climate_variable": "fwi",
-      "ssp": "370",
       "zonal_agg_method": "mean",
       "polygon_area_threshold": "20.0"
     },

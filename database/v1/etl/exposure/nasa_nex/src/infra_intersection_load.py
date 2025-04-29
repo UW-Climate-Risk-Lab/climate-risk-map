@@ -39,7 +39,7 @@ def main(
     ssp: str,
     climate_variable: str,
     conn: pg.extensions.connection,
-    batch_size: int = 5000,  # Default batch size, adjust based on your data
+    batch_size: int = 50000,  # Default batch size, adjust based on your data
 ):
     # Want to keep ssp in database as ints
     if ssp == 'historical':
