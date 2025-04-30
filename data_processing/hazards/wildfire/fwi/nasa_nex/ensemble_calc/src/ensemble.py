@@ -241,7 +241,7 @@ if __name__ == "__main__":
             "DECADE_MONTH_ENSEMBLE",
             scenario
         )
-        s3_output_zarr = f"fwi_decade_month_{scenario}.zarr"
+        s3_output_zarr = f"{climate_variable}_decade_month_{scenario}.zarr"
         s3_output_uri = f"s3://{s3_output_path / s3_output_zarr}"
 
         try:
