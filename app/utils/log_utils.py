@@ -4,7 +4,7 @@ import sys
 from logging.handlers import RotatingFileHandler
 
 def configure_logging(
-    log_level=logging.INFO,
+    log_level=logging.DEBUG,
     log_format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     log_dir="logs"
 ):

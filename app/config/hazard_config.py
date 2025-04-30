@@ -78,7 +78,7 @@ class HazardConfig:
             unit="",
             min_value=0,
             max_value=50,
-            available_ssp=[126, 245, 370, 585],
+            available_ssp=[245, 585],
             geotiff=Geotiff(
                 format="cogs",
                 s3_bucket=S3_BUCKET,

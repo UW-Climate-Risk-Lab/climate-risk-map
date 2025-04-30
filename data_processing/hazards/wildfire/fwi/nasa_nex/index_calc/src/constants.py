@@ -2,7 +2,7 @@
 INPUT_BUCKET = "nex-gddp-cmip6"
 INPUT_PREFIX = "NEX-GDDP-CMIP6"
 OUTPUT_BUCKET = "uw-crl"
-OUTPUT_PREFIX = "climate-risk-map/backend/climate/scenariomip"
+OUTPUT_PREFIX = "climate-risk-map/backend/climate"
 
 TIME_CHUNK = -1
 

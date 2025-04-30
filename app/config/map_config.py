@@ -90,7 +90,7 @@ class MapConfig:
         Region(
             name="new-york",
             label="New York",
-            dbname="new-york",
+            dbname="new_york",
             map_center_lat=42.7118,
             map_center_lon=-75.0071,
             map_zoom=7,

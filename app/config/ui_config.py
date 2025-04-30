@@ -227,7 +227,7 @@ MAP_FEATURES_LOADING_SPINNER_STYLE = {
     "left": "50%",
     "transform": "translate(-50%, -50%)",
     "zIndex": 1500,  # Very high z-index
-    "backgroundColor": "rgba(255, 255, 255, 0.5)",  # Semi-transparent background
+    "backgroundColor": "rgba(0, 0, 0, 0)",  # Semi-transparent background
     "borderRadius": "10px",
     "padding": "20px",
     "display": "flex",

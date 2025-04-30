@@ -8,6 +8,7 @@ import logging
 import base64
 import dash_leaflet as dl
 import dash_leaflet.express as dlx
+import time
 
 from typing import List, Tuple
 from dash import html
@@ -160,11 +161,14 @@ class MapService:
             contains the actual data to display. The list of strings contain the asset labels
             that are currently checked.
         """
+        start_time_total = time.time()
         overlays = []
         overlay_names = []
 
+        start_time = time.time()
         asset_group = get_asset_group(name=asset_group_name)
         region = MapConfig.get_region(region_name=region_name)
+        logger.debug(f"Time to get asset group and region: {time.time() - start_time:.4f}s")
 
         if not asset_group:
             return list()
@@ -172,13 +176,22 @@ class MapService:
         # Iterate through the specified assets so that each asset gets its own layer
         # These are are configured manually in config/map_config.py
         for asset in asset_group.assets:
+            asset_start_time = time.time()
+            logger.debug(f"Processing asset: {asset.name}")
+            
             try:
                 # Get raw data from DAO
+                dao_start_time = time.time()
                 data = ExposureDAO.get_exposure_data(region=region, assets=[asset])
-
-                data = asset.preprocess_geojson_for_display(geojson=data)
+                logger.debug(f"  Time to get exposure data: {time.time() - dao_start_time:.4f}s")
 
                 # Process data for display
+                preprocess_start_time = time.time()
+                data = asset.preprocess_geojson_for_display(geojson=data)
+                logger.debug(f"  Time to preprocess geojson: {time.time() - preprocess_start_time:.4f}s")
+
+                # Configure display properties
+                config_start_time = time.time()
                 if asset.cluster:
                     # This logic is performed for performance. We
                     # want to "cluster" certain assets (if there are a large number of them)
@@ -187,7 +200,6 @@ class MapService:
                     cluster = asset.cluster
                     clusterToLayer = TRANSPARENT_MARKER_CLUSTER
                     superClusterOptions = asset.superClusterOptions
-
                 else:
                     cluster = False
                     clusterToLayer = None
@@ -206,11 +218,16 @@ class MapService:
                 hover_style_function = arrow_function(
                     dict(weight=5, color="yellow", dashArray="")
                 )
+                logger.debug(f"  Time to configure display properties: {time.time() - config_start_time:.4f}s")
 
-                # data = dlx.geojson_to_geobuf(data)
+                # Convert to geobuf
+                geobuf_start_time = time.time()
                 geobuf = dlx._try_import_geobuf()
                 data = base64.b64encode(geobuf.encode(data, 3)).decode()
+                logger.debug(f"  Time to encode geobuf: {time.time() - geobuf_start_time:.4f}s")
 
+                # Create layer components
+                component_start_time = time.time()
                 layergroup_child = dl.GeoJSON(
                     id=f"{asset.name}-geojson",
                     data=data,
@@ -229,13 +246,16 @@ class MapService:
                     checked=True,
                     children=[dl.LayerGroup(children=[layergroup_child])],
                 )
+                logger.debug(f"  Time to create components: {time.time() - component_start_time:.4f}s")
 
                 overlays.append(overlay)
                 overlay_names.append(asset.label)
+                logger.debug(f"  Total time for asset {asset.name}: {time.time() - asset_start_time:.4f}s")
 
             except Exception as e:
                 logger.error(f"Error creating overlay for {asset.name}: {str(e)}")
 
+        logger.debug(f"Total time for get_asset_overlays: {time.time() - start_time_total:.4f}s")
         return overlays, overlay_names
 
     @staticmethod

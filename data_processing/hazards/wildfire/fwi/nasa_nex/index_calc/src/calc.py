@@ -5,7 +5,7 @@ import time
 import s3fs
 import fsspec
 
-from src.pipeline import CalcConfig
+from pipeline import CalcConfig
 
 def clean_metadata(ds: xr.Dataset) -> xr.Dataset:
     """Remove or clean metadata fields prone to duplication."""
@@ -51,8 +51,9 @@ def calc(ds: xr.Dataset, config: CalcConfig) -> xr.Dataset:
         overwintering=False,
     )
 
-    names = ["dc", "dmc", "ffmc", "isi", "bui", "fwi"]
+    names = ["dc", "dmc", "ffmc", "fwi"]
     ds_fwi = xr.Dataset({name: da for name, da in zip(names, out_fwi)})
+    ds_fwi = ds_fwi.resample(time="M").mean()
     return ds_fwi
 
 def load(config: CalcConfig) -> xr.Dataset:

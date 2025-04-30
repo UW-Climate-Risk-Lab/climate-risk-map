@@ -22,6 +22,15 @@ ASSET_GROUP_DEFINITIONS = {
         ],
         "icon": "assets/icons/electric.svg",
     },
+    "power-grid-core": {
+        "label": "Power Grid Infrastructure",
+        "description": "Power generation, transmission, and distribution assets",
+        "assets": [
+            "osm-power-plant",
+            "osm-power-transmission-line",
+        ],
+        "icon": "assets/icons/electric.svg",
+    },
     "data-infrastructure": {
         "label": "Data & Computing Infrastructure",
         "description": "Data centers and supporting power infrastructure",
@@ -45,7 +54,7 @@ ASSET_DEFINITIONS = {
     "osm-power-plant": {
         "type": "OpenStreetMap",
         "label": "Power Plants",
-        "osm_category": "infrastructure",
+        "osm_category": "power_grid",
         "osm_type": "power",
         "osm_subtype": "plant",
         "geom_types": ["MultiPolygon"],
@@ -93,7 +102,7 @@ ASSET_DEFINITIONS = {
     "osm-power-transmission-line": {
         "type": "OpenStreetMap",
         "label": "Power Transmission Lines",
-        "osm_category": "infrastructure",
+        "osm_category": "power_grid",
         "osm_type": "power",
         "osm_subtype": "line",
         "geom_types": ["LineString"],
@@ -116,7 +125,7 @@ ASSET_DEFINITIONS = {
     "osm-power-distribution-line": {
         "type": "OpenStreetMap",
         "label": "Power Distribution Lines",
-        "osm_category": "infrastructure",
+        "osm_category": "power_grid",
         "osm_type": "power",
         "osm_subtype": "minor_line",
         "geom_types": ["LineString"],
@@ -139,7 +148,7 @@ ASSET_DEFINITIONS = {
     "osm-power-substation": {
         "type": "OpenStreetMap",
         "label": "Power Substations",
-        "osm_category": "infrastructure",
+        "osm_category": "power_grid",
         "osm_type": "power",
         "osm_subtype": "substation",
         "geom_types": ["MultiPolygon", "Point"],

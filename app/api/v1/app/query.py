@@ -233,7 +233,7 @@ class GetDataQueryBuilder:
                 [
                     sql.SQL("INNER JOIN ("),
                     sql.SQL(
-                        "SELECT s.osm_id, s.ssp, s.month, s.decade, s.value_mean AS ensemble_mean, s.value_median AS ensemble_median, s.value_stddev AS ensemble_stddev, s.value_min AS ensemble_min, s.value_max AS ensemble_max, s.value_q1 AS ensemble_q1, s.value_q3 AS ensemble_q3 "
+                        "SELECT s.osm_id, s.ssp, s.month, s.decade, s.ensemble_mean, s.ensemble_median, s.ensemble_stddev, s.ensemble_min, s.ensemble_max, s.ensemble_q1, s.ensemble_q3 "
                     ),
                     sql.SQL("FROM {climate_schema}.{climate_table} s ").format(
                         climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),

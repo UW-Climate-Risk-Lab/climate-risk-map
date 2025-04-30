@@ -109,13 +109,13 @@ def reduce_model_stats(da: xr.DataArray) -> xr.Dataset:
     # Create a new Dataset with the computed statistics
     stats_ds = xr.Dataset(
         {
-            "value_mean": mean,
-            "value_median": median,
-            "value_stddev": stddev,
-            "value_min": min_val,
-            "value_max": max_val,
-            "value_q1": q1,  # quartiles.sel(quantile=0.25).drop("quantile"),
-            "value_q3": q3,  # quartiles.sel(quantile=0.75).drop("quantile"),
+            "ensemble_mean": mean,
+            "ensemble_median": median,
+            "ensemble_stddev": stddev,
+            "ensemble_min": min_val,
+            "ensemble_max": max_val,
+            "ensemble_q1": q1,  # quartiles.sel(quantile=0.25).drop("quantile"),
+            "ensemble_q3": q3,  # quartiles.sel(quantile=0.75).drop("quantile"),
         },
         attrs=da.attrs,  # Copy original attributes, if any
     )
@@ -147,7 +147,7 @@ def load_data(
             logger.warning(f"Skipping {model_name}: missing required scenario")
             continue
 
-        model_pattern = f"{model_path}/{scenario}/*/{climate_variable}_day_*.zarr"
+        model_pattern = f"{model_path}/{scenario}/*/{climate_variable}_month_*.zarr"
 
         zarr_stores = fs.glob(model_pattern)
 
@@ -224,7 +224,7 @@ if __name__ == "__main__":
     # Shared Socioeconomic Pathways (SSPS) and historical
     scenarios = ["ssp126", "ssp245", "ssp370", "ssp585", "historical"]
     climate_variable = "fwi"
-    s3_prefix = "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6"
+    s3_prefix = "climate-risk-map/backend/climate/NEX-GDDP-CMIP6"
     s3_bucket = os.environ["S3_BUCKET"]
 
     for scenario in scenarios:

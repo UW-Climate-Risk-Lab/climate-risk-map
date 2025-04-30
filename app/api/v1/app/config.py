@@ -1,5 +1,5 @@
 OSM_AVAILABLE_CATEGORIES = {
-    "infrastructure": {"has_subtypes": True},
+    "power_grid": {"has_subtypes": True},
     "amenity": {"has_subtypes": True},
     "place": {"has_subtypes": False},
     "landuse": {"has_subtypes": False}
