@@ -7,6 +7,8 @@ from pathlib import PurePosixPath
 import xarray as xr
 import fsspec
 import s3fs
+import dask
+from dask.distributed import Client, LocalCluster
 
 from typing import List, Set
 
@@ -220,42 +222,60 @@ def main(scenario: str, s3_bucket: str, s3_prefix: str, climate_variable: str) -
 
 
 if __name__ == "__main__":
+    # Set up Dask local cluster and client
+    n_workers = max(1, multiprocessing.cpu_count() - 1)  # Leave one core free
+    memory_available = 110  # Adjust based on your system's available memory
+    memory_limit = int(int(memory_available) / n_workers)
+    
+    logger.info(f"Setting up Dask LocalCluster with {n_workers} workers")
+    cluster = LocalCluster(
+        n_workers=n_workers,
+        threads_per_worker=3,
+        memory_limit=f"{memory_limit}GB",
+    )
+    client = Client(cluster)
+    logger.info(f"Dask dashboard available at: {client.dashboard_link}")
 
-    # Shared Socioeconomic Pathways (SSPS) and historical
-    scenarios = ["ssp126", "ssp245", "ssp370", "ssp585", "historical"]
-    climate_variable = "fwi"
-    s3_prefix = "climate-risk-map/backend/climate/NEX-GDDP-CMIP6"
-    s3_bucket = os.environ["S3_BUCKET"]
+    try:
+        # Shared Socioeconomic Pathways (SSPS) and historical
+        scenarios = ["ssp126", "ssp245", "ssp370", "ssp585", "historical"]
+        climate_variable = "fwi"
+        s3_prefix = "climate-risk-map/backend/climate/NEX-GDDP-CMIP6"
+        s3_bucket = os.environ["S3_BUCKET"]
 
-    for scenario in scenarios:
-        logger.info(f"STARTING PIPELINE FOR {scenario}")
-        ds = main(
-            scenario=scenario,
-            s3_bucket=s3_bucket,
-            s3_prefix=s3_prefix,
-            climate_variable=climate_variable,
-        )
-        s3_output_path = PurePosixPath(
-            s3_bucket,
-            s3_prefix,
-            "DECADE_MONTH_ENSEMBLE",
-            scenario
-        )
-        s3_output_zarr = f"{climate_variable}_decade_month_{scenario}.zarr"
-        s3_output_uri = f"s3://{s3_output_path / s3_output_zarr}"
-
-        try:
-            fs = s3fs.S3FileSystem(
-                anon=False,
-                )
-            # Let to_zarr() handle the computation
-            ds.to_zarr(
-                store=s3fs.S3Map(root=s3_output_uri, s3=fs),
-                mode="w",
-                consolidated=True,
+        for scenario in scenarios:
+            logger.info(f"STARTING PIPELINE FOR {scenario}")
+            ds = main(
+                scenario=scenario,
+                s3_bucket=s3_bucket,
+                s3_prefix=s3_prefix,
+                climate_variable=climate_variable,
             )
+            s3_output_path = PurePosixPath(
+                s3_bucket,
+                s3_prefix,
+                "DECADE_MONTH_ENSEMBLE",
+                scenario
+            )
+            s3_output_zarr = f"{climate_variable}_decade_month_{scenario}.zarr"
+            s3_output_uri = f"s3://{s3_output_path / s3_output_zarr}"
 
-        except Exception as e:
-            print(f"Error writing to s3: {str(e)}")
-            raise ValueError
-        logger.info(f"PIPELINE SUCCEEDED FOR SSP {scenario}")
+            try:
+                fs = s3fs.S3FileSystem(
+                    anon=False,
+                    )
+                # Let to_zarr() handle the computation
+                ds.to_zarr(
+                    store=s3fs.S3Map(root=s3_output_uri, s3=fs),
+                    mode="w", 
+                    consolidated=True,
+                )
+            except Exception as e:
+                print(f"Error writing to s3: {str(e)}")
+                raise ValueError
+            logger.info(f"PIPELINE SUCCEEDED FOR SSP {scenario}")
+    finally:
+        # Make sure to close the client when done
+        client.close()
+        cluster.close()
+        logger.info("Dask client and cluster closed")
