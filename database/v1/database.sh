@@ -32,6 +32,7 @@ OSM_ETL_DIR="$ROOT_DIR/etl/osm"
 EXPOSURE_ETL_DIR="$ROOT_DIR/etl/exposure/nasa_nex"
 ASSET_GROUP_DIR="$ROOT_DIR/materialized_views/asset_groups"
 UNEXPOSED_DIR="$ROOT_DIR/materialized_views/unexposed_ids"
+GEOTIFF_ETL_DIR="$ROOT_DIR/etl/geotiff"
 CONFIG_JSON="$ROOT_DIR/config.json"
 
 if [ ! -f "$CONFIG_JSON" ]; then
@@ -307,7 +308,7 @@ refresh_unexposed_id_views() {
 
 # Step 5: Run Climate ETL Process
 run_exposure_etl() {
-    echo "===== STEP 6: RUNNING CLIMATE ETL PROCESS ====="
+    echo "===== STEP 5: RUNNING CLIMATE ETL PROCESS ====="
     
     # Check if Docker is installed
     if ! command -v docker &> /dev/null; then
@@ -408,7 +409,85 @@ run_exposure_etl() {
     echo "Climate ETL process completed successfully for all datasets"
 }
 
+# Step 6: Run Geotiff Process
+run_geotiff_etl() {
+    echo "===== STEP 6: RUNNING GEOTIFF ETL PROCESS ====="
+    
+    # Check if Docker is installed
+    if ! command -v docker &> /dev/null; then
+        echo "Error: Docker is not installed or not in PATH"
+        exit 1
+    fi
+    
+    # Check if ETL directory exists
+    if [ ! -d "$GEOTIFF_ETL_DIR" ]; then
+        echo "Error: Geotiff ETL directory not found at $GEOTIFF_ETL_DIR"
+        exit 1
+    fi
+    
+    # Check if Dockerfile exists in ETL directory
+    if [ ! -f "$GEOTIFF_ETL_DIR/Dockerfile" ]; then
+        echo "Error: Dockerfile not found in Climate ETL directory"
+        exit 1
+    fi
+    
+    
+    # Navigate to ETL directory
+    cd "$GEOTIFF_ETL_DIR"
+    
+    # Build Docker image
+    echo "Building Geotiff ETL Docker image..."
+    docker build -t database-v1-geotiff-etl .
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to build Geotiff ETL Docker image"
+        cd "$ROOT_DIR"  # Return to root directory
+        exit 1
+    fi
+    
+    # Get the number of datasets
+    GEOTIFF_DATASET_COUNT=$(jq '.geotiff_args | length' "$CONFIG_JSON")
+    echo "Found $GEOTIFF_DATASET_COUNT climate datasets to process"
+    
+    # Loop through each dataset in the JSON file
+    for ((i=0; i<$GEOTIFF_DATASET_COUNT; i++)); do
+        # Extract dataset properties
+        S3_PREFIX_INPUT_GEOTIFF=$(jq -r ".geotiff_args[$i].s3_prefix_input" "$CONFIG_JSON")
+        S3_URI_INPUT_GEOTIFF="s3://${S3_BUCKET}/${S3_PREFIX_INPUT_GEOTIFF}"
+        S3_PREFIX_GEOTIFF=$(jq -r ".geotiff_args[$i].s3_prefix_geotiff" "$CONFIG_JSON")
 
+        CLIMATE_VARIABLE=$(jq -r ".climate_exposure_args[$i].climate_variable" "$CONFIG_JSON")
+        SSP=$(jq -r ".climate_exposure_args[$i].ssp" "$CONFIG_JSON")
+        ZONAL_AGG_METHOD=$(jq -r ".climate_exposure_args[$i].zonal_agg_method" "$CONFIG_JSON")
+        POLYGON_AREA_THRESHOLD=$(jq -r ".climate_exposure_args[$i].polygon_area_threshold" "$CONFIG_JSON")
+        
+        echo "Processing geotiff $((i+1))/$GEOTIFF_DATASET_COUNT:"
+        echo "  - Region: $PG_DBNAME"
+        
+        # Run Docker container with environment variables and arguments
+        echo "Running Geotiff ETL process for climate dataset $((i+1))..."
+        
+        docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+            database-v1-geotiff-etl \
+            --s3-bucket "$S3_BUCKET" \
+            --s3-uri-input "$S3_URI_INPUT_GEOTIFF" \
+            --s3-prefix-geotiff "$S3_PREFIX_GEOTIFF" \
+            --region "$PG_DBNAME"
+        
+        if [ $? -ne 0 ]; then
+            echo "Error: Geotiff ETL process failed for dataset $((i+1))"
+            cd "$ROOT_DIR"  # Return to root directory
+            exit 1
+        fi
+        
+        echo "Geotiff dataset $((i+1)) processed successfully"
+    done
+    
+    # Return to root directory
+    cd "$ROOT_DIR"
+    
+    echo "Geotiff ETL process completed successfully for all datasets"
+}
 
 # Main execution
 main() {
@@ -438,6 +517,9 @@ main() {
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
 
+        # Run Geotiff pipeline
+        run_geotiff_etl
+
     else
         # Initialize the database
         init_database
@@ -456,6 +538,9 @@ main() {
 
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
+
+        # Run Geotiff pipeline
+        run_geotiff_etl
 
     fi
 

@@ -17,6 +17,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+X_DIM = "lon"
+Y_DIM = "lat"
 
 @dataclass
 class GeotiffTask:
@@ -52,35 +54,22 @@ class S3Handler:
             return False
 
 
-class StateGeometryFetcher:
-    """Class responsible for fetching and processing USA geometry data"""
+class RegionGeometryFetcher:
+    """Class responsible for fetching and processing region geometry data"""
 
-    STATES_GEOJSON_PATH = "assets/States.json"
-    USA_GEOJSON_PATH = "assets/US.geojson"
 
     @staticmethod
-    def get_state_geometry(state: str) -> gpd.GeoDataFrame:
+    def get_region_geometry(region: str) -> gpd.GeoDataFrame:
 
-        if state.lower() == "usa":
-            gdf = gpd.read_file(StateGeometryFetcher.USA_GEOJSON_PATH)
-            return gdf
+        region_file = f"regions/{region}.geojson"
 
-        # Handle individual state
-        gdf = gpd.read_file(StateGeometryFetcher.STATES_GEOJSON_PATH)
+        # Handle individual region
+        gdf = gpd.read_file(region_file)
 
-        # Normalize state name for matching
-        normalized_state = state.lower().replace("-", " ").replace("_", " ")
+        if gdf.empty:
+            raise ValueError(f"region '{region}' not found in geometry data")
 
-        # Create lowercase name column for matching
-        gdf["name"] = gdf["NAME"].str.lower()
-
-        # Filter to requested state
-        state_gdf = gdf[gdf["name"] == normalized_state]
-
-        if state_gdf.empty:
-            raise ValueError(f"State '{state}' not found in geometry data")
-
-        return state_gdf
+        return gdf
 
 
 class GeotiffProcessor:
@@ -121,7 +110,7 @@ class GeotiffProcessor:
     def prepare_tasks(
         ds: xr.Dataset,
         geometry: gpd.GeoDataFrame,
-        state_name: str,
+        region_name: str,
         output_dir: Path,
         s3_bucket: str,
         s3_prefix: str,
@@ -132,7 +121,7 @@ class GeotiffProcessor:
         Args:
             ds (xr.Dataset): Dataset to process
             geometry (gpd.GeoDataFrame): Geodataframe containing geometries of clipping mask to use
-            state_name (str): State/region name for use on output files
+            Region_name (str): region/region name for use on output files
             output_dir (Path): Local (temp) directory to save generated geotiffs temporarily
             s3_bucket (str): S3 bucket name
             s3_prefix (str): S3 prefix for uploads
@@ -142,18 +131,22 @@ class GeotiffProcessor:
         """
 
         tasks = []
+        # Converts 0-360 longitude to -180-180 longitude. In line with OpenStreetMap database and geojson region files
+        ds = ds.assign_coords({X_DIM: (((ds[X_DIM] + 180) % 360) - 180)})
+        ds = ds.sortby(X_DIM)
 
         # Loop through each variable and timestep(ASSUME decade month, for example 2030-08, 2030-09, etc...) so that
         # we generate an individual geotiff file per variable and timestep
         for variable in ds.keys():
             for decade_month in ds["decade_month"].data:
                 da = ds[variable].sel(decade_month=decade_month)
+                da.rio.set_spatial_dims(x_dim=X_DIM, y_dim=Y_DIM, inplace=True)
 
                 clipped_array = da.rio.clip(
-                    geometry.geometry.values, geometry.crs, drop=True, all_touched=False
+                    geometry.geometry.values, geometry.crs, drop=True, all_touched=True
                 )
 
-                file_name = f"{variable}-{decade_month}-{state_name}.tif"
+                file_name = f"{variable}-{decade_month}-{region_name}.tif"
                 output_path = output_dir / file_name
 
                 task = GeotiffTask(
@@ -177,7 +170,7 @@ class MainProcessor:
         s3_bucket: str,
         s3_uri_input: str,
         s3_prefix_geotiff: str,
-        state: str,
+        region: str,
         crs: str,
         x_dim: str,
         y_dim: str,
@@ -191,7 +184,7 @@ class MainProcessor:
             s3_bucket (str): AWS S3 bucket name
             s3_uri_input (str): S3 URI for input climate zarr data
             s3_prefix_geotiff (str): S3 prefix for output geotiffs directory
-            state (str): US state to process
+            region (str): US region to process
             crs (str, optional): Coordinate reference system. Defaults to "4326".
             x_dim (str, optional): X dimension name. Defaults to "lon".
             y_dim (str, optional): Y dimension name. Defaults to "lat".
@@ -203,7 +196,7 @@ class MainProcessor:
         self.s3_bucket = s3_bucket
         self.s3_uri_input = s3_uri_input
         self.s3_prefix_geotiff = s3_prefix_geotiff
-        self.state = state
+        self.region = region
         self.crs = crs
         self.x_dim = x_dim
         self.y_dim = y_dim
@@ -213,9 +206,12 @@ class MainProcessor:
     def process(self) -> None:
         """Process climate data, generate geotiffs, and upload them to S3."""
         try:
-            # Get state geometry
-            logger.info(f"Fetching geometry for {self.state}")
-            gdf = StateGeometryFetcher.get_state_geometry(state=self.state)
+
+            s3_prefix_geotiff = f"{self.s3_prefix_geotiff}/{self.region}"
+
+            # Get region geometry
+            logger.info(f"Fetching geometry for {self.region}")
+            gdf = RegionGeometryFetcher.get_region_geometry(region=self.region)
 
             # Load dataset
             logger.info(f"Loading dataset from {self.s3_uri_input}")
@@ -238,10 +234,10 @@ class MainProcessor:
                 tasks = GeotiffProcessor.prepare_tasks(
                     ds=ds,
                     geometry=gdf,
-                    state_name=self.state,
+                    region_name=self.region,
                     output_dir=tmp_path,
                     s3_bucket=self.s3_bucket,
-                    s3_prefix=self.s3_prefix_geotiff,
+                    s3_prefix=s3_prefix_geotiff,
                     geotiff_driver=self.geotiff_driver
                 )
                 logger.info(f"Prepared {len(tasks)} geotiff tasks")
@@ -314,7 +310,7 @@ class MainProcessor:
 def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Process climate data for a given state and upload as geotiffs"
+        description="Process climate data for a given region and upload as geotiffs"
     )
 
     parser.add_argument("--s3-bucket", required=True, help="S3 bucket name")
@@ -327,7 +323,7 @@ def parse_arguments():
         help="S3 base prefix for outputting geotiffs",
     )
     parser.add_argument(
-        "--state", required=True, help="US State output mask for geotiff"
+        "--region", required=True, help="Region output mask for geotiff"
     )
     parser.add_argument(
         "--crs",
@@ -367,7 +363,7 @@ def main():
         s3_bucket=args.s3_bucket,
         s3_uri_input=args.s3_uri_input,
         s3_prefix_geotiff=args.s3_prefix_geotiff,
-        state=args.state,
+        region=args.region,
         crs=args.crs,
         x_dim=args.x_dim,
         y_dim=args.y_dim,

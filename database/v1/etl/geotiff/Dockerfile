@@ -52,7 +52,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
 # Set working directory
 WORKDIR /app
 
-COPY src/main.py  ./
-COPY src/assets ./assets
+COPY src/main.py  .
+COPY src/regions ./regions
     
 ENTRYPOINT ["/bin/bash", "-c", "source /app/.venv/bin/activate && exec python main.py \"$@\"", "--"]

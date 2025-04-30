@@ -18,9 +18,9 @@ The current implementation expects the input dataset to have a `decade_month` di
 ```bash
 python src/main.py \
     --s3-bucket my-bucket \
-    --s3-uri-input s3://my-bucket/climate-data/dataset.zarr \
-    --s3-prefix-geotiff climate-data/geotiffs \
-    --state California
+    --s3-uri-input s3://MY-BUCKET/climate-risk-map/backend/climate/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp126/fwi_decade_month_ssp126.zarr \
+    --s3-prefix-geotiff climate-risk-map/frontend/NEX-GDDP-CMIP6/fwi/ssp126/cogs \
+    --region california
 ```
 
 ### Optional Arguments
@@ -33,7 +33,7 @@ python src/main.py \
 
 ## Output Format
 
-Files are named using the pattern: `{variable}-{decade_month}-{state}.tif`
+Files are named using the pattern: `{variable}-{decade_month}-{region}.tif`
 
 Example: `temperature-2030-08-california.tif`
 
@@ -48,9 +48,9 @@ Example: `temperature-2030-08-california.tif`
     docker run -v ~/.aws/credentials:/root/.aws/credentials:ro \
     data_processing/geotiff \
     --s3-bucket="my-bucket" \
-    --s3-uri-input="s3://path/to/data/data.zarr" \
-    --s3-prefix-geotiff="processed/data/geotiffs" \
-    --state="washington"
+    --s3-uri-input="s3://MY-BUCKET/climate-risk-map/backend/climate/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp126/fwi_decade_month_ssp126.zarr" \
+    --s3-prefix-geotiff="climate-risk-map/frontend/NEX-GDDP-CMIP6/fwi/ssp126/cogs" \
+    --region="washington"
     ```
 
 ## Dependencies

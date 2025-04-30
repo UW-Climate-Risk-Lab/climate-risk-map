@@ -6,10 +6,10 @@ WITH all_assets AS (
         UNION ALL
     SELECT osm_id, geom FROM osm.data_center
         UNION ALL
-    -- SELECT osm_id, geom FROM osm.administrative
-    -- UNION ALL
-    -- SELECT osm_id, geom FROM osm.agriculture
-    -- UNION ALL
+    SELECT osm_id, geom FROM osm.administrative
+        UNION ALL
+    SELECT osm_id, geom FROM osm.agriculture
+        UNION ALL
     SELECT osm_id, geom FROM osm.commercial_real_estate WHERE osm_subtype IS NOT NULL
     
     
