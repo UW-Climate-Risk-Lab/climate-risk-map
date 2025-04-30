@@ -44,7 +44,7 @@ class MapConfig:
         "default_region_name": "usa",
         "base_map_layer": {
             "id": "base-map-layer",
-            "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+            "url": "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
             "attribution": '&copy; <a href="https://carto.com/attributions">CARTO</a>',
         },
         "drawn_shapes_layer": {
@@ -68,7 +68,7 @@ class MapConfig:
         },
         "hazard_tile_layer": {
             "id": "hazard-tile-layer",
-            "placeholder_url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+            "placeholder_url": "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
             "placeholder_opacity": 1,
         },
         "asset_layer": {"id": "asset-layer"},
@@ -84,7 +84,11 @@ class MapConfig:
             map_center_lon=-120.7129,
             map_zoom=7,
             geojson=ASSETS_PATH + "/geojsons/regions/washington.geojson",
-            available_asset_groups=[get_asset_group("power-grid")],
+            available_asset_groups=[
+                get_asset_group("power-grid"),
+                get_asset_group("data-infrastructure"),
+                get_asset_group("commercial-real-estate")
+            ],
             available_download=True,
         ),
         Region(
@@ -95,7 +99,9 @@ class MapConfig:
             map_center_lon=-75.0071,
             map_zoom=7,
             geojson=ASSETS_PATH + "/geojsons/regions/new-york.geojson",
-            available_asset_groups=[get_asset_group("power-grid")],
+            available_asset_groups=[get_asset_group("power-grid"),
+                                    get_asset_group("data-infrastructure"),
+                                    get_asset_group("commercial-real-estate")],
             available_download=False,
         ),
         Region(
@@ -107,6 +113,21 @@ class MapConfig:
             map_zoom=4,
             geojson=ASSETS_PATH + "/geojsons/regions/usa.geojson",
             available_asset_groups=[get_asset_group("hifld-high-voltage-power-grid")],
+            available_download=False,
+        ),
+        Region(
+            name="south-korea",
+            label="South Korea",
+            dbname="south_korea",
+            map_center_lon=128.0,
+            map_center_lat=36.5,
+            map_zoom=7,
+            geojson=ASSETS_PATH + "/geojsons/regions/south-korea.geojson",
+            available_asset_groups=[
+                get_asset_group("power-grid"),
+                get_asset_group("data-infrastructure"),
+                get_asset_group("commercial-real-estate")
+            ],
             available_download=False,
         ),
     ]

@@ -10,6 +10,16 @@
         "y_max": "50.2"
       }
     },
+    "south_korea": {
+      "osm_region": "asia",
+      "osm_subregion": "south-korea",
+      "bounding_box": {
+        "x_min": "123.0",
+        "y_min": "32.6",
+        "x_max": "132.0",
+        "y_max": "39.3"
+      }
+    },
     "washington": {
       "osm_region": "north-america/us",
       "osm_subregion": "washington",

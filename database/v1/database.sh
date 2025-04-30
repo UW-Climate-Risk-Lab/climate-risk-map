@@ -280,7 +280,7 @@ create_views() {
 refresh_asset_views() {
     echo "===== STEP 4a: REFRESHING ASSET VIEWS ====="
 
-    for VIEW in power_grid
+    for VIEW in power_grid commercial_real_estate data_center agriculture administrative
     do
         echo "Refreshing osm.$VIEW..."
         PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \

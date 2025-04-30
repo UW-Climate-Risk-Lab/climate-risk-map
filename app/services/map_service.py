@@ -9,6 +9,7 @@ import base64
 import dash_leaflet as dl
 import dash_leaflet.express as dlx
 import time
+import os
 
 from typing import List, Tuple
 from dash import html
@@ -25,6 +26,8 @@ from config.exposure import (
     CREATE_FEATURE_ICON,
     CREATE_FEATURE_COLOR_STYLE,
 )
+from utils import file_utils
+from config.settings import ASSETS_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +174,7 @@ class MapService:
         logger.debug(f"Time to get asset group and region: {time.time() - start_time:.4f}s")
 
         if not asset_group:
-            return list()
+            return list(), list()
 
         # Iterate through the specified assets so that each asset gets its own layer
         # These are are configured manually in config/map_config.py
@@ -180,15 +183,27 @@ class MapService:
             logger.debug(f"Processing asset: {asset.name}")
             
             try:
-                # Get raw data from DAO
-                dao_start_time = time.time()
-                data = ExposureDAO.get_exposure_data(region=region, assets=[asset])
-                logger.debug(f"  Time to get exposure data: {time.time() - dao_start_time:.4f}s")
+                # Check for cached data before retrieving from DAO
+                cache_check_time = time.time()
+                use_cache = file_utils.cache_exists(region, asset, ASSETS_PATH)
+                logger.debug(f"  Time to check cache: {time.time() - cache_check_time:.4f}s")
+                
+                if use_cache:
+                    logger.info(f"Using cached geobuf data for {asset.name} in {region.name}")
+                    data_url = file_utils.get_asset_cache_url(region, asset, ASSETS_PATH)
+                    use_url = True
+                    data = None
+                else:
+                    # Get raw data from DAO
+                    dao_start_time = time.time()
+                    data = ExposureDAO.get_exposure_data(region=region, assets=[asset])
+                    logger.debug(f"  Time to get exposure data: {time.time() - dao_start_time:.4f}s")
 
-                # Process data for display
-                preprocess_start_time = time.time()
-                data = asset.preprocess_geojson_for_display(geojson=data)
-                logger.debug(f"  Time to preprocess geojson: {time.time() - preprocess_start_time:.4f}s")
+                    # Process data for display
+                    preprocess_start_time = time.time()
+                    data = asset.preprocess_geojson_for_display(geojson=data)
+                    logger.debug(f"  Time to preprocess geojson: {time.time() - preprocess_start_time:.4f}s")
+                    use_url = False
 
                 # Configure display properties
                 config_start_time = time.time()
@@ -220,25 +235,45 @@ class MapService:
                 )
                 logger.debug(f"  Time to configure display properties: {time.time() - config_start_time:.4f}s")
 
-                # Convert to geobuf
-                geobuf_start_time = time.time()
-                geobuf = dlx._try_import_geobuf()
-                data = base64.b64encode(geobuf.encode(data, 3)).decode()
-                logger.debug(f"  Time to encode geobuf: {time.time() - geobuf_start_time:.4f}s")
-
                 # Create layer components
                 component_start_time = time.time()
-                layergroup_child = dl.GeoJSON(
-                    id=f"{asset.name}-geojson",
-                    data=data,
-                    hoverStyle=hover_style_function,
-                    style=style_function,
-                    cluster=cluster,
-                    clusterToLayer=clusterToLayer,
-                    superClusterOptions=superClusterOptions,
-                    pointToLayer=pointToLayer,
-                    format="geobuf",
-                )
+                
+                if use_url:
+                    # Use URL to the cached geobuf file
+                    layergroup_child = dl.GeoJSON(
+                        id=f"{asset.name}-geojson",
+                        url=data_url,
+                        format="geobuf",
+                        hoverStyle=hover_style_function,
+                        style=style_function,
+                        cluster=cluster,
+                        clusterToLayer=clusterToLayer,
+                        superClusterOptions=superClusterOptions,
+                        pointToLayer=pointToLayer,
+                    )
+                else:
+                    # Convert to geobuf and cache for future use
+                    geobuf_start_time = time.time()
+                    geobuf = dlx._try_import_geobuf()
+                    encoded_data = base64.b64encode(geobuf.encode(data, 3)).decode()
+                    logger.debug(f"  Time to encode geobuf: {time.time() - geobuf_start_time:.4f}s")
+                    
+                    # Cache the data for future requests
+                    cache_start_time = time.time()
+                    file_utils.write_geobuf_to_cache(region, asset, encoded_data, ASSETS_PATH)
+                    logger.debug(f"  Time to write to cache: {time.time() - cache_start_time:.4f}s")
+                    
+                    layergroup_child = dl.GeoJSON(
+                        id=f"{asset.name}-geojson",
+                        data=encoded_data,
+                        format="geobuf",
+                        hoverStyle=hover_style_function,
+                        style=style_function,
+                        cluster=cluster,
+                        clusterToLayer=clusterToLayer,
+                        superClusterOptions=superClusterOptions,
+                        pointToLayer=pointToLayer,
+                    )
 
                 overlay = dl.Overlay(
                     id=asset.name,

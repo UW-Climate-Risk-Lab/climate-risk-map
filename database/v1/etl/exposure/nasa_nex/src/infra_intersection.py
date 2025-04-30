@@ -272,7 +272,7 @@ def zonal_aggregation_linestring_optimized(
     infra: gpd.GeoDataFrame,
     x_dim: str,
     y_dim: str,
-    simplify_tolerance: float = .001, # Key parameter: Adjust based on CRS units & desired accuracy vs speed. Set to 0 to disable.
+    simplify_tolerance: float = .0001, # Key parameter: Adjust based on CRS units & desired accuracy vs speed. Set to 0 to disable.
     id_column: str = 'osm_id', # Ensure this matches the ID column in 'infra'
     geometry_column: str = 'geometry' # Ensure this matches the geometry column in 'infra'
 ) -> pd.DataFrame:

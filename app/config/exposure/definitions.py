@@ -22,15 +22,6 @@ ASSET_GROUP_DEFINITIONS = {
         ],
         "icon": "assets/icons/electric.svg",
     },
-    "power-grid-core": {
-        "label": "Power Grid Infrastructure",
-        "description": "Power generation, transmission, and distribution assets",
-        "assets": [
-            "osm-power-plant",
-            "osm-power-transmission-line",
-        ],
-        "icon": "assets/icons/electric.svg",
-    },
     "data-infrastructure": {
         "label": "Data & Computing Infrastructure",
         "description": "Data centers and supporting power infrastructure",
@@ -40,6 +31,16 @@ ASSET_GROUP_DEFINITIONS = {
             "osm-power-transmission-line"
         ],
         "icon": "assets/icons/data-center.svg",
+    },
+    "commercial-real-estate": {
+        "label": "Commercial Real Estate",
+        "description": "Retail, Office, St",
+        "assets": [
+            "osm-commercial-building",
+            "osm-office-building",
+            "osm-hotel"
+        ],
+        "icon": None
     },
     "hifld-high-voltage-power-grid": {
         "label": "High Voltage Transmission Lines",
@@ -187,7 +188,7 @@ ASSET_DEFINITIONS = {
             "fillOpacity": 0.5,
         },
         "cluster": True,
-        "superClusterOptions": {"radius": 1},
+        "superClusterOptions": {"radius": 20},
         "custom_color": None,
         "custom_icon": {
             "property": "telecom",
@@ -204,7 +205,7 @@ ASSET_DEFINITIONS = {
     "osm-storage-rental": {
         "type": "OpenStreetMap",
         "label": "Storage Rental Facility",
-        "osm_category": "shop",
+        "osm_category": "commericial_real_estate",
         "osm_type": "shop",
         "osm_subtype": "storage_rental",
         "geom_types": ["MultiPolygon", "Point"],
@@ -224,6 +225,90 @@ ASSET_DEFINITIONS = {
                     "property_value": "storage_rental",
                     "icon_path": ASSETS_PATH + "/icons/storage-rental.svg",
                     "label": "Storage Rental Facility",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-commercial-building": {
+        "type": "OpenStreetMap",
+        "label": "Commercial Building",
+        "osm_category": "commercial_real_estate",
+        "osm_type": "building",
+        "osm_subtype": "commercial",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": True,
+        "superClusterOptions": {"radius": 20},
+        "custom_color": None,
+        "custom_icon": {
+            "property": "building",
+            "categories": [
+                {
+                    "property_value": "commercial",
+                    "icon_path": DEFAULT_ICON_PATH,
+                    "label": "Commercial Building",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-office-building": {
+        "type": "OpenStreetMap",
+        "label": "Commercial Office Building",
+        "osm_category": "commercial_real_estate",
+        "osm_type": "building",
+        "osm_subtype": "office",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": True,
+        "superClusterOptions": {"radius": 20},
+        "custom_color": None,
+        "custom_icon": {
+            "property": "building",
+            "categories": [
+                {
+                    "property_value": "office",
+                    "icon_path": DEFAULT_ICON_PATH,
+                    "label": "Commercial Office Building",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-hotel": {
+        "type": "OpenStreetMap",
+        "label": "Hotel",
+        "osm_category": "commercial_real_estate",
+        "osm_type": "tourism",
+        "osm_subtype": "hotel",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": True,
+        "superClusterOptions": {"radius": 20},
+        "custom_color": None,
+        "custom_icon": {
+            "property": "tourism",
+            "categories": [
+                {
+                    "property_value": "hotel",
+                    "icon_path": DEFAULT_ICON_PATH,
+                    "label": "Hotel",
                 },
             ],
         },
