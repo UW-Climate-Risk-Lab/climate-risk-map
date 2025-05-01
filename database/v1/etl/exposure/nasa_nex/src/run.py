@@ -54,6 +54,12 @@ def setup_args():
     parser.add_argument(
         "--y_max", type=str, required=True, help="For bounding box, maximum Latitude"
     )
+    parser.add_argument(
+        "--pg_maintenance_memory",
+        type=str,
+        required=True,
+        help="Maintenance memory on Postgres Instance, affects data load step. SHould be about 25 percent of total postgres RAM. Example '16GB'",
+    )
     return parser.parse_args()
 
 
@@ -67,6 +73,7 @@ def main(
     y_min: str,
     x_max: str,
     y_max: str,
+    pg_maintenance_memory: str
 ):
     """Runs a processing pipeline for a given zarr store"""
 
@@ -127,9 +134,10 @@ def main(
         infra_intersection_load_conn = connection_pool.getconn()
         infra_intersection_load.main(
             df=df,
-            ssp=ssp,
+            ssp_value=ssp,
             climate_variable=climate_variable,
             conn=infra_intersection_load_conn,
+            maintenance_work_mem=pg_maintenance_memory
         )
         connection_pool.putconn(infra_intersection_load_conn)
 
@@ -147,5 +155,6 @@ if __name__ == "__main__":
         x_max=args.x_max,
         y_min=args.y_min,
         y_max=args.y_max,
+        pg_maintenance_memory=args.pg_maintenance_memory
     )
     logger.info(f"EXPOSURE SUCCEEDED FOR {args.s3_zarr_store_uri}")

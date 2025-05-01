@@ -68,7 +68,7 @@ fi
 PGOSM_SRID=${PGOSM_SRID:-4326}
 
 # Check required environment variables
-required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_REGION" "PGOSM_SUBREGION" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST")
+required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_REGION" "PGOSM_SUBREGION" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST" "PG_MAINTENANCE_MEMORY")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -373,6 +373,7 @@ run_exposure_etl() {
         echo "  - Y min: $Y_MIN"
         echo "  - X max: $X_MAX"
         echo "  - Y max: $Y_MAX"
+        echo "  - Postgres maintenance memory $PG_MAINTENANCE_MEMORY"
         
         # Run Docker container with environment variables and arguments
         echo "Running ETL process for climate dataset $((i+1))..."
@@ -393,6 +394,7 @@ run_exposure_etl() {
             --y_min "$Y_MIN" \
             --x_max "$X_MAX" \
             --y_max "$Y_MAX" \
+            --pg_maintenance_memory "$PG_MAINTENANCE_MEMORY" \
         
         if [ $? -ne 0 ]; then
             echo "Error: ETL process failed for dataset $((i+1))"
