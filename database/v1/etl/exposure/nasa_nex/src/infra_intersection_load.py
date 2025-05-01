@@ -104,7 +104,7 @@ def main(
     
     with conn.cursor() as cur:
         # Increase statement timeout to 1 hour
-        cur.execute("SET statement_timeout = '3600000';")  # 3600000ms = 1 hour
+        cur.execute("SET statement_timeout = '7200000';")  # 3600000ms = 1 hour
         
         # Create the temporary table
         cur.execute(create_nasa_nex_temp_table)

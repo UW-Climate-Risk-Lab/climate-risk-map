@@ -517,8 +517,8 @@ main() {
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
 
-        # Run Geotiff pipeline
-        run_geotiff_etl
+        # Run Geotiff pipeline (Currently running ad hoc for global, no need for individual regions)
+        # run_geotiff_etl
 
     else
         # Initialize the database
@@ -539,8 +539,8 @@ main() {
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
 
-        # Run Geotiff pipeline
-        run_geotiff_etl
+        # Run Geotiff pipeline (Currently running ad hoc for global, no need for individual regions)
+        # run_geotiff_etl
 
     fi
 
