@@ -20,6 +20,16 @@
         "y_max": "39.3"
       }
     },
+    "japan": {
+      "osm_region": "asia",
+      "osm_subregion": "japan",
+      "bounding_box": {
+        "x_min": "122.6",
+        "y_min": "20.4",
+        "x_max": "159.0",
+        "y_max": "52.2"
+      }
+    },
     "washington": {
       "osm_region": "north-america/us",
       "osm_subregion": "washington",

@@ -45,7 +45,7 @@ class MapConfig:
         "base_map_layer": {
             "id": "base-map-layer",
             "url": "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-            "attribution": '&copy; <a href="https://carto.com/attributions">CARTO</a>',
+            "attribution": '&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
         },
         "drawn_shapes_layer": {
             "id": "drawn-shapes-layer",
@@ -69,7 +69,7 @@ class MapConfig:
         "hazard_tile_layer": {
             "id": "hazard-tile-layer",
             "placeholder_url": "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-            "placeholder_opacity": 1,
+            "placeholder_opacity": 0,
         },
         "asset_layer": {"id": "asset-layer"},
         "viewport": {"transition": "flyTo"},
@@ -87,7 +87,8 @@ class MapConfig:
             available_asset_groups=[
                 get_asset_group("power-grid"),
                 get_asset_group("data-infrastructure"),
-                get_asset_group("commercial-real-estate")
+                get_asset_group("commercial-real-estate"),
+                get_asset_group("agriculture")
             ],
             available_download=True,
         ),
@@ -98,7 +99,7 @@ class MapConfig:
             map_center_lat=42.7118,
             map_center_lon=-75.0071,
             map_zoom=7,
-            geojson=ASSETS_PATH + "/geojsons/regions/new-york.geojson",
+            geojson=ASSETS_PATH + "/geojsons/regions/new_york.geojson",
             available_asset_groups=[get_asset_group("power-grid"),
                                     get_asset_group("data-infrastructure"),
                                     get_asset_group("commercial-real-estate")],
@@ -122,13 +123,14 @@ class MapConfig:
             map_center_lon=128.0,
             map_center_lat=36.5,
             map_zoom=7,
-            geojson=ASSETS_PATH + "/geojsons/regions/south-korea.geojson",
+            geojson=ASSETS_PATH + "/geojsons/regions/south_korea.geojson",
             available_asset_groups=[
                 get_asset_group("power-grid"),
                 get_asset_group("data-infrastructure"),
-                get_asset_group("commercial-real-estate")
+                get_asset_group("commercial-real-estate"),
+                get_asset_group("agriculture")
             ],
-            available_download=False,
+            available_download=True,
         ),
     ]
 

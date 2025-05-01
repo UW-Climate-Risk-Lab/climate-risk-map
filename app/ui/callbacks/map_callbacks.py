@@ -3,6 +3,7 @@ import time
 from dash import Input, Output, no_update
 
 from config.map_config import MapConfig
+from config.ui_config import BASEMAP_BUTTON_STYLE, PRIMARY_COLOR
 
 from services.map_service import MapService
 from services.hazard_service import HazardService
@@ -157,7 +158,7 @@ def register_map_callbacks(app):
                 allow_duplicate=True,
             ),
             Output("region-features-change-signal", "data"),
-            Output("exposure-select-dropdown", "value")
+            Output("exposure-select-dropdown", "value"),
         ],
         Input("region-select-dropdown", "value"),
         prevent_initial_call=True,
@@ -336,3 +337,42 @@ def register_map_callbacks(app):
         ]
 
         return [exposure_options]
+
+    @app.callback(
+        [
+            Output(MapConfig.BASE_MAP_COMPONENT["base_map_layer"]["id"], "url"),
+            Output(MapConfig.BASE_MAP_COMPONENT["base_map_layer"]["id"], "attribution"),
+            Output("basemap-toggle-btn", "style"),
+        ],
+        [Input("basemap-toggle-btn", "n_clicks")],
+        prevent_initial_call=True,
+    )
+    @handle_callback_error(output_count=2)
+    def toggle_basemap_btn_visibility(n_clicks):
+        """Toggle legend visibility when button is clicked
+
+        Changes button color to give on/off visual cue to user
+
+        Args:
+            n_clicks (int): Number of button clicks
+
+        Returns:
+            dict: Updated style for legend container
+        """
+        if n_clicks is None:
+            return no_update
+
+        button_style = BASEMAP_BUTTON_STYLE.copy()
+
+        # Toggle visibility based on even/odd clicks
+        if n_clicks % 2 == 1:
+            # Hide legend
+            button_style["backgroundColor"] = "white"
+            button_style["color"] = PRIMARY_COLOR
+            url = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+            attribution = '&copy; <a href="https://carto.com/attributions">CARTO</a>'
+            return url, attribution, button_style
+        else:
+            url = "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution = '&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            return url, attribution, button_style

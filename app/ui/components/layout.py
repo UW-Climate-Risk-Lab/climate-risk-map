@@ -4,6 +4,7 @@ from dash import html, dcc
 from ui.components.control_panel import create_control_panel
 from ui.components.legend import create_legend_bar, create_legend_toggle_button
 from ui.components.chat_window import create_ai_analysis_modal
+from ui.components.base_map_button import create_basemap_toggle_button
 from services.map_service import MapService
 from config.ui_config import (
     LEGEND_CONTAINER_STYLE,
@@ -44,6 +45,7 @@ def create_main_layout():
                             ),
                             # Add legend toggle button
                             create_legend_toggle_button(),
+                            create_basemap_toggle_button(),
                             html.Div(
                                 dbc.Spinner(
                                     html.Div(

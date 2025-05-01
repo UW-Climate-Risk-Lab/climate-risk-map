@@ -206,9 +206,26 @@ LEGEND_CONTAINER_STYLE = {
 
 LEGEND_BUTTON_STYLE = {
     "position": "absolute",
-    "top": "190px",
+    "top": "240px",
     "right": "10px",
     "zIndex": "1001",
+    "backgroundColor": PRIMARY_COLOR,
+    "color": "white",
+    "border": f"1px solid {PRIMARY_COLOR}",
+    "borderRadius": "4px",
+    "padding": "10px 10px",
+    "fontSize": "12px",
+    "cursor": "pointer",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "0px",
+}
+
+BASEMAP_BUTTON_STYLE = {
+    "position": "absolute",
+    "top": "190px",
+    "right": "10px",
+    "zIndex": "1002",
     "backgroundColor": PRIMARY_COLOR,
     "color": "white",
     "border": f"1px solid {PRIMARY_COLOR}",

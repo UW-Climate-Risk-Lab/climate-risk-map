@@ -54,8 +54,8 @@ class Hazard:
         if measure not in self.available_measures:
             logger.error(f"{measure} is not available for {self.name}")
             return None
-        file = f"{self.name}_{measure}-{decade}-{month:02d}-{region.name}.tif"
-        uri = f"s3://{self.geotiff.s3_bucket}/{self.geotiff.s3_prefix}/ssp{str(ssp)}/{self.geotiff.format}/{file}"
+        file = f"{measure}-{decade}-{month:02d}-{region.dbname}.tif"
+        uri = f"s3://{self.geotiff.s3_bucket}/{self.geotiff.s3_prefix}/ssp{str(ssp)}/{self.geotiff.format}/{region.dbname}/{file}"
         return uri
 
 
@@ -77,7 +77,7 @@ class HazardConfig:
             display_measure="ensemble_mean",
             unit="",
             min_value=0,
-            max_value=50,
+            max_value=25,
             available_ssp=[245, 585],
             geotiff=Geotiff(
                 format="cogs",

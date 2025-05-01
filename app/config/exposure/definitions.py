@@ -42,6 +42,15 @@ ASSET_GROUP_DEFINITIONS = {
         ],
         "icon": None
     },
+    "agriculture": {
+        "label": "Agriculture",
+        "description": "Agricultural Assets",
+        "assets": [
+            "osm-farmland",
+            "osm-vineyard"
+        ],
+        "icon": None
+    },
     "hifld-high-voltage-power-grid": {
         "label": "High Voltage Transmission Lines",
         "description": "Transmission lines over 345 kV",
@@ -251,7 +260,7 @@ ASSET_DEFINITIONS = {
             "categories": [
                 {
                     "property_value": "commercial",
-                    "icon_path": DEFAULT_ICON_PATH,
+                    "icon_path": ASSETS_PATH + "/icons/commercial-building.svg",
                     "label": "Commercial Building",
                 },
             ],
@@ -279,7 +288,7 @@ ASSET_DEFINITIONS = {
             "categories": [
                 {
                     "property_value": "office",
-                    "icon_path": DEFAULT_ICON_PATH,
+                    "icon_path": ASSETS_PATH + "/icons/office.svg",
                     "label": "Commercial Office Building",
                 },
             ],
@@ -307,8 +316,64 @@ ASSET_DEFINITIONS = {
             "categories": [
                 {
                     "property_value": "hotel",
-                    "icon_path": DEFAULT_ICON_PATH,
+                    "icon_path": ASSETS_PATH + "/icons/hotel.svg",
                     "label": "Hotel",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-farmland": {
+        "type": "OpenStreetMap",
+        "label": "Farmland",
+        "osm_category": "agriculture",
+        "osm_type": "landuse",
+        "osm_subtype": "farmland",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": False,
+        "superClusterOptions": False,
+        "custom_color": None,
+        "custom_icon": {
+            "property": "landuse",
+            "categories": [
+                {
+                    "property_value": "farmland",
+                    "icon_path": ASSETS_PATH + "/icons/farmland.svg",
+                    "label": "Farmland",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-vineyard": {
+        "type": "OpenStreetMap",
+        "label": "Vineyard",
+        "osm_category": "agriculture",
+        "osm_type": "landuse",
+        "osm_subtype": "vineyard",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": True,
+        "superClusterOptions": {"radius": 20},
+        "custom_color": None,
+        "custom_icon": {
+            "property": "landuse",
+            "categories": [
+                {
+                    "property_value": "vineyard",
+                    "icon_path": ASSETS_PATH + "/icons/vineyard.svg",
+                    "label": "Vineyard",
                 },
             ],
         },
