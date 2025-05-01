@@ -132,6 +132,21 @@ class MapConfig:
             ],
             available_download=True,
         ),
+        Region(
+            name="japan",
+            label="Japan",
+            dbname="japan",
+            map_center_lon=138.25,
+            map_center_lat=36.204,
+            map_zoom=5,
+            geojson=ASSETS_PATH + "/geojsons/regions/japan.geojson",
+            available_asset_groups=[
+                get_asset_group("power-grid"),
+                get_asset_group("data-infrastructure"),
+                get_asset_group("commercial-real-estate"),
+            ],
+            available_download=True,
+        ),
     ]
 
     @classmethod

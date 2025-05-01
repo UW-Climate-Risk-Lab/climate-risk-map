@@ -54,8 +54,8 @@ class Hazard:
         if measure not in self.available_measures:
             logger.error(f"{measure} is not available for {self.name}")
             return None
-        file = f"{measure}-{decade}-{month:02d}-{region.dbname}.tif"
-        uri = f"s3://{self.geotiff.s3_bucket}/{self.geotiff.s3_prefix}/ssp{str(ssp)}/{self.geotiff.format}/{region.dbname}/{file}"
+        file = f"{measure}-{decade}-{month:02d}-global.tif"
+        uri = f"s3://{self.geotiff.s3_bucket}/{self.geotiff.s3_prefix}/ssp{str(ssp)}/{self.geotiff.format}/global/{file}"
         return uri
 
 

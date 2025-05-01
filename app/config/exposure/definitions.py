@@ -129,7 +129,16 @@ ASSET_DEFINITIONS = {
             "ranges": POWER_LINE_CUSTOM_COLOR_RANGES,
             "categories": None,
         },
-        "custom_icon": None,
+        "custom_icon": {
+            "property": "power",
+            "categories": [
+                {
+                    "property_value": "line",
+                    "icon_path": DEFAULT_ICON_PATH,
+                    "label": None,
+                },
+            ],
+        },
         "data_transformations": ["osm_line_voltage"],
     },
     "osm-power-distribution-line": {

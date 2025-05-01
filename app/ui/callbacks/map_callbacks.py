@@ -1,6 +1,6 @@
 import logging
 import time
-from dash import Input, Output, no_update
+from dash import Input, Output, no_update, State
 
 from config.map_config import MapConfig
 from config.ui_config import BASEMAP_BUTTON_STYLE, PRIMARY_COLOR
@@ -224,10 +224,16 @@ def register_map_callbacks(app):
             Input("month-slider", "value"),
             Input("region-select-dropdown", "value"),
         ],
+        State(MapConfig.BASE_MAP_COMPONENT["base_map_layer"]["id"], "url"),
     )
     @handle_callback_error(output_count=2)
     def update_hazard_tiles(
-        selected_hazard: str, ssp: int, decade: int, month: int, selected_region: str
+        selected_hazard: str,
+        ssp: int,
+        decade: int,
+        month: int,
+        selected_region: str,
+        basemap_url: str,
     ):
         """Update climate tiles based on user selections
 
@@ -252,7 +258,7 @@ def register_map_callbacks(app):
             or (decade is None)
             or (month is None)
         ):
-            return no_update
+            return basemap_url, 0
 
         url, opacity = HazardService.get_hazard_tilejson_url(
             hazard_name=selected_hazard,
@@ -270,7 +276,11 @@ def register_map_callbacks(app):
             Output(
                 MapConfig.BASE_MAP_COMPONENT["color_bar_layer"]["parent_div_id"],
                 "children",
-            )
+            ),
+            Output(
+                MapConfig.BASE_MAP_COMPONENT["color_bar_layer"]["parent_div_id"],
+                "style",
+            ),
         ],
         [
             Input("hazard-indicator-dropdown", "value"),
@@ -279,7 +289,7 @@ def register_map_callbacks(app):
             Input("month-slider", "value"),
         ],
     )
-    @handle_callback_error(output_count=1)
+    @handle_callback_error(output_count=2)
     def update_color_bar(selected_hazard, ssp, decade, month):
         if (
             (ssp is None)
@@ -287,11 +297,11 @@ def register_map_callbacks(app):
             or (decade is None)
             or (month is None)
         ):
-            return no_update
+            return [], {"display": "none"}
 
         color_bar = MapService.get_color_bar(hazard_name=selected_hazard)
 
-        return [color_bar]
+        return [color_bar], {"display": "block"}
 
     @app.callback(
         [Output("ssp-dropdown", "options")],
@@ -374,5 +384,5 @@ def register_map_callbacks(app):
             return url, attribution, button_style
         else:
             url = "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution = '&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            attribution = "&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
             return url, attribution, button_style

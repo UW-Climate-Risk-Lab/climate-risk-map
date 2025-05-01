@@ -109,7 +109,7 @@ class GeotiffProcessor:
     @staticmethod
     def prepare_tasks(
         ds: xr.Dataset,
-        geometry: gpd.GeoDataFrame,
+        geometry: gpd.GeoDataFrame | None,
         region_name: str,
         output_dir: Path,
         s3_bucket: str,
@@ -142,11 +142,14 @@ class GeotiffProcessor:
                 da = ds[variable].sel(decade_month=decade_month)
                 da.rio.set_spatial_dims(x_dim=X_DIM, y_dim=Y_DIM, inplace=True)
 
-                clipped_array = da.rio.clip(
-                    geometry.geometry.values, geometry.crs, drop=True, all_touched=True
-                )
-
-                file_name = f"{variable}-{decade_month}-{region_name}.tif"
+                if geometry:
+                    clipped_array = da.rio.clip(
+                        geometry.geometry.values, geometry.crs, drop=True, all_touched=True
+                    )
+                    file_name = f"{variable}-{decade_month}-{region_name}.tif"
+                else:
+                    clipped_array = da
+                    file_name = f"{variable}-{decade_month}-global.tif"
                 output_path = output_dir / file_name
 
                 task = GeotiffTask(
@@ -211,7 +214,10 @@ class MainProcessor:
 
             # Get region geometry
             logger.info(f"Fetching geometry for {self.region}")
-            gdf = RegionGeometryFetcher.get_region_geometry(region=self.region)
+            if self.region == "global":
+                gdf = None
+            else:
+                gdf = RegionGeometryFetcher.get_region_geometry(region=self.region)
 
             # Load dataset
             logger.info(f"Loading dataset from {self.s3_uri_input}")
