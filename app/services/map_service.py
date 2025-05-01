@@ -16,7 +16,7 @@ from dash import html
 from dash_extensions.javascript import arrow_function
 
 from config.hazard_config import HazardConfig
-from config.ui_config import PRIMARY_COLOR
+from config.ui_config import PRIMARY_COLOR, REGION_OVERLAY_STYLE
 from dao.exposure_dao import ExposureDAO
 
 from config.map_config import MapConfig
@@ -133,11 +133,7 @@ class MapService:
         layer = dl.Pane(
             dl.GeoJSON(
                 url=region.geojson,
-                style={
-                    "color": PRIMARY_COLOR,
-                    "weight": 2,
-                    "fillOpacity": 0,
-                },
+                style=REGION_OVERLAY_STYLE,
                 zoomToBoundsOnClick=True,
                 id="region-outline-geojson",
             ),

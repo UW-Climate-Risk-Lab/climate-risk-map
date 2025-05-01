@@ -3,7 +3,7 @@ import time
 from dash import Input, Output, no_update, State
 
 from config.map_config import MapConfig
-from config.ui_config import BASEMAP_BUTTON_STYLE, PRIMARY_COLOR
+from config.ui_config import BASEMAP_BUTTON_STYLE, PRIMARY_COLOR, REGION_OVERLAY_STYLE
 
 from services.map_service import MapService
 from services.hazard_service import HazardService
@@ -353,6 +353,7 @@ def register_map_callbacks(app):
             Output(MapConfig.BASE_MAP_COMPONENT["base_map_layer"]["id"], "url"),
             Output(MapConfig.BASE_MAP_COMPONENT["base_map_layer"]["id"], "attribution"),
             Output("basemap-toggle-btn", "style"),
+            Output("region-outline-geojson", "style")
         ],
         [Input("basemap-toggle-btn", "n_clicks")],
         prevent_initial_call=True,
@@ -367,22 +368,25 @@ def register_map_callbacks(app):
             n_clicks (int): Number of button clicks
 
         Returns:
-            dict: Updated style for legend container
+            str, dict : Updated style for legend container
         """
         if n_clicks is None:
             return no_update
 
         button_style = BASEMAP_BUTTON_STYLE.copy()
+        region_overlay_style = REGION_OVERLAY_STYLE.copy()
 
         # Toggle visibility based on even/odd clicks
         if n_clicks % 2 == 1:
             # Hide legend
             button_style["backgroundColor"] = "white"
             button_style["color"] = PRIMARY_COLOR
+            region_overlay_style["color"] = PRIMARY_COLOR
             url = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             attribution = '&copy; <a href="https://carto.com/attributions">CARTO</a>'
-            return url, attribution, button_style
+            return url, attribution, button_style, region_overlay_style
         else:
             url = "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution = "&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
-            return url, attribution, button_style
+            region_overlay_style["color"] = "white"
+            return url, attribution, button_style, region_overlay_style

@@ -252,6 +252,12 @@ MAP_FEATURES_LOADING_SPINNER_STYLE = {
     "justifyContent": "center",
 }
 
+REGION_OVERLAY_STYLE = {
+    "color": "white",
+    "weight": 2,
+    "fillOpacity": 0,
+}
+
 POWER_LINE_CUSTOM_COLOR_RANGES = [
     {"min": 0, "max": 100, "color": "#5b8f22", "label": "< 100 kV"},
     {"min": 100, "max": 300, "color": "#0046AD", "label": "100-300 kV"},
