@@ -57,6 +57,9 @@ class ChatService:
         )
         text_response = ""
 
+        input_tokens = 0
+        output_tokens = 0
+
         try:
             # runtime_agent = ChatService._get_bedrock_runtime_client() # If using class method client
             runtime_agent = boto3.client(
@@ -97,6 +100,14 @@ class ChatService:
                     logger.debug(
                         f"Trace event received for session {session_id}"
                     )  # Example
+
+                    try:
+                        temp_input_tokens = event["trace"]["trace"]["orchestrationTrace"]["modelInvocationOutput"]["metadata"]["usage"]["inputTokens"]
+                        temp_output_tokens = event["trace"]["trace"]["orchestrationTrace"]["modelInvocationOutput"]["metadata"]["usage"]["outputTokens"]
+                        input_tokens = input_tokens + temp_input_tokens
+                        output_tokens = output_tokens + temp_output_tokens
+                    except Exception as e:
+                        pass
                 elif "files" in event:
                     # Placeholder for file/image handling from Bedrock Agent Code Interpreter
                     # This part needs implementation based on expected file output
@@ -121,17 +132,23 @@ class ChatService:
             logger.info(
                 f"Agent invocation successful for session {session_id}. Response length: {len(text_response)}"
             )
+            logger.info(f"Input tokens: {str(input_tokens)}")
+            logger.info(f"Output tokens: {str(output_tokens)}")
             return text_response
 
         except runtime_agent.exceptions.ValidationException as e:
             logger.error(
                 f"Bedrock Agent Validation Error for session {session_id}: {e}. Input: '{input_text[:100]}...'"
             )
+            logger.info(f"Input tokens: {str(input_tokens)}")
+            logger.info(f"Output tokens: {str(output_tokens)}")
             return f"Agent Error: Input validation failed. {e}", None
         except runtime_agent.exceptions.ConflictException as e:
             logger.error(
                 f"Bedrock Agent Conflict Error for session {session_id}: {e}. Maybe session issue?"
             )
+            logger.info(f"Input tokens: {str(input_tokens)}")
+            logger.info(f"Output tokens: {str(output_tokens)}")
             # You might want to try creating a new session or inform the user
             return (
                 f"Agent Error: Session conflict. Please try closing and reopening the chat. {e}",
@@ -139,6 +156,8 @@ class ChatService:
             )
         except Exception as e:
             logger.error(f"Error invoking Bedrock Agent for session {session_id}: {e}")
+            logger.info(f"Input tokens: {str(input_tokens)}")
+            logger.info(f"Output tokens: {str(output_tokens)}")
             return (
                 f"An unexpected error occurred while communicating with the AI agent: {e}",
                 None,
