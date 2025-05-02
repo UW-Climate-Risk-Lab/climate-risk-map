@@ -33,4 +33,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8050
 
 # Assumes your entrypoint is 'app:server'
-CMD gunicorn -b 0.0.0.0:8050 --workers $GUNICORN_WORKERS app:server
+CMD gunicorn -b 0.0.0.0:8050 --workers $GUNICORN_WORKERS --timeout 360 app:server
