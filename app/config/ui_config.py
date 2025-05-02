@@ -264,3 +264,16 @@ POWER_LINE_CUSTOM_COLOR_RANGES = [
     {"min": 300, "max": 500, "color": "#63B1E5", "label": "300-500 kV"},
     {"min": 500, "max": float("inf"), "color": "#C75B12", "label": "> 500 kV"},
 ]
+
+PASSWORD_CONTAINER_STYLE = {
+    "position": "fixed",
+    "top": 0,
+    "left": 0,
+    "width": "100%",
+    "height": "100%",
+    "backgroundColor": PRIMARY_COLOR,
+    "zIndex": 9999,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+}

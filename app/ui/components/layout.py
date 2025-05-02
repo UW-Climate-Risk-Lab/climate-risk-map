@@ -5,7 +5,9 @@ from ui.components.control_panel import create_control_panel
 from ui.components.legend import create_legend_bar, create_legend_toggle_button
 from ui.components.chat_window import create_ai_analysis_modal
 from ui.components.base_map_button import create_basemap_toggle_button
+from ui.components.password_screen import create_password_screen
 from services.map_service import MapService
+from services.auth_service import AuthService
 from config.ui_config import (
     LEGEND_CONTAINER_STYLE,
     PRIMARY_COLOR,
@@ -20,11 +22,15 @@ def create_main_layout():
     Returns:
         dbc.Container: Main layout container
     """
-    # Get base map component
-    map_component = MapService.get_base_map()
-
-    # Create layout
-    return dbc.Container(
+    # Check if password protection is enabled
+    password_protected = AuthService.is_password_protection_enabled()
+    
+    # For password-protected app, don't create the map component yet
+    # We'll create it dynamically after authentication
+    map_placeholder = html.Div(id="map-placeholder")
+    
+    # Create the main application layout
+    main_app_layout = dbc.Container(
         fluid=True,
         class_name="g-0",
         children=[
@@ -59,14 +65,14 @@ def create_main_layout():
                                     spinner_style={
                                         "width": "3rem",
                                         "height": "3rem",
-                                    },  # Make spinner bigger
+                                    },
                                 ),
                                 style=MAP_FEATURES_LOADING_SPINNER_STYLE,
                             ),
-                            # Map component
+                            # Map component - either the actual map or a placeholder
                             html.Div(
                                 children=[
-                                    map_component,
+                                    map_placeholder if password_protected else MapService.get_base_map(),
                                 ],
                                 id="map-div",
                             ),
@@ -94,3 +100,22 @@ def create_main_layout():
             dcc.Store(id="trigger-ai-response-store", data=0.0, storage_type="memory"),
         ],
     )
+    
+    # Check if password protection is enabled
+    if password_protected:
+        # Add a store to track authentication state
+        auth_store = dcc.Store(id="auth-status", data=False, storage_type="session")
+        
+        # Create complete layout with password screen and hidden main app
+        return html.Div([
+            create_password_screen(),
+            html.Div(
+                id="main-app-container",
+                children=[main_app_layout],
+                style={"display": "none"}
+            ),
+            auth_store
+        ])
+    else:
+        # If password protection is not enabled, return just the main app layout
+        return main_app_layout

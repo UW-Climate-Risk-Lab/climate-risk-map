@@ -21,6 +21,25 @@ def register_map_callbacks(app):
     """
 
     @app.callback(
+        Output("map-placeholder", "children"),
+        Input("auth-status", "data"),
+        prevent_initial_call=True,
+    )
+    def load_map_after_auth(auth_status):
+        """Load the map component after successful authentication
+
+        Args:
+            auth_status: Boolean indicating if user is authenticated
+
+        Returns:
+            The map component or None
+        """
+        if auth_status:
+            # Only create the map component after authentication
+            return MapService.get_base_map()
+        return None
+
+    @app.callback(
         Output("region-outline-geojson", "url"),
         Input("region-outline-change-signal", "data"),
         prevent_initial_call=True,
@@ -353,7 +372,7 @@ def register_map_callbacks(app):
             Output(MapConfig.BASE_MAP_COMPONENT["base_map_layer"]["id"], "url"),
             Output(MapConfig.BASE_MAP_COMPONENT["base_map_layer"]["id"], "attribution"),
             Output("basemap-toggle-btn", "style"),
-            Output("region-outline-geojson", "style")
+            Output("region-outline-geojson", "style"),
         ],
         [Input("basemap-toggle-btn", "n_clicks")],
         prevent_initial_call=True,
