@@ -171,7 +171,7 @@ run_osm_etl() {
     
     # Build Docker image
     echo "Building ETL Docker image..."
-    docker build -t database-v1-osm-etl .
+    sudo docker build -t database-v1-osm-etl .
     
     if [ $? -ne 0 ]; then
         echo "Error: Failed to build ETL Docker image"
@@ -182,7 +182,7 @@ run_osm_etl() {
     # Run Docker container with environment variables
     echo "Running ETL process to load OSM data..."
 
-    docker run --rm \
+    sudo docker run --rm \
         -e POSTGRES_USER=$PGOSM_USER \
         -e POSTGRES_PASSWORD=$PGOSM_PASSWORD \
         -e POSTGRES_HOST=$PGOSM_HOST \
@@ -334,7 +334,7 @@ run_exposure_etl() {
     
     # Build Docker image
     echo "Building Climate ETL Docker image..."
-    docker build -t database-v1-climate-etl .
+    sudo docker build -t database-v1-climate-etl .
     
     if [ $? -ne 0 ]; then
         echo "Error: Failed to build Climate ETL Docker image"
@@ -378,7 +378,7 @@ run_exposure_etl() {
         # Run Docker container with environment variables and arguments
         echo "Running ETL process for climate dataset $((i+1))..."
         
-        docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+        sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
             -e PG_DBNAME=$PG_DBNAME \
             -e PGUSER=$PGCLIMATE_USER \
             -e PGPASSWORD=$PGCLIMATE_PASSWORD \
@@ -439,7 +439,7 @@ run_geotiff_etl() {
     
     # Build Docker image
     echo "Building Geotiff ETL Docker image..."
-    docker build -t database-v1-geotiff-etl .
+    sudo docker build -t database-v1-geotiff-etl .
     
     if [ $? -ne 0 ]; then
         echo "Error: Failed to build Geotiff ETL Docker image"
@@ -469,7 +469,7 @@ run_geotiff_etl() {
         # Run Docker container with environment variables and arguments
         echo "Running Geotiff ETL process for climate dataset $((i+1))..."
         
-        docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+        sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
             database-v1-geotiff-etl \
             --s3-bucket "$S3_BUCKET" \
             --s3-uri-input "$S3_URI_INPUT_GEOTIFF" \
