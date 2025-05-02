@@ -5,8 +5,10 @@ from config.ui_config import POWER_LINE_CUSTOM_COLOR_RANGES
 def load_asset_definitions():
     return ASSET_DEFINITIONS.copy()
 
+
 def load_asset_group_definitions():
     return ASSET_GROUP_DEFINITIONS.copy()
+
 
 DEFAULT_ICON_PATH = ASSETS_PATH + "/icons/black-dot.svg"
 
@@ -28,36 +30,28 @@ ASSET_GROUP_DEFINITIONS = {
         "assets": [
             "osm-data-center",
             "osm-power-substation",
-            "osm-power-transmission-line"
+            "osm-power-transmission-line",
         ],
         "icon": "assets/icons/data-center.svg",
     },
     "commercial-real-estate": {
         "label": "Commercial Real Estate",
         "description": "Retail, Office, St",
-        "assets": [
-            "osm-commercial-building",
-            "osm-office-building",
-            "osm-hotel"
-        ],
-        "icon": None
+        "assets": ["osm-commercial-building", "osm-office-building", "osm-hotel"],
+        "icon": None,
     },
     "agriculture": {
         "label": "Agriculture",
         "description": "Agricultural Assets",
-        "assets": [
-            "osm-farmland",
-            "osm-vineyard"
-        ],
-        "icon": None
+        "assets": ["osm-farmland", "osm-vineyard"],
+        "icon": None,
     },
     "hifld-high-voltage-power-grid": {
         "label": "High Voltage Transmission Lines",
         "description": "Transmission lines over 345 kV",
         "assets": ["hifld-power-transmission-line"],
-        "icon": None
-    }
-
+        "icon": None,
+    },
 }
 
 ASSET_DEFINITIONS = {
@@ -161,7 +155,16 @@ ASSET_DEFINITIONS = {
             "ranges": POWER_LINE_CUSTOM_COLOR_RANGES,
             "categories": None,
         },
-        "custom_icon": None,
+        "custom_icon": {
+            "property": "power",
+            "categories": [
+                {
+                    "property_value": "minor_line",
+                    "icon_path": DEFAULT_ICON_PATH,
+                    "label": None,
+                },
+            ],
+        },
         "data_transformations": ["osm_line_voltage"],
     },
     "osm-power-substation": {
@@ -340,10 +343,12 @@ ASSET_DEFINITIONS = {
         "osm_subtype": "farmland",
         "geom_types": ["MultiPolygon", "Point"],
         "style": {
-            "color": "#6a6a6a",
-            "weight": 2,
-            "fillColor": "#6a6a6a",
-            "fillOpacity": 0.5,
+            "color": "#8B4513",
+            "weight": 1.5,
+            "fillColor": "#DAA520",
+            "fillOpacity": 0.35,
+            "dashArray": "3, 4",
+            "lineCap": "round",
         },
         "cluster": False,
         "superClusterOptions": False,

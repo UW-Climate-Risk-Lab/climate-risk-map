@@ -323,7 +323,7 @@ def register_map_callbacks(app):
         return [color_bar], {"display": "block"}
 
     @app.callback(
-        [Output("ssp-dropdown", "options")],
+        Output("ssp-dropdown", "options"),
         [Input("hazard-indicator-dropdown", "value")],
     )
     @handle_callback_error(output_count=1)
@@ -341,7 +341,7 @@ def register_map_callbacks(app):
 
         ssp_options = HazardService.get_available_ssp(hazard_name=hazard_name)
 
-        return [ssp_options]
+        return ssp_options
 
     @app.callback(
         [Output("exposure-select-dropdown", "options")],

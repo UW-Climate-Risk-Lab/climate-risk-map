@@ -1,6 +1,6 @@
 import logging
 
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 
 from dao.hazard_dao import HazardRasterDAO
 from config.hazard_config import HazardConfig
@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 
 class HazardService:
     """Service for handling hazard/climate related operations"""
+
+    SSP_LABELS = {
+        245: "Lower Emissions Scenario (SSP 245)",
+        585: "Higher Emissions Scenario (SSP 585)"
+    }
 
     @staticmethod
     def get_hazard_tilejson_url(
@@ -74,11 +79,19 @@ class HazardService:
         return hazard_tilejson_url, hazard.geotiff.opacity
 
     @staticmethod
-    def get_available_ssp(hazard_name: str) -> List[str]:
+    def get_available_ssp(hazard_name: str) -> Dict[str, str]:
+
+        """
+        Output gives list of dict of available SSP
+        Example:
+
+        [{'label': 'Lower Emissions Scenario (SSP 245)': 'value': 245}, 
+        {'label': 'Higher Emissions Scenario (SSP 585)': 'value': 585}]
+        """
 
         hazard = HazardConfig.get_hazard(hazard_name=hazard_name)
 
         if not hazard:
             return list()
 
-        return [str(ssp) for ssp in hazard.available_ssp]
+        return [{"label": str(HazardService.SSP_LABELS[ssp]), "value": str(ssp)} for ssp in hazard.available_ssp]
