@@ -17,6 +17,7 @@ from config.settings import (
     ENABLE_AI_ANALYSIS,
     AGENT_ID,
     AGENT_ALIAS_ID,
+    AGENT_REGION
 )
 from config.hazard_config import HazardConfig
 from config.exposure import get_asset
@@ -59,7 +60,8 @@ class ChatService:
         try:
             # runtime_agent = ChatService._get_bedrock_runtime_client() # If using class method client
             runtime_agent = boto3.client(
-                service_name="bedrock-agent-runtime"
+                service_name="bedrock-agent-runtime",
+                region_name=AGENT_REGION
             )  # Instantiate per call
 
             invoke_params = {
