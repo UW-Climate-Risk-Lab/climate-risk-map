@@ -785,4 +785,6 @@ def main(
     # Add the metadata column
     df["metadata"] = json.dumps(metadata)
 
+    df = df.drop_duplicates(subset=['month', 'decade', ID_COLUMN])
+
     return df
