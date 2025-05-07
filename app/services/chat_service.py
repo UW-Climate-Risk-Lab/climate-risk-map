@@ -25,6 +25,8 @@ from config.map_config import MapConfig
 from config.chat.messages import ChatMessage
 from config.chat.prompts import INITIAL_PROMPT
 
+from services.download_service import DownloadService
+
 from utils.geo_utils import calc_bbox_area
 from utils.file_utils import dataframe_to_csv_bytes
 
@@ -90,6 +92,7 @@ class ChatService:
             for event in event_stream:
                 if "chunk" in event:
                     chunk = event["chunk"]
+                    logger.info(chunk)
                     if "bytes" in chunk:
                         text_response += chunk["bytes"].decode("utf-8")
                     else:
@@ -327,6 +330,12 @@ class ChatService:
         """
         session_id = str(uuid.uuid4())
         logger.info(f"Starting new AI session: {session_id}")
+
+        df = DownloadService.parse_osm_tags(df=df, tag_format="prefix")
+
+        # This won't be used in analysis at this point. Column takes up a lot of data
+        if "geometry_wkt" in df.columns:
+            df = df.drop(columns="geometry_wkt")
 
         try:
             csv_bytes = dataframe_to_csv_bytes(df=df)

@@ -11,7 +11,10 @@ from utils.log_utils import configure_logging
 from services.auth_service import AuthService
 
 # Configure application logging
-configure_logging()
+if DEBUG:
+    configure_logging(log_level=logging.DEBUG)
+else:
+    configure_logging()
 logger = logging.getLogger(__name__)
 
 # Initialize the Dash application
