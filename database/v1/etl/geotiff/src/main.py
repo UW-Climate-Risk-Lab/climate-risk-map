@@ -10,6 +10,7 @@ import rioxarray
 import geopandas as gpd
 import xarray as xr
 import boto3
+import numpy as np
 from botocore.exceptions import ClientError
 
 logging.basicConfig(
@@ -107,24 +108,120 @@ class GeotiffProcessor:
             return False, f"{task.variable}-{task.decade_month}"
 
     @staticmethod
+    def resample_data_array(
+        da: xr.DataArray, 
+        output_resolution: float,
+        resampling_method: str = "linear"
+    ) -> xr.DataArray:
+        """
+        Resample a DataArray to a higher resolution.
+        
+        Args:
+            da (xr.DataArray): Data array to resample
+            output_resolution (float): Desired resolution in degrees
+            resampling_method (str): Resampling method to use (default: linear)
+            
+        Returns:
+            xr.DataArray: Resampled data array
+        """
+        if output_resolution <= 0:
+            logger.warning("Output resolution must be positive, using original resolution")
+            return da
+            
+        # Get current resolution and dimensions
+        current_res_x = abs(float(da[X_DIM][1] - da[X_DIM][0]))
+        current_res_y = abs(float(da[Y_DIM][1] - da[Y_DIM][0]))
+        
+        # Check if resampling is needed
+        if abs(current_res_x - output_resolution) < 1e-6 and abs(current_res_y - output_resolution) < 1e-6:
+            logger.debug("Output resolution matches current resolution, skipping resampling")
+            return da
+            
+        # Define new coordinates
+        x_min, x_max = float(da[X_DIM].min()), float(da[X_DIM].max())
+        y_min, y_max = float(da[Y_DIM].min()), float(da[Y_DIM].max())
+        
+        # Create new coordinate arrays with the desired resolution
+        new_x = np.arange(x_min, x_max + output_resolution/2, output_resolution)
+        new_y = np.arange(y_min, y_max + output_resolution/2, output_resolution)
+        
+        # Check if using cubic interpolation with NaN values
+        if resampling_method in ["cubic", "cubic_spline"] and da.isnull().any():
+            logger.warning(
+                f"Data contains NaN values which are incompatible with {resampling_method} interpolation. "
+                f"Falling back to 'linear' interpolation."
+            )
+            safe_method = "linear"
+        else:
+            safe_method = resampling_method
+        
+        try:
+            # Resample using xarray's interp method
+            resampled = da.interp({X_DIM: new_x, Y_DIM: new_y}, method=safe_method)
+            
+            # Preserve metadata and attributes
+            resampled.attrs.update(da.attrs)
+            
+            # Set CRS and spatial dimensions
+            if hasattr(da, 'rio'):
+                resampled.rio.write_crs(da.rio.crs, inplace=True)
+                resampled.rio.set_spatial_dims(x_dim=X_DIM, y_dim=Y_DIM, inplace=True)
+            
+            logger.info(
+                f"Resampled data from {len(da[X_DIM])}x{len(da[Y_DIM])} to {len(resampled[X_DIM])}x{len(resampled[Y_DIM])}"
+            )
+            
+            return resampled
+            
+        except ValueError as e:
+            # If we still get an error, fall back to nearest neighbor which always works
+            logger.warning(
+                f"Error during {safe_method} interpolation: {str(e)}. "
+                f"Falling back to 'nearest' interpolation which can handle NaN values."
+            )
+            resampled = da.interp({X_DIM: new_x, Y_DIM: new_y}, method="nearest")
+            
+            # Preserve metadata and attributes
+            resampled.attrs.update(da.attrs)
+            
+            # Set CRS and spatial dimensions
+            if hasattr(da, 'rio'):
+                resampled.rio.write_crs(da.rio.crs, inplace=True)
+                resampled.rio.set_spatial_dims(x_dim=X_DIM, y_dim=Y_DIM, inplace=True)
+                
+            logger.info(
+                f"Resampled data from {len(da[X_DIM])}x{len(da[Y_DIM])} to {len(resampled[X_DIM])}x{len(resampled[Y_DIM])}"
+            )
+            
+            return resampled
+
+    @staticmethod
     def prepare_tasks(
         ds: xr.Dataset,
         geometry: gpd.GeoDataFrame | None,
+        variable: str,
         region_name: str,
         output_dir: Path,
         s3_bucket: str,
         s3_prefix: str,
-        geotiff_driver: str
+        geotiff_driver: str,
+        output_resolution: float = None,
+        resampling_method: str = "linear"
     ) -> List[GeotiffTask]:
         """Process a dataset and prepare tasks for geotiff creation
 
         Args:
             ds (xr.Dataset): Dataset to process
             geometry (gpd.GeoDataFrame): Geodataframe containing geometries of clipping mask to use
-            Region_name (str): region/region name for use on output files
+            variable (str): Variable to use in Dataset
+            region_name (str): region/region name for use on output files
             output_dir (Path): Local (temp) directory to save generated geotiffs temporarily
             s3_bucket (str): S3 bucket name
             s3_prefix (str): S3 prefix for uploads
+            geotiff_driver (str): Driver to use for Geotiff file format
+            output_resolution (float, optional): Desired output resolution in degrees. If None, 
+                                                 original resolution is preserved.
+            resampling_method (str, optional): Method to use for resampling. Default is "cubic".
 
         Returns:
             List[GeotiffTask]: List of prepared geotiff tasks
@@ -137,31 +234,47 @@ class GeotiffProcessor:
 
         # Loop through each variable and timestep(ASSUME decade month, for example 2030-08, 2030-09, etc...) so that
         # we generate an individual geotiff file per variable and timestep
-        for variable in ds.keys():
-            for decade_month in ds["decade_month"].data:
-                da = ds[variable].sel(decade_month=decade_month)
-                da.rio.set_spatial_dims(x_dim=X_DIM, y_dim=Y_DIM, inplace=True)
+        for decade_month in ds["decade_month"].data:
+            da = ds[variable].sel(decade_month=decade_month)
+            da.rio.set_spatial_dims(x_dim=X_DIM, y_dim=Y_DIM, inplace=True)
 
-                if geometry:
-                    clipped_array = da.rio.clip(
-                        geometry.geometry.values, geometry.crs, drop=True, all_touched=True
-                    )
-                    file_name = f"{variable}-{decade_month}-{region_name}.tif"
-                else:
-                    clipped_array = da
-                    file_name = f"{variable}-{decade_month}-global.tif"
-                output_path = output_dir / file_name
-
-                task = GeotiffTask(
-                    da=clipped_array,
-                    output_path=output_path,
-                    variable=variable,
-                    decade_month=str(decade_month),
-                    s3_bucket=s3_bucket,
-                    s3_prefix=s3_prefix,
-                    geotiff_driver=geotiff_driver
+            # Apply clipping if a geometry is provided
+            if geometry:
+                clipped_array = da.rio.clip(
+                    geometry.geometry.values, geometry.crs, drop=True, all_touched=True
                 )
-                tasks.append(task)
+                file_name = f"{variable}-{decade_month}-{region_name}.tif"
+            else:
+                clipped_array = da
+                file_name = f"{variable}-{decade_month}-global.tif"
+            
+            # Apply resampling if output_resolution is specified
+            if output_resolution is not None:
+                resampled_array = GeotiffProcessor.resample_data_array(
+                    clipped_array, 
+                    output_resolution,
+                    resampling_method
+                )
+                # Update the filename to indicate the resolution
+                res_str = str(output_resolution).replace('.', 'p')
+                if "global" in file_name:
+                    file_name = f"{variable}-{decade_month}-global-{res_str}deg.tif"
+                else:
+                    file_name = f"{variable}-{decade_month}-{region_name}-{res_str}deg.tif"
+                clipped_array = resampled_array
+            
+            output_path = output_dir / file_name
+
+            task = GeotiffTask(
+                da=clipped_array,
+                output_path=output_path,
+                variable=variable,
+                decade_month=str(decade_month),
+                s3_bucket=s3_bucket,
+                s3_prefix=s3_prefix,
+                geotiff_driver=geotiff_driver
+            )
+            tasks.append(task)
         return tasks
 
 
@@ -175,10 +288,13 @@ class MainProcessor:
         s3_prefix_geotiff: str,
         region: str,
         crs: str,
+        variable: str,
         x_dim: str,
         y_dim: str,
         geotiff_driver: str,
         max_workers: int,
+        output_resolution: Optional[float] = None,
+        resampling_method: str = "cubic"
     ):
         """
         Initialize climate data processor.
@@ -189,11 +305,15 @@ class MainProcessor:
             s3_prefix_geotiff (str): S3 prefix for output geotiffs directory
             region (str): US region to process
             crs (str, optional): Coordinate reference system. Defaults to "4326".
+            variable (str, optional): Variable of Dataset to use. Defaults to "ensemble_q3"
             x_dim (str, optional): X dimension name. Defaults to "lon".
             y_dim (str, optional): Y dimension name. Defaults to "lat".
             geotiff_driver (str, optional): Driver to use for Geotiff file format. 
             Defaults to "COG" for Cloud Optimized Geotiff
             max_workers (int, optional): Max parallel workers. Defaults to 16.
+            output_resolution (float, optional): Desired output resolution in degrees. If None, 
+                                                original resolution is preserved.
+            resampling_method (str, optional): Method to use for resampling. Default is "cubic".
         """
 
         self.s3_bucket = s3_bucket
@@ -201,10 +321,13 @@ class MainProcessor:
         self.s3_prefix_geotiff = s3_prefix_geotiff
         self.region = region
         self.crs = crs
+        self.variable = variable
         self.x_dim = x_dim
         self.y_dim = y_dim
         self.geotiff_driver = geotiff_driver
         self.max_workers = max_workers
+        self.output_resolution = output_resolution
+        self.resampling_method = resampling_method
 
     def process(self) -> None:
         """Process climate data, generate geotiffs, and upload them to S3."""
@@ -242,9 +365,12 @@ class MainProcessor:
                     geometry=gdf,
                     region_name=self.region,
                     output_dir=tmp_path,
+                    variable=self.variable,
                     s3_bucket=self.s3_bucket,
                     s3_prefix=s3_prefix_geotiff,
-                    geotiff_driver=self.geotiff_driver
+                    geotiff_driver=self.geotiff_driver,
+                    output_resolution=self.output_resolution,
+                    resampling_method=self.resampling_method
                 )
                 logger.info(f"Prepared {len(tasks)} geotiff tasks")
 
@@ -337,6 +463,11 @@ def parse_arguments():
         help="Coordinate Reference System of Climate Zarr. Default: 4326"
     )
     parser.add_argument(
+        "--variable",
+        default="ensemble_q3",
+        help="Variable in dataset to to use to get Dataarray"
+    )
+    parser.add_argument(
         "--x-dim",
         default="lon",
         help="Name of x dimension in the climate dataset. Default: lon"
@@ -357,6 +488,19 @@ def parse_arguments():
         default=16,
         help="Maximum number of parallel workers. Default: 16"
     )
+    parser.add_argument(
+        "--output-resolution",
+        type=float,
+        default=None, 
+        help="Desired output resolution in degrees (e.g., 0.1 for higher resolution). "
+             "If not specified, original resolution is preserved."
+    )
+    parser.add_argument(
+        "--resampling-method",
+        default="linear",
+        choices=["nearest", "linear", "cubic"],
+        help="Method to use for resampling. Default: cubic"
+    )
 
     return parser.parse_args()
 
@@ -371,10 +515,13 @@ def main():
         s3_prefix_geotiff=args.s3_prefix_geotiff,
         region=args.region,
         crs=args.crs,
+        variable=args.variable,
         x_dim=args.x_dim,
         y_dim=args.y_dim,
         geotiff_driver=args.geotiff_driver,
         max_workers=args.max_workers,
+        output_resolution=args.output_resolution,
+        resampling_method=args.resampling_method,
     )
     
     processor.process()

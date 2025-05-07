@@ -23,16 +23,4 @@ This dataset contains OpenStreetMap (OSM) assets with climate risk metrics:
   * This format preserves which subtype each attribute belongs to
   * To analyze a specific subtype's attributes, filter columns that start with that subtype name followed by a semicolon
   * Columns WITHOUT semicolons are core attributes and should ALWAYS be included in any analysis
-
-## Analysis Tips
-* When analyzing a specific asset type, filter columns starting with that subtype and semicolon
-* Always include all columns without semicolons in your analysis as they contain core data
-* For temporal analysis, group by `decade` and `month`
-* For spatial analysis, use `latitude`, `longitude`, or `county`
-
-## Output Format
-* Always respond using MARKDOWN
-* Use `##` or lower headings (NO `#` level headings)
-* Be concise but thorough
-* Include visualizations when appropriate
 """
