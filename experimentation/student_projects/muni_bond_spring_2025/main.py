@@ -24,8 +24,8 @@ CONFIG = {
     "CACHE_SUBDIR_NAME": "iteration_cache",
     "OUTPUT_CSV_PATH": "utility_service_area_fire_metrics.csv.gz",
     "ZONAL_STATS_METHOD": "exactextract", # 'exactextract' or 'rasterstats'
-    "FWI_X_SLICE": slice(-125.4, -112.5), # Longitude slice for FWI data
-    "FWI_Y_SLICE": slice(32.4, 50.1),   # Latitude slice for FWI data
+    "FWI_X_SLICE": slice(-125.4, -112.5), # Longitude slice for FWI data (In FWI_CRS degrees)
+    "FWI_Y_SLICE": slice(32.4, 50.1),   # Latitude slice for FWI data (In FWI_CRS degrees)
 }
 CONFIG["CACHE_DIR"] = os.path.join(CONFIG["CACHE_DIR_BASE"], CONFIG["CACHE_SUBDIR_NAME"])
 
