@@ -167,16 +167,15 @@ def process_single_event_data(mtbs_raster_path, full_mtbs_perimeters_gdf, config
                     print("  Warning: 'x' or 'y' coordinates not found in FWI data for slicing.")
             
             da_fwi_computed = da_fwi_raw.compute() # Compute if Dask array
-
-            # Reproject and clip FWI to match MTBS raster
-            da_fwi_reproj = da_fwi_computed.rio.reproject_match(da_mtsb_raster.squeeze())
+            da_fwi_computed = da_fwi_computed.rio.reproject(CONFIG["CRS"])
             bounds = da_mtsb_raster.squeeze().rio.bounds()
-            da_fwi_reproj_clipped = da_fwi_reproj.rio.clip_box(*bounds)
+            da_fwi_clipped = da_fwi_computed.rio.clip_box(*bounds)
+            
             
             # 5. Calculate FWI zonal stats
-            if not da_fwi_reproj_clipped.x.size == 0 and not da_fwi_reproj_clipped.y.size == 0 : # Check if clipped array is not empty
+            if not da_fwi_clipped.x.size == 0 and not da_fwi_clipped.y.size == 0 : # Check if clipped array is not empty
                 df_fwi_iter = calculate_zonal_stats_for_df(
-                    da_fwi_reproj_clipped, gdf_event_perimeters, "fwi"
+                    da_fwi_clipped, gdf_event_perimeters, "fwi"
                 )
             else:
                 print(f"  FWI data became empty after reprojection/clipping for {filename_base}.")
@@ -189,6 +188,8 @@ def process_single_event_data(mtbs_raster_path, full_mtbs_perimeters_gdf, config
     df_fwi_iter.to_csv(fwi_cache_file, index=False, compression="gzip")
     
     print(f"  Finished processing for {filename_base}. Data cached.")
+    del ds_fwi
+    del da_mtsb_raster
     return df_fire_severity_iter, df_fwi_iter
 
 # --- Main Script ---
@@ -205,6 +206,7 @@ def main():
     print("Loading MTBS perimeter data...")
     mtbs_perimeters_gdf = gpd.read_file(CONFIG["MTBS_PERIMETER_DATA_PATH"])
     mtbs_perimeters_gdf["Ig_Date"] = pd.to_datetime(mtbs_perimeters_gdf["Ig_Date"], errors='coerce')
+    mtbs_perimeters_gdf = mtbs_perimeters_gdf.to_crs(CONFIG["CRS"])
 
     mtbs_raster_files = [
         os.path.join(CONFIG["MTBS_RASTER_DATA_DIR"], f)

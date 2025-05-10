@@ -98,6 +98,7 @@ def download_and_read_fwi_data_for_dates(
                     f.write(response.content) 
                 print(f"Successfully downloaded {file_name}")
                 files_to_process_locally.append(local_target_path)
+                del response
                 break # Exit retry loop on success
             except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
                 print(f"Download error for {full_url} (Attempt {attempt + 1}): {e}")
