@@ -93,9 +93,11 @@ def create_main_layout():
             dcc.Store(id="region-outline-change-signal", storage_type="memory"),
             dcc.Store(id="chat-counter", data=0, storage_type="session"),
             dcc.Store(id="chat-allowed", data=False, storage_type="memory"),
-            # chat-selection-config is a hash int representing the combination of the user selection of hazard, time, bounding box, assets
-            # If the user selects a new combination of dropdowns, this will create a new section in the chat window
-            dcc.Store(id="chat-selection-config", data=0, storage_type="session"),
+            # chat-selection-hash is a string hash representing the combination of the user selection of hazard, time, bounding box, assets
+            # If the user selects a new combination of dropdowns or area on the map, this hash will update. Currently used in chat_callbacks in get_ai repsonse
+            # TODO: Make this update any time the map changes anywhere 
+            dcc.Store(id="chat-selection-hash", data="", storage_type="memory"),
+            dcc.Store(id="new-user-selection", data=True, storage_type="memory"),
             dcc.Store(id="agent-session-id", data="", storage_type="session"),
             dcc.Store(id="trigger-ai-response-store", data=0.0, storage_type="memory"),
         ],

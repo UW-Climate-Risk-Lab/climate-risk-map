@@ -1,6 +1,6 @@
 INITIAL_PROMPT = """
-Attached is a CSV file with OSM data. The user will now ask you open-ended questions about it. Below is an overview of the structure of the data for reference.
-Once you verify that the CSV data has been provided, let the user know you are ready for their analysis questions. DO NOT PERFORM ANY ANALYSIS YET. 
+Attached is a CSV file with OSM data. The user will ask you open-ended questions about it. Below is an overview of the structure of the data for reference.
+Let the user know you are ready for their analysis questions. DO NOT PERFORM ANY ANALYSIS YET. 
 
 This dataset contains OpenStreetMap (OSM) assets with climate risk metrics:
 

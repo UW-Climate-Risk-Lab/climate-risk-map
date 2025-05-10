@@ -348,6 +348,11 @@ class ChatService:
             )
             return None, None
 
+        # Add dataset context
+        initial_prompt = initial_prompt + "Here is a sample of the first 3 rows of the data\n" +str(df.head(3)) + "\n"
+        initial_prompt = initial_prompt + "Here are the datatypes of the avilable columns\n" + str(df.dtypes)
+
+
         session_state = {
             "files": [
                 {

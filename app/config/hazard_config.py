@@ -77,7 +77,7 @@ class HazardConfig:
             display_measure="ensemble_q3",
             unit="",
             min_value=0,
-            max_value=25,
+            max_value=20,
             available_ssp=[245, 585],
             geotiff=Geotiff(
                 format="cogs",
