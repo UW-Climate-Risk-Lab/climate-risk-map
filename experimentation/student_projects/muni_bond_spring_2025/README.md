@@ -1,6 +1,6 @@
 # Muni Bond × Wildfire Risk Analysis
 
-This repository provides tools to calculate fire severity and Fire Weather Index (FWI) metrics for municipal bond service areas.  
+This repository provides tools to calculate fire severity and Fire Weather Index (FWI) metrics for municipal utility service areas.  
 It combines MTBS fire severity rasters, MTBS perimeter shapefiles, EIA utility service area boundaries, and NASA NCCS FWI data.
 
 ## Contents
