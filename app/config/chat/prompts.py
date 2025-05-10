@@ -1,26 +1,24 @@
 INITIAL_PROMPT = """
-Attached is a CSV file with OSM data. The user will ask you open-ended questions about it. Below is an overview of the structure of the data for reference.
-Let the user know you are ready for their analysis questions. DO NOT PERFORM ANY ANALYSIS YET. 
+I have uploaded a CSV file containing OpenStreetMap (OSM) infrastructure data with associated climate risk metrics for our analysis session.
+Below is an overview of the key data columns you'll be working with:
 
-This dataset contains OpenStreetMap (OSM) assets with climate risk metrics:
+**Core Asset Information:**
+* `osm_id`: Unique OpenStreetMap identifier for the asset.
+* `osm_type`: General type of OSM feature (e.g., 'power').
+* `osm_subtype`: Specific type of asset (e.g., 'line', 'substation', 'plant', 'minor_line'). This is key for differentiating asset roles.
+* `longitude`, `latitude`: Geographic coordinates.
+* `county`, `city`: Administrative location information, crucial for regional risk assessment.
 
-**Core Information:**
-  * `osm_id` - Unique identifier for the OSM feature
-  * `osm_type` - Type of OSM feature (e.g., power, building)
-  * `osm_subtype` - Subtype of the feature (e.g., line, substation, plant, minor_line)
-  * `longitude`, `latitude` - Coordinates
-  * `county`, `city` - Location information
+**Climate Risk & Scenario Data:**
+* `ssp`: The Shared Socioeconomic Pathway (climate scenario) for the projection (e.g., 585 for SSP5-8.5).
+* `month`: The month for which the projection is valid (e.g., 8 for August).
+* `decade`: The future decade of the projection (e.g., 2030).
+* `ensemble_max`: **This is the primary climate risk indicator value (e.g., Fire Weather Index). Use this for your core risk analysis.**
 
-**Climate Scenario Data:**
-  * `ssp` - Shared Socioeconomic Pathway (climate scenario)
-  * `month` - Month of the year (1-12)
-  * `decade` - Future decade for projection
-  * `ensemble_mean`, `ensemble_median`, `ensemble_stddev`, etc. - Statistical metrics
+**Specific Asset Attributes (Parsed OSM Tags):**
+* Many columns are prefixed with the `osm_subtype` followed by a semicolon and the tag name (e.g., `line;voltage`, `plant;name`, `substation;operator`).
+* These columns provide detailed characteristics of the assets. For example, to analyze voltage of power lines, you would look at the `line;voltage` column, filtering for rows where `osm_subtype` is 'line'.
+* Columns WITHOUT semicolons are core attributes and generally apply to all assets in the row.
 
-**Parsed Tags Structure:**
-  * Original OSM tags have been parsed into dedicated columns using the format: `subtype;tag_name`
-  * Example: `line;voltage`, `substation;operator`, `plant;output`, `plant;plant:source`
-  * This format preserves which subtype each attribute belongs to
-  * To analyze a specific subtype's attributes, filter columns that start with that subtype name followed by a semicolon
-  * Columns WITHOUT semicolons are core attributes and should ALWAYS be included in any analysis
+I am now ready for your analysis questions about this dataset. Let me know you're ready. DO NOT PERFORM ANY ANALYSIS YET. Just confirm you have received the data context and are prepared.
 """
