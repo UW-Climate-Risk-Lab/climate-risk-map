@@ -65,7 +65,6 @@ def setup_args():
 def main(
     s3_zarr_store_uri: str,
     usda_variable: str,
-    ssp: str,
     zonal_agg_method: str,
     polygon_area_threshold: str,
     x_min: str,
@@ -133,7 +132,6 @@ def main(
         infra_intersection_load_conn = connection_pool.getconn()
         infra_intersection_load.main(
             df=df,
-            ssp_value=ssp,
             usda_variable=usda_variable,
             conn=infra_intersection_load_conn,
             maintenance_work_mem=pg_maintenance_memory
@@ -147,7 +145,6 @@ if __name__ == "__main__":
     main(
         s3_zarr_store_uri=args.s3_zarr_store_uri,
         usda_variable=args.usda_variable,
-        ssp=args.ssp,
         zonal_agg_method=args.zonal_agg_method,
         polygon_area_threshold=args.polygon_area_threshold,
         x_min=args.x_min,

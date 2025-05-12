@@ -52,6 +52,7 @@ def main(
     # Converts 0-360 longitude to -180-180 longitude. In line with OpenStreetMap database
     ds = ds.assign_coords({x_dim: (((ds[x_dim] + 180) % 360) - 180)})
     ds = ds.sortby(x_dim)
+    ds = ds.sortby(y_dim)
 
     # Sets the CRS based on the provided CRS
     ds.rio.write_crs(crs, inplace=True)

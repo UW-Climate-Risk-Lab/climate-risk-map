@@ -29,7 +29,7 @@ fi
 ROOT_DIR=$(pwd)
 MIGRATIONS_DIR="$ROOT_DIR/migrations"
 OSM_ETL_DIR="$ROOT_DIR/etl/osm"
-EXPOSURE_ETL_DIR="$ROOT_DIR/etl/exposure/nasa_nex"
+EXPOSURE_ETL_DIR="$ROOT_DIR/etl/exposure"
 ASSET_GROUP_DIR="$ROOT_DIR/materialized_views/asset_groups"
 UNEXPOSED_DIR="$ROOT_DIR/materialized_views/unexposed_ids"
 GEOTIFF_ETL_DIR="$ROOT_DIR/etl/geotiff"
@@ -297,7 +297,7 @@ refresh_unexposed_id_views() {
     # Refresh all unexposed_ids views
     # Note, does not check if exposure exists for every SSP scenario and time step
 
-    for VIEW in unexposed_ids_nasa_nex_fwi
+    for VIEW in unexposed_ids_nasa_nex_fwi unexposed_ids_usda_burn_probability
     do
         echo "Refreshing osm.$VIEW..."
         PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
@@ -307,8 +307,8 @@ refresh_unexposed_id_views() {
 
 
 # Step 5: Run Climate ETL Process
-run_exposure_etl() {
-    echo "===== STEP 5: RUNNING CLIMATE ETL PROCESS ====="
+run_nasa_nex_exposure_etl() {
+    echo "===== STEP 5: RUNNING NASA NEX EXPOSURE ETL PROCESS ====="
     
     # Check if Docker is installed
     if ! command -v docker &> /dev/null; then
@@ -317,27 +317,27 @@ run_exposure_etl() {
     fi
     
     # Check if ETL directory exists
-    if [ ! -d "$EXPOSURE_ETL_DIR" ]; then
+    if [ ! -d "$EXPOSURE_ETL_DIR/nasa_nex" ]; then
         echo "Error: ETL directory not found at $EXPOSURE_ETL_DIR"
         exit 1
     fi
     
     # Check if Dockerfile exists in ETL directory
-    if [ ! -f "$EXPOSURE_ETL_DIR/Dockerfile" ]; then
+    if [ ! -f "$EXPOSURE_ETL_DIR/nasa_nex/Dockerfile" ]; then
         echo "Error: Dockerfile not found in Climate ETL directory"
         exit 1
     fi
     
     
-    # Navigate to ETL directory
-    cd "$EXPOSURE_ETL_DIR"
+    # Navigate to NASA NEX ETL directory
+    cd "$EXPOSURE_ETL_DIR/nasa_nex"
     
     # Build Docker image
-    echo "Building Climate ETL Docker image..."
-    sudo docker build -t database-v1-climate-etl .
+    echo "Building NASA NEX ETL Docker image..."
+    sudo docker build -t database-v1-nasa-nex-etl .
     
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to build Climate ETL Docker image"
+        echo "Error: Failed to build NASA NEX EXPOSURE ETL Docker image"
         cd "$ROOT_DIR"  # Return to root directory
         exit 1
     fi
@@ -384,7 +384,7 @@ run_exposure_etl() {
             -e PGPASSWORD=$PGCLIMATE_PASSWORD \
             -e PGHOST=$PGCLIMATE_HOST \
             -e PGPORT=$PGPORT \
-            database-v1-climate-etl \
+            database-v1-nasa-nex-etl \
             --s3-zarr-store-uri "$S3_ZARR_STORE_URI" \
             --climate-variable "$CLIMATE_VARIABLE" \
             --ssp "$SSP" \
@@ -408,8 +408,112 @@ run_exposure_etl() {
     # Return to root directory
     cd "$ROOT_DIR"
     
-    echo "Climate ETL process completed successfully for all datasets"
+    echo "NASA NEX ETL process completed successfully for all datasets"
 }
+
+# Step 5a: Run USDA Burn Probability ETL Process
+run_usda_wildfire_exposure_etl() {
+    echo "===== STEP 5a: RUNNING USDA WILDFIRE ETL PROCESS ====="
+    
+    # Check if Docker is installed
+    if ! command -v docker &> /dev/null; then
+        echo "Error: Docker is not installed or not in PATH"
+        exit 1
+    fi
+    
+    # Check if ETL directory exists
+    if [ ! -d "$EXPOSURE_ETL_DIR/usda" ]; then
+        echo "Error: ETL directory not found at $EXPOSURE_ETL_DIR"
+        exit 1
+    fi
+    
+    # Check if Dockerfile exists in ETL directory
+    if [ ! -f "$EXPOSURE_ETL_DIR/usda/Dockerfile" ]; then
+        echo "Error: Dockerfile not found in USDA ETL directory"
+        exit 1
+    fi
+    
+    
+    # Navigate to NASA NEX ETL directory
+    cd "$EXPOSURE_ETL_DIR/usda"
+    
+    # Build Docker image
+    echo "Building USDA Wildfire Exposure ETL Docker image..."
+    sudo docker build -t database-v1-usda-wildfire-etl .
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to build Climate ETL Docker image"
+        cd "$ROOT_DIR"  # Return to root directory
+        exit 1
+    fi
+    
+    # Get the number of datasets
+    DATASET_COUNT=$(jq '.usda_wildfire_expsoure_args | length' "$CONFIG_JSON")
+    echo "Found $DATASET_COUNT climate datasets to process"
+
+    # Get Bounding Box for Database
+    X_MIN=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.x_min' "$CONFIG_JSON")
+    Y_MIN=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.y_min' "$CONFIG_JSON")
+    X_MAX=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.x_max' "$CONFIG_JSON")
+    Y_MAX=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.y_max' "$CONFIG_JSON")
+    
+    # Loop through each dataset in the JSON file
+    for ((i=0; i<$DATASET_COUNT; i++)); do
+        # Extract dataset properties
+        ZARR_STORE_PATH=$(jq -r ".usda_wildfire_expsoure_args[$i].zarr_store_path" "$CONFIG_JSON")
+        S3_ZARR_STORE_URI="s3://${S3_BUCKET}/${ZARR_STORE_PATH}"
+
+        USDA_VARIABLE=$(jq -r ".usda_wildfire_expsoure_args[$i].usda_variable" "$CONFIG_JSON")
+        ZONAL_AGG_METHOD=$(jq -r ".usda_wildfire_expsoure_args[$i].zonal_agg_method" "$CONFIG_JSON")
+        POLYGON_AREA_THRESHOLD=$(jq -r ".usda_wildfire_expsoure_args[$i].polygon_area_threshold" "$CONFIG_JSON")
+        
+        echo "Processing dataset $((i+1))/$DATASET_COUNT:"
+        echo "  - Zarr Store URI: $S3_ZARR_STORE_URI"
+        echo "  - Variable: $USDA_VARIABLE"
+        echo "  - Zonal Aggregation Method: $ZONAL_AGG_METHOD"
+        echo "  - Polygon Area Threshold: $POLYGON_AREA_THRESHOLD"
+        echo "  - X min: $X_MIN"
+        echo "  - Y min: $Y_MIN"
+        echo "  - X max: $X_MAX"
+        echo "  - Y max: $Y_MAX"
+        echo "  - Postgres maintenance memory $PG_MAINTENANCE_MEMORY"
+        
+        # Run Docker container with environment variables and arguments
+        echo "Running ETL process for climate dataset $((i+1))..."
+        
+        sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+            -e PG_DBNAME=$PG_DBNAME \
+            -e PGUSER=$PGCLIMATE_USER \
+            -e PGPASSWORD=$PGCLIMATE_PASSWORD \
+            -e PGHOST=$PGCLIMATE_HOST \
+            -e PGPORT=$PGPORT \
+            database-v1-usda-wildfire-etl \
+            --s3-zarr-store-uri "$S3_ZARR_STORE_URI" \
+            --usda-variable "$USDA_VARIABLE" \
+            --zonal-agg-method "$ZONAL_AGG_METHOD" \
+            --polygon-area-threshold "$POLYGON_AREA_THRESHOLD" \
+            --x_min "$X_MIN" \
+            --y_min "$Y_MIN" \
+            --x_max "$X_MAX" \
+            --y_max "$Y_MAX" \
+            --pg_maintenance_memory "$PG_MAINTENANCE_MEMORY" \
+        
+        if [ $? -ne 0 ]; then
+            echo "Error: ETL process failed for dataset $((i+1))"
+            cd "$ROOT_DIR"  # Return to root directory
+            exit 1
+        fi
+        
+        echo "Dataset $((i+1)) processed successfully"
+    done
+    
+    # Return to root directory
+    cd "$ROOT_DIR"
+    
+    echo "USDA Wildfire process completed successfully for all datasets"
+}
+
+
 
 # Step 6: Run Geotiff Process
 run_geotiff_etl() {
@@ -514,7 +618,9 @@ main() {
         refresh_unexposed_id_views
 
         # Run Climate Exposure ETL process
-        run_exposure_etl
+        run_nasa_nex_exposure_etl
+
+        run_usda_wildfire_exposure_etl
 
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
@@ -536,7 +642,9 @@ main() {
         create_views
         
         # Run Climate ETL process
-        run_exposure_etl
+        run_nasa_nex_exposure_etl
+
+        run_usda_wildfire_exposure_etl
 
         # Refresh Unexposed ID views
         refresh_unexposed_id_views

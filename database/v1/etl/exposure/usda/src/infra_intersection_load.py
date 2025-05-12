@@ -16,7 +16,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 CLIMATE_SCHEMA = "climate"
 
-# Define columns expected in the DataFrame *before* adding 'ssp'
 # Adjust this list if your input DataFrame has different names initially
 DF_INPUT_COLUMNS = [
     "osm_id",
@@ -29,7 +28,7 @@ DF_INPUT_COLUMNS = [
 # Ensure 'ssp' is included here.
 FINAL_TABLE_COLUMNS = [
     "osm_id",
-    "burn_probability"
+    "burn_probability",
     "metadata",
 ]
 
@@ -42,7 +41,6 @@ def generate_random_table_id():
 # --- Main Loading Function ---
 def main(
     df: pd.DataFrame,
-    ssp_value: str, # Use distinct name from column name
     usda_variable: str,
     conn: pg.extensions.connection,
     maintenance_work_mem: str = '4GB', # Adjust based on RDS instance RAM (64GB total)
@@ -53,7 +51,6 @@ def main(
 
     Args:
         df: Pandas DataFrame containing the data (ensure it fits in EC2 RAM).
-        ssp_value: The SSP identifier string (e.g., 'historical', 'ssp126').
         usda_variable: Base name for the target table (e.g., 'fwi').
         conn: Active psycopg2 connection.
         maintenance_work_mem: Memory allocated for index creation.
@@ -61,16 +58,7 @@ def main(
     """
     start_time = time.time()
     num_rows = len(df)
-    logger.info(f"Starting efficient bulk load for '{usda_variable}', ssp '{ssp_value}'. Rows: {num_rows}")
-
-    # --- Prepare Data ---
-    # Map 'historical' SSP identifier
-    ssp_int = -999 if ssp_value == 'historical' else int(ssp_value.replace('ssp', '')) # Handle potential 'ssp' prefix
-
-    # Add 'ssp' column - Creates a copy, ensures original df is not modified if reused
-    df = df.copy()
-    df["ssp"] = ssp_int
-    logger.info("Added 'ssp' column to DataFrame.")
+    logger.info(f"Starting efficient bulk load for '{usda_variable}'. Rows: {num_rows}")
 
     # Verify all needed columns exist in the DataFrame
     if not all(col in df.columns for col in FINAL_TABLE_COLUMNS):

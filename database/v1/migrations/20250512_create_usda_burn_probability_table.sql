@@ -5,7 +5,7 @@ SET ROLE climate_user;
 CREATE TABLE climate.usda_burn_probability (
     id SERIAL PRIMARY KEY,
     osm_id BIGINT NOT NULL,
-    burn_probability NOT NULL,
+    burn_probability FLOAT NOT NULL,
     metadata JSONB
 
 );

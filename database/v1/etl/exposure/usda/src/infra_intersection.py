@@ -98,10 +98,9 @@ def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
     """
 
     df = (
-        ds.stack(id_dim=(GEOMETRY_COLUMN))
-        .to_dataframe()
+        ds.to_dataframe()
         .reset_index(drop=True)[
-            [ID_COLUMN, GEOMETRY_COLUMN] + list(ds.data_vars)
+            [ID_COLUMN] + list(ds.data_vars)
         ]
     )
 

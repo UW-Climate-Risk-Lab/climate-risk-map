@@ -28,7 +28,7 @@ server = app.server
 
 # Check password protection status
 if AuthService.is_password_protection_enabled():
-    logger.info("Password protection is enabled")
+    logger.info("Password protecti4on is enabled")
     if not APP_PASSWORD:
         logger.warning("APP_PASSWORD is not set, but password protection is enabled")
 else:
