@@ -12,6 +12,8 @@ Here is an overview of the key data columns you'll be working with:
 
 **Key Risk Metrics:**
 * `ensemble_mean`: **Projected Fire Weather Index (FWI)**. This indicates the potential intensity of a fire based *purely on weather conditions* if an ignition occurs. Higher values mean more intense fire weather.
+* `month`: The month column refers to the month of the `ensemble_mean` column
+* `decade`: The decade column refers to the decade of the `ensemble_mean` column
 * `ensemble_mean_historic_baseline`: **Historical Baseline FWI (approx. 1950-2010 mean)**. This provides context for the projected FWI. The *difference* between `ensemble_mean` and this baseline shows the *change* in fire weather intensity potential.
 * `burn_probability`: **Annual Burn Probability (USDA, circa 2021)**. This estimates the annual *likelihood* (0.0 to 1.0) of a given 500m location burning, based on landscape factors, fuels (~2021), and simulated fire spread. It complements FWI by indicating how likely a fire is in that specific spot.
 
