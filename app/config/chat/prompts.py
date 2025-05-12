@@ -10,7 +10,7 @@ Here is an overview of the key data columns you'll be working with:
 * `longitude`, `latitude`: Geographic coordinates.
 * `county`, `city`: Administrative location information, crucial for regional risk assessment.
 
-**Key Risk Metrics (Scenario: July 2050s, SSP5-8.5):**
+**Key Risk Metrics:**
 * `ensemble_mean`: **Projected Fire Weather Index (FWI)**. This indicates the potential intensity of a fire based *purely on weather conditions* if an ignition occurs. Higher values mean more intense fire weather.
 * `ensemble_mean_historic_baseline`: **Historical Baseline FWI (approx. 1950-2010 mean)**. This provides context for the projected FWI. The *difference* between `ensemble_mean` and this baseline shows the *change* in fire weather intensity potential.
 * `burn_probability`: **Annual Burn Probability (USDA, circa 2021)**. This estimates the annual *likelihood* (0.0 to 1.0) of a given 500m location burning, based on landscape factors, fuels (~2021), and simulated fire spread. It complements FWI by indicating how likely a fire is in that specific spot.
