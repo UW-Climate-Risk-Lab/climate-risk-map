@@ -2,8 +2,102 @@ import dash_bootstrap_components as dbc
 
 from dash import html
 
-from config.ui_config import PRIMARY_COLOR
+from config.ui_config import PRIMARY_COLOR, SECONDARY_COLOR
 from config.chat.messages import ChatMessage
+
+
+def create_climate_thinking_indicator():
+    """
+    Create a floating climate-themed "thinking" indicator that hovers over the chat window
+    while the AI is processing data.
+    """
+    return html.Div(
+        id="climate-thinking-indicator",
+        className="climate-thinking-container",
+        style={
+            "display": "none",  # Initially hidden
+            "position": "absolute",  # Absolute positioning for floating effect
+            "top": "50%",  # Center vertically
+            "left": "50%",  # Center horizontally
+            "transform": "translate(-50%, -50%)",  # Center adjustment
+            "zIndex": "1500",  # Higher than modal (1050) to float on top
+            "borderRadius": "10px",
+            "boxShadow": "0 4px 12px rgba(0,0,0,0.25)",  # Stronger shadow for floating effect
+            "backgroundColor": "rgba(255, 255, 255, 0.95)",  # Slightly transparent background
+            "maxWidth": "60%",  # Don't take up too much space
+        },
+        children=[
+            html.Div(
+                className="climate-thinking-animation",
+                style={
+                    "padding": "15px",
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "gap": "10px",
+                    "border": f"1px solid {SECONDARY_COLOR}",
+                    "borderRadius": "10px",
+                },
+                children=[
+                    # Thinking header
+                    html.Div(
+                        [
+                            html.I(className="fa fa-cloud me-2"),
+                            html.Span(
+                                id="thinking-status-text",
+                                children="Analyzing climate data...",
+                            ),
+                        ],
+                        style={"fontWeight": "bold"},
+                    ),
+                    # Climate data visualization placeholder
+                    html.Div(
+                        className="climate-viz-placeholder",
+                        children=[
+                            html.Div(
+                                className="climate-wave wave1",
+                                style={"backgroundColor": "#69b3a2"},
+                            ),
+                            html.Div(
+                                className="climate-wave wave2",
+                                style={"backgroundColor": "#3498db"},
+                            ),
+                            html.Div(
+                                className="climate-wave wave3",
+                                style={"backgroundColor": "#f39c12"},
+                            ),
+                        ],
+                        style={
+                            "height": "40px",
+                            "width": "100%",
+                            "position": "relative",
+                            "marginTop": "5px",
+                            "marginBottom": "5px",
+                            "overflow": "hidden",
+                            "borderRadius": "5px",
+                            "backgroundColor": "#f5f5f5",
+                        },
+                    ),
+                    # Progress bar and step indicator
+                    html.Div(
+                        [
+                            dbc.Progress(
+                                id="thinking-progress",
+                                value=0,
+                                color=PRIMARY_COLOR,
+                                className="mb-2",
+                                style={"height": "6px"},
+                            ),
+                            html.Div(
+                                id="thinking-step-indicator",
+                                children="Preparing analysis...",
+                                style={"fontSize": "12px", "color": "#6c757d"},
+                            ),
+                        ]
+                    ),
+                ],
+            )
+        ],
+    )
 
 
 def create_ai_analysis_modal():
@@ -31,7 +125,8 @@ def create_ai_analysis_modal():
                 style={"background-color": "white"},
             ),
             dbc.ModalBody(
-                [
+                [  # Climate thinking indicator
+                    create_climate_thinking_indicator(),
                     # Chat message container with scrollable area for messages
                     # We simulate a chat by appending new messages to 'ai-chat-messages' children
                     html.Div(
@@ -55,14 +150,8 @@ def create_ai_analysis_modal():
                         },
                     ),
                     # Loading indicator for AI responses
-                    dbc.Spinner(
-                        html.Div(id="chat-loading-placeholder"),
-                        id="chat-loading-spinner",
-                        delay_show=100,
-                        color=PRIMARY_COLOR,
-                        fullscreen=True,
-                        fullscreen_style={"backgroundColor": "transparent"},
-                    ),
+                    # Keep this for callback compatibility
+                    html.Div(id="chat-loading-placeholder"),
                     dbc.Alert(
                         id="chat-alert-message",
                         color="danger",
