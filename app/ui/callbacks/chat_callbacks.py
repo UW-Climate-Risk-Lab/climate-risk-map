@@ -27,7 +27,6 @@ THINKING_STEPS = [
     "Evaluating infrastructure assets...",
     "Calculating risk exposure...",
     "Generating insights...",
-    "Finalizing analysis...",  # Added a final step
 ]
 
 
@@ -147,7 +146,7 @@ def register_chat_callbacks(app):
         num_steps = len(step_messages)
         # Calculate which step we should be on based on n_intervals, assuming each step takes some ticks
         # This is a simple way to advance; you can make it more sophisticated
-        ticks_per_step = 5  # For example, 5 interval ticks per thinking step
+        ticks_per_step = 10  # For example, 5 interval ticks per thinking step
         current_step_index = (n_intervals // ticks_per_step) % num_steps
 
         new_progress = min(

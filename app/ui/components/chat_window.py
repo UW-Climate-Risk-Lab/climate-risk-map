@@ -118,7 +118,7 @@ def create_ai_analysis_modal():
         children=[
             dbc.ModalHeader(
                 dbc.ModalTitle(
-                    [html.I(className="fa fa-robot me-2"), "Climate Risk AI Assistant"],
+                    [html.I(className="fa fa-graduation-cap me2"), " Climate Risk AI Instructor"],
                     style={"color": PRIMARY_COLOR},
                 ),
                 close_button=True,

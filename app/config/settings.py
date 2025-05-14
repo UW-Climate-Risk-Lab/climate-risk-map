@@ -38,3 +38,5 @@ AGENT_ALIAS_ID = os.environ.get("AGENT_ALIAS_ID", "id")
 
 APP_PASSWORD_WALL_ENABLED = os.environ.get('APP_PASSWORD_WALL_ENABLED', 'false')
 APP_PASSWORD = os.environ.get('APP_PASSWORD', None)
+
+APPLICATION_TITLE = os.environ.get("APPLICATION_TITLE", "UW Climate Risk Lab")

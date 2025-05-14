@@ -9,7 +9,6 @@ the application and make global style changes easily.
 
 from config.settings import ASSETS_PATH
 
-
 # Color scheme
 # Primary colors
 PRIMARY_COLOR = "#39275B"  # UW purple
@@ -27,9 +26,7 @@ ALERT_WARNING_COLOR = "#F0AD4E"
 ALERT_DANGER_COLOR = "#D9534F"
 
 # Logo location
-LOGO_PATH = ASSETS_PATH + "/icons/CRL-Logo.png"
-
-CONTROL_PANEL_TITLE = "CRX.pro"
+LOGO_PATH = ASSETS_PATH + "/icons/cloud-bolt-uw.png"
 
 # Logo style
 LOGO_STYLE = {

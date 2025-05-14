@@ -10,9 +10,8 @@ from config.ui_config import (
     PANEL_SECTION_STYLE,
     BUTTON_STYLE,
     PANEL_BACKGROUND_COLOR,
-    CONTROL_PANEL_TITLE
 )
-from config.settings import ENABLE_AI_ANALYSIS
+from config.settings import ENABLE_AI_ANALYSIS, APPLICATION_TITLE
 from config.map_config import MapConfig
 from config.hazard_config import HazardConfig
 
@@ -37,7 +36,7 @@ def create_title_bar() -> html.Div:
                     ),
                     dbc.Col(
                         html.Div(
-                            CONTROL_PANEL_TITLE,
+                            APPLICATION_TITLE,
                             style=TITLE_STYLE,
                         ),
                         width="auto",
@@ -254,9 +253,12 @@ def create_download_section():
         html.Div: Download section component
     """
     ai_button_style = BUTTON_STYLE.copy()
+    download_button_style = BUTTON_STYLE.copy()
 
     if not ENABLE_AI_ANALYSIS:
         ai_button_style["display"] = "none"
+    else:
+        download_button_style["display"] = "none"
 
     return html.Div(
         children=[
@@ -272,7 +274,7 @@ def create_download_section():
                                 id="download-btn",
                                 className="me-1",
                                 n_clicks=0,
-                                style=BUTTON_STYLE,
+                                style=download_button_style,
                             ),
                             dcc.Download(id="data-download"),
                         ],
@@ -282,7 +284,7 @@ def create_download_section():
                         width="auto",
                         children=[
                             dbc.Button(
-                                "Analyze with AI",
+                                "Analyze with CRX.pro AI",
                                 id="analysis-btn",
                                 className="me-1",
                                 n_clicks=0,
