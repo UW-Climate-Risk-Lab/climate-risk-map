@@ -1,0 +1,71 @@
+
+
+/* Animated climate waves */
+.climate-wave {
+    position: absolute;
+    height: 30px;
+    width: 100%;
+    opacity: 0.6;
+    bottom: 0;
+    border-radius: 3px;
+}
+
+.wave1 {
+    animation: wave 2.5s infinite ease-in-out;
+    z-index: 3;
+}
+
+.wave2 {
+    animation: wave 2.5s infinite ease-in-out;
+    animation-delay: 0.3s;
+    height: 25px;
+    z-index: 2;
+}
+
+.wave3 {
+    animation: wave 2.5s infinite ease-in-out;
+    animation-delay: 0.6s;
+    height: 20px;
+    z-index: 1;
+}
+
+@keyframes wave {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(10%); }
+    100% { transform: translateX(-100%); }
+}
+
+/* Make the progress bar have a pulse effect */
+#thinking-progress .progress-bar {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+/* Add a fade-in animation for the floating indicator */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Add a subtle floating animation */
+@keyframes float {
+    0% { transform: translate(-50%, -50%); }
+    50% { transform: translate(-50%, -52%); }
+    100% { transform: translate(-50%, -50%); }
+}
+
+/* Apply animations to the indicator when visible */
+#climate-thinking-indicator[style*="display: flex"] {
+    animation: fadeIn 0.3s ease-out, float 3s ease-in-out infinite;
+}
+
+/* Add a subtle backdrop filter for a modern look */
+#climate-thinking-indicator {
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}

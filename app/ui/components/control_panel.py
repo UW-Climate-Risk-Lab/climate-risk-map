@@ -12,6 +12,7 @@ from config.ui_config import (
     PANEL_BACKGROUND_COLOR,
     CONTROL_PANEL_TITLE
 )
+from config.settings import ENABLE_AI_ANALYSIS
 from config.map_config import MapConfig
 from config.hazard_config import HazardConfig
 
@@ -252,6 +253,11 @@ def create_download_section():
     Returns:
         html.Div: Download section component
     """
+    ai_button_style = BUTTON_STYLE.copy()
+
+    if not ENABLE_AI_ANALYSIS:
+        ai_button_style["display"] = "none"
+
     return html.Div(
         children=[
             dbc.Row(
@@ -280,7 +286,7 @@ def create_download_section():
                                 id="analysis-btn",
                                 className="me-1",
                                 n_clicks=0,
-                                style=BUTTON_STYLE,
+                                style=ai_button_style,
                             )
                         ],
                     ),

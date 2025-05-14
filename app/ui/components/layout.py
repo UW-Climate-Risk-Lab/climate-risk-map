@@ -24,11 +24,11 @@ def create_main_layout():
     """
     # Check if password protection is enabled
     password_protected = AuthService.is_password_protection_enabled()
-    
+
     # For password-protected app, don't create the map component yet
     # We'll create it dynamically after authentication
     map_placeholder = html.Div(id="map-placeholder")
-    
+
     # Create the main application layout
     main_app_layout = dbc.Container(
         fluid=True,
@@ -72,7 +72,9 @@ def create_main_layout():
                             # Map component - either the actual map or a placeholder
                             html.Div(
                                 children=[
-                                    map_placeholder if password_protected else MapService.get_base_map(),
+                                    map_placeholder
+                                    if password_protected
+                                    else MapService.get_base_map(),
                                 ],
                                 id="map-div",
                             ),
@@ -95,29 +97,54 @@ def create_main_layout():
             dcc.Store(id="chat-allowed", data=False, storage_type="memory"),
             # chat-selection-hash is a string hash representing the combination of the user selection of hazard, time, bounding box, assets
             # If the user selects a new combination of dropdowns or area on the map, this hash will update. Currently used in chat_callbacks in get_ai repsonse
-            # TODO: Make this update any time the map changes anywhere 
+            # TODO: Make this update any time the map changes anywhere
             dcc.Store(id="chat-selection-hash", data="", storage_type="memory"),
             dcc.Store(id="new-user-selection", data=True, storage_type="memory"),
             dcc.Store(id="agent-session-id", data="", storage_type="session"),
-            dcc.Store(id="trigger-ai-response-store", data=0.0, storage_type="memory"),
+            dcc.Store(
+                id="loading-info-store",
+                data={
+                    "is_loading": False,  # True when the loading indicator UI should be active
+                    "ai_task_active": False,  # True when an AI message is queued and waiting for processing
+                    "message_for_ai": None,  # Stores user input or 'INITIAL_ANALYSIS_REQUEST'
+                },
+                storage_type="memory",
+            ),
+            dcc.Store(
+                id="animation-info-store",
+                data={
+                    "current_step_text": "Thinking...",
+                    "current_progress": 0,
+                    "animation_instance": 0,
+                },
+                storage_type="memory",
+            ),
+            dcc.Interval(
+                id="thinking-interval",
+                interval=400,  # milliseconds
+                n_intervals=0,
+                max_intervals=0,  # 0 means it is intially disabled
+            ),
         ],
     )
-    
+
     # Check if password protection is enabled
     if password_protected:
         # Add a store to track authentication state
         auth_store = dcc.Store(id="auth-status", data=False, storage_type="session")
-        
+
         # Create complete layout with password screen and hidden main app
-        return html.Div([
-            create_password_screen(),
-            html.Div(
-                id="main-app-container",
-                children=[main_app_layout],
-                style={"display": "none"}
-            ),
-            auth_store
-        ])
+        return html.Div(
+            [
+                create_password_screen(),
+                html.Div(
+                    id="main-app-container",
+                    children=[main_app_layout],
+                    style={"display": "none"},
+                ),
+                auth_store,
+            ]
+        )
     else:
         # If password protection is not enabled, return just the main app layout
         return main_app_layout
