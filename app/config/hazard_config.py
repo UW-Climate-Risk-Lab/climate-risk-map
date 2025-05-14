@@ -63,33 +63,8 @@ class HazardConfig:
 
     HAZARDS = [
         Hazard(
-            name="fwi",
-            label=r"Fire Weather Index (NASA NEX GDDP Ensemble Mean)",
-            available_measures=[
-                "ensemble_mean",
-                "ensemble_median",
-                "ensemble_max",
-                "ensemble_min",
-                "ensemble_stdev",
-                "ensemble_q1",
-                "ensemble_q3",
-            ],
-            display_measure="ensemble_q3",
-            unit="",
-            min_value=0,
-            max_value=20,
-            available_ssp=[245, 585],
-            geotiff=Geotiff(
-                format="cogs",
-                s3_bucket=S3_BUCKET,
-                s3_prefix="climate-risk-map/frontend/NEX-GDDP-CMIP6/fwi",
-                colormap="oranges",
-                opacity=0.6,
-            ),
-        ),
-        Hazard(
             name="wildfire",
-            label=r"Wildfire",
+            label=r"Wildfire Risk Index",
             available_measures=[
                 "ensemble_mean",
                 "ensemble_median",

@@ -10,6 +10,7 @@ from config.ui_config import (
     PANEL_SECTION_STYLE,
     BUTTON_STYLE,
     PANEL_BACKGROUND_COLOR,
+    CONTROL_PANEL_TITLE
 )
 from config.map_config import MapConfig
 from config.hazard_config import HazardConfig
@@ -35,7 +36,7 @@ def create_title_bar() -> html.Div:
                     ),
                     dbc.Col(
                         html.Div(
-                            "UW Climate Risk Map",
+                            CONTROL_PANEL_TITLE,
                             style=TITLE_STYLE,
                         ),
                         width="auto",

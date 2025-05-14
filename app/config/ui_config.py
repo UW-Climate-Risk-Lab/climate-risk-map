@@ -29,6 +29,8 @@ ALERT_DANGER_COLOR = "#D9534F"
 # Logo location
 LOGO_PATH = ASSETS_PATH + "/icons/CRL-Logo.png"
 
+CONTROL_PANEL_TITLE = "CRX.pro"
+
 # Logo style
 LOGO_STYLE = {
     "width": "10vw",
