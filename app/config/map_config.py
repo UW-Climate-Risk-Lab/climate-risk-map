@@ -44,8 +44,8 @@ class MapConfig:
         "default_region_name": "usa",
         "base_map_layer": {
             "id": "base-map-layer",
-            "url": "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-            "attribution": '&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+            "attribution": '&copy; <a href="https://carto.com/attributions">CARTO</a>',
         },
         "drawn_shapes_layer": {
             "id": "drawn-shapes-layer",
@@ -68,7 +68,7 @@ class MapConfig:
         },
         "hazard_tile_layer": {
             "id": "hazard-tile-layer",
-            "placeholder_url": "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "placeholder_url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
             "placeholder_opacity": 0,
         },
         "asset_layer": {"id": "asset-layer"},

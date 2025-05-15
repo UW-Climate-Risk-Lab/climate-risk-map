@@ -397,15 +397,23 @@ def register_map_callbacks(app):
 
         # Toggle visibility based on even/odd clicks
         if n_clicks % 2 == 1:
-            # Hide legend
+            button_style["backgroundColor"] = PRIMARY_COLOR
+            button_style["color"] = "white"
+            region_overlay_style["color"] = "white"
+
+            url = "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution = "&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+
+            return url, attribution, button_style, region_overlay_style
+        else:
             button_style["backgroundColor"] = "white"
             button_style["color"] = PRIMARY_COLOR
             region_overlay_style["color"] = PRIMARY_COLOR
+
             url = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             attribution = '&copy; <a href="https://carto.com/attributions">CARTO</a>'
+            
             return url, attribution, button_style, region_overlay_style
-        else:
-            url = "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution = "&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
-            region_overlay_style["color"] = "white"
-            return url, attribution, button_style, region_overlay_style
+        
+
+        

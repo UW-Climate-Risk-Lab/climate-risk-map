@@ -69,11 +69,10 @@ def create_region_selector() -> dbc.Row:
                                 "label": region.label,
                                 "value": region.name,
                             }
-                            for region in MapConfig.REGIONS
+                            for region in sorted(MapConfig.REGIONS, key=lambda region: region.label)
                         ],
                         id="region-select-dropdown",
                         placeholder="Select a Region",
-                        value=MapConfig.BASE_MAP_COMPONENT["default_region_name"],
                     ),
                 ]
             )
@@ -284,7 +283,7 @@ def create_download_section():
                         width="auto",
                         children=[
                             dbc.Button(
-                                "Analyze with CRX.pro AI",
+                                "Analyze with AI",
                                 id="analysis-btn",
                                 className="me-1",
                                 n_clicks=0,

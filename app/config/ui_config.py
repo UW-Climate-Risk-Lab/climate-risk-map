@@ -225,8 +225,8 @@ BASEMAP_BUTTON_STYLE = {
     "top": "190px",
     "right": "10px",
     "zIndex": "1002",
-    "backgroundColor": PRIMARY_COLOR,
-    "color": "white",
+    "backgroundColor": "white",
+    "color": PRIMARY_COLOR,
     "border": f"1px solid {PRIMARY_COLOR}",
     "borderRadius": "4px",
     "padding": "10px 10px",
@@ -252,7 +252,7 @@ MAP_FEATURES_LOADING_SPINNER_STYLE = {
 }
 
 REGION_OVERLAY_STYLE = {
-    "color": "white",
+    "color": PRIMARY_COLOR,
     "weight": 2,
     "fillOpacity": 0,
 }
