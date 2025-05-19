@@ -31,6 +31,7 @@ CONFIG["CACHE_DIR"] = os.path.join(CONFIG["CACHE_DIR_BASE"], CONFIG["CACHE_SUBDI
 
 # --- Helper Functions ---
 
+
 def calculate_zonal_stats_for_df(data_array, gdf_indexed_geom, variable_name_prefix):
     """
     Calculates zonal statistics (mean, max) for a DataArray against indexed geometries.

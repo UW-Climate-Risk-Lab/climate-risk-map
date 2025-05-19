@@ -12,6 +12,7 @@ dependencies = [
     "fsspec>=2025.3.2",
     "geopandas>=1.0.1",
     "h5netcdf>=1.6.1",
+    "matplotlib>=3.10.3",
     "netcdf4>=1.7.2",
     "requests>=2.32.3",
     "rioxarray>=0.19.0",
