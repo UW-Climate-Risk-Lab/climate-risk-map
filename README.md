@@ -21,7 +21,7 @@ Our current focus is on the risks to the power grid in Washington State. Over ti
 
 The application consists of several key components:
 
-### Application (`/application`)
+### Application (`/app`)
 - Dash application built with [Dash Leaflet](https://www.dash-leaflet.com/) for interactive mapping
 - Docker containerized deployment
 - Visualizes infrastructure and climate data layers
