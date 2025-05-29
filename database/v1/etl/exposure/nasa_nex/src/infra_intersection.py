@@ -400,7 +400,7 @@ def zonal_aggregation_linestring_optimized(
             geom, simplify_tolerance, id_val, id_column, geometry_column
         )
         all_points_data.extend(points)
-
+    print(all_points_data)
     if not all_points_data:
         print(
             "No valid points could be extracted from the geometries after simplification."
@@ -590,6 +590,7 @@ def zonal_aggregation(
     zonal_agg_method: str,
     x_dim: str,
     y_dim: str,
+    linestring_tolerance: float = 0.0001
 ) -> pd.DataFrame:
     """Performs zonal aggregation on climate data and infrastructure data.
 
@@ -636,6 +637,7 @@ def zonal_aggregation(
             infra=line_infra,
             x_dim=x_dim,
             y_dim=y_dim,
+            simplify_tolerance=linestring_tolerance
         )
 
         logger.info("Lines geometries intersected successfully")
