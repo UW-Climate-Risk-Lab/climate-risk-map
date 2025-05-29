@@ -137,12 +137,13 @@ class GetDataQueryBuilder:
                     climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
                 )
             )
-            select_fields.append(
-                sql.SQL("{climate_table_alias}.burn_probability").format(
-                    climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),
-                    climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+            if self.input_params.climate_variable == "wildfire":
+                select_fields.append(
+                    sql.SQL("{climate_table_alias}.burn_probability").format(
+                        climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    )
                 )
-            )
 
         select_statement = sql.SQL("SELECT {columns}").format(
             columns=sql.SQL(", ").join(select_fields)

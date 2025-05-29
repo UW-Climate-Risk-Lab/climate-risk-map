@@ -65,7 +65,7 @@ TEST_BBOX = {
         # Select with climate arguments
         (
             schemas.GetDataInputParameters(
-                osm_category="infrastructure",
+                osm_category="power_grid",
                 osm_types=["power"],
                 osm_subtypes=["line"],
                 epsg_code=4326,
@@ -79,9 +79,9 @@ TEST_BBOX = {
                     SQL("SELECT "),
                     Composed(
                         [
-                            Identifier("osm", "infrastructure", "osm_id"),
+                            Identifier("osm", "power_grid", "osm_id"),
                             SQL(", "),
-                            Identifier("osm", "infrastructure", "osm_type"),
+                            Identifier("osm", "power_grid", "osm_type"),
                             SQL(", "),
                             Composed(
                                 [
@@ -99,7 +99,7 @@ TEST_BBOX = {
                                     SQL("ST_Transform("),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("geom"),
                                     SQL(", %s) AS geometry"),
@@ -111,7 +111,7 @@ TEST_BBOX = {
                                     SQL("ST_AsText(ST_Transform("),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("geom"),
                                     SQL(", %s), 3) AS geometry_wkt"),
@@ -123,7 +123,7 @@ TEST_BBOX = {
                                     SQL("ST_X(ST_Centroid(ST_Transform("),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("geom"),
                                     SQL(", %s))) AS longitude"),
@@ -135,14 +135,14 @@ TEST_BBOX = {
                                     SQL("ST_Y(ST_Centroid(ST_Transform("),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("geom"),
                                     SQL(", %s))) AS latitude"),
                                 ]
                             ),
                             SQL(", "),
-                            Identifier("osm", "infrastructure", "osm_subtype"),
+                            Identifier("osm", "power_grid", "osm_subtype"),
                             SQL(", "),
                             Composed([Identifier("county"), SQL(".name AS county")]),
                             SQL(", "),
@@ -156,17 +156,7 @@ TEST_BBOX = {
                             SQL(", "),
                             Composed([Identifier("climate_table"), SQL(".ensemble_mean")]),
                             SQL(", "),
-                            Composed([Identifier("climate_table"), SQL(".ensemble_median")]),
-                            SQL(", "),
-                            Composed([Identifier("climate_table"), SQL(".ensemble_stddev")]),
-                            SQL(", "),
-                            Composed([Identifier("climate_table"), SQL(".ensemble_min")]),
-                            SQL(", "),
-                            Composed([Identifier("climate_table"), SQL(".ensemble_max")]),
-                            SQL(", "),
-                            Composed([Identifier("climate_table"), SQL(".ensemble_q1")]),
-                            SQL(", "),
-                            Composed([Identifier("climate_table"), SQL(".ensemble_q3")]),
+                            Composed([Identifier("climate_table"), SQL(".ensemble_mean_historic_baseline")]),
                         ]
                     ),
                 ]
@@ -176,7 +166,7 @@ TEST_BBOX = {
         # Climate query test case 1 - Any climate argument that is None will result in no climate columns returned
         (
             schemas.GetDataInputParameters(
-                osm_category="infrastructure",
+                osm_category="power_grid",
                 osm_types=["power"],
                 osm_subtypes=["line"],
                 epsg_code=4326,
@@ -190,9 +180,9 @@ TEST_BBOX = {
                     SQL("SELECT "),
                     Composed(
                         [
-                            Identifier("osm", "infrastructure", "osm_id"),
+                            Identifier("osm", "power_grid", "osm_id"),
                             SQL(", "),
-                            Identifier("osm", "infrastructure", "osm_type"),
+                            Identifier("osm", "power_grid", "osm_type"),
                             SQL(", "),
                             Composed(
                                 [
@@ -210,7 +200,7 @@ TEST_BBOX = {
                                     SQL("ST_Transform("),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("geom"),
                                     SQL(", %s) AS geometry"),
@@ -222,7 +212,7 @@ TEST_BBOX = {
                                     SQL("ST_AsText(ST_Transform("),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("geom"),
                                     SQL(", %s), 3) AS geometry_wkt"),
@@ -234,7 +224,7 @@ TEST_BBOX = {
                                     SQL("ST_X(ST_Centroid(ST_Transform("),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("geom"),
                                     SQL(", %s))) AS longitude"),
@@ -246,14 +236,14 @@ TEST_BBOX = {
                                     SQL("ST_Y(ST_Centroid(ST_Transform("),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("geom"),
                                     SQL(", %s))) AS latitude"),
                                 ]
                             ),
                             SQL(", "),
-                            Identifier("osm", "infrastructure", "osm_subtype"),
+                            Identifier("osm", "power_grid", "osm_subtype"),
                             SQL(", "),
                             Composed(
                                 [
@@ -263,6 +253,109 @@ TEST_BBOX = {
                             ),
                             SQL(", "),
                             Composed([Identifier("city"), SQL(".name AS city")]),
+                        ]
+                    ),
+                ]
+            ),
+            [4326, 4326, 4326, 4326],
+        ),
+        # Select with climate_variable == "wildfire"
+        (
+            schemas.GetDataInputParameters(
+                osm_category="power_grid",
+                osm_types=["power"],
+                osm_subtypes=["line"],
+                epsg_code=4326,
+                climate_variable="wildfire", # Test "wildfire"
+                climate_decade=[2080, 2090],
+                climate_month=[6, 7],
+                climate_ssp=370,
+            ),
+            Composed(
+                [
+                    SQL("SELECT "),
+                    Composed(
+                        [
+                            Identifier("osm", "power_grid", "osm_id"),
+                            SQL(", "),
+                            Identifier("osm", "power_grid", "osm_type"),
+                            SQL(", "),
+                            Composed(
+                                [
+                                    Identifier("osm"),
+                                    SQL("."),
+                                    Identifier("tags"),
+                                    SQL("."),
+                                    Identifier("tags"),
+                                    SQL(" AS tags"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [
+                                    SQL("ST_Transform("),
+                                    Identifier("osm"),
+                                    SQL("."),
+                                    Identifier("power_grid"),
+                                    SQL("."),
+                                    Identifier("geom"),
+                                    SQL(", %s) AS geometry"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [
+                                    SQL("ST_AsText(ST_Transform("),
+                                    Identifier("osm"),
+                                    SQL("."),
+                                    Identifier("power_grid"),
+                                    SQL("."),
+                                    Identifier("geom"),
+                                    SQL(", %s), 3) AS geometry_wkt"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [
+                                    SQL("ST_X(ST_Centroid(ST_Transform("),
+                                    Identifier("osm"),
+                                    SQL("."),
+                                    Identifier("power_grid"),
+                                    SQL("."),
+                                    Identifier("geom"),
+                                    SQL(", %s))) AS longitude"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Composed(
+                                [
+                                    SQL("ST_Y(ST_Centroid(ST_Transform("),
+                                    Identifier("osm"),
+                                    SQL("."),
+                                    Identifier("power_grid"),
+                                    SQL("."),
+                                    Identifier("geom"),
+                                    SQL(", %s))) AS latitude"),
+                                ]
+                            ),
+                            SQL(", "),
+                            Identifier("osm", "power_grid", "osm_subtype"),
+                            SQL(", "),
+                            Composed([Identifier("county"), SQL(".name AS county")]),
+                            SQL(", "),
+                            Composed([Identifier("city"), SQL(".name AS city")]),
+                            SQL(", "),
+                            Composed([Identifier("climate_table"), SQL(".ssp")]),
+                            SQL(", "),
+                            Composed([Identifier("climate_table"), SQL(".month")]),
+                            SQL(", "),
+                            Composed([Identifier("climate_table"), SQL(".decade")]),
+                            SQL(", "),
+                            Composed([Identifier("climate_table"), SQL(".ensemble_mean")]),
+                            SQL(", "),
+                            Composed([Identifier("climate_table"), SQL(".ensemble_mean_historic_baseline")]),
+                            SQL(", "), # Added for wildfire
+                            Composed([Identifier("climate_table"), SQL(".burn_probability")]), # Added for wildfire
                         ]
                     ),
                 ]
@@ -290,7 +383,7 @@ def test_create_select_statement(
     [
         (
             schemas.GetDataInputParameters(
-                osm_category="infrastructure",
+                osm_category="power_grid",
                 osm_types=["power"],
                 osm_subtypes=["line"],
                 epsg_code=4326,
@@ -304,7 +397,7 @@ def test_create_select_statement(
                     SQL("FROM "),
                     Identifier("osm"),
                     SQL("."),
-                    Identifier("infrastructure"),
+                    Identifier("power_grid"),
                 ]
             ),
         )
@@ -325,7 +418,7 @@ def test_create_from_statement(input_params, expected_from_statement):
         # Test case with all possible input params
         (
             schemas.GetDataInputParameters(
-                osm_category="infrastructure",
+                osm_category="power_grid",
                 osm_types=["power"],
                 osm_subtypes=["line"],
                 epsg_code=4326,
@@ -349,7 +442,7 @@ def test_create_from_statement(input_params, expected_from_statement):
                                             SQL(" ON "),
                                             Identifier("osm"),
                                             SQL("."),
-                                            SQL("infrastructure"),
+                                            SQL("power_grid"),
                                             SQL(".osm_id = "),
                                             Identifier("osm"),
                                             SQL("."),
@@ -369,7 +462,7 @@ def test_create_from_statement(input_params, expected_from_statement):
                                             SQL("ON ST_Intersects("),
                                             Identifier("osm"),
                                             SQL("."),
-                                            Identifier("infrastructure"),
+                                            Identifier("power_grid"),
                                             SQL("."),
                                             Identifier("geom"),
                                             SQL(", "),
@@ -395,7 +488,7 @@ def test_create_from_statement(input_params, expected_from_statement):
                                     SQL("ON ST_Intersects("),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("geom"),
                                     SQL(", "),
@@ -414,18 +507,14 @@ def test_create_from_statement(input_params, expected_from_statement):
                         [
                             SQL("INNER JOIN ("),
                             SQL(
-                                "SELECT s.osm_id, s.ssp, s.month, s.decade, "
-                                "s.value_mean AS ensemble_mean, s.value_median AS ensemble_median, "
-                                "s.value_stddev AS ensemble_stddev, s.value_min AS ensemble_min, "
-                                "s.value_max AS ensemble_max, s.value_q1 AS ensemble_q1, "
-                                "s.value_q3 AS ensemble_q3 "
+                                "SELECT * "
                             ),
                             Composed(
                                 [
                                     SQL("FROM "),
                                     Identifier("climate"),
                                     SQL("."),
-                                    Identifier("nasa_nex_fwi"),
+                                    Identifier("fwi"),
                                     SQL(" s "),
                                 ]
                             ),
@@ -436,7 +525,7 @@ def test_create_from_statement(input_params, expected_from_statement):
                                     SQL("ON "),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL(".osm_id = "),
                                     Identifier("climate_table"),
                                     SQL(".osm_id"),
@@ -448,10 +537,132 @@ def test_create_from_statement(input_params, expected_from_statement):
             ),
             [6, 8, 126, (2060, 2070), (8, 9)],
         ),
+        # Test case with climate_variable == "wildfire"
+        (
+            schemas.GetDataInputParameters(
+                osm_category="power_grid",
+                osm_types=["power"],
+                osm_subtypes=["line"],
+                epsg_code=4326,
+                climate_variable="wildfire", # Test "wildfire"
+                climate_decade=[2080, 2090],
+                climate_month=[6, 7],
+                climate_ssp=370,
+            ),
+            Composed(
+                [
+                    Composed( # Join for tags, county, city
+                        [
+                            Composed(
+                                [
+                                    Composed(
+                                        [
+                                            SQL("JOIN "),
+                                            Identifier("osm"),
+                                            SQL("."),
+                                            Identifier("tags"),
+                                            SQL(" ON "),
+                                            Identifier("osm"),
+                                            SQL("."),
+                                            SQL("power_grid"),
+                                            SQL(".osm_id = "),
+                                            Identifier("osm"),
+                                            SQL("."),
+                                            Identifier("tags"),
+                                            SQL(".osm_id"),
+                                        ]
+                                    ),
+                                    SQL(" "),
+                                    Composed(
+                                        [
+                                            SQL("LEFT JOIN "),
+                                            Identifier("osm"),
+                                            SQL("."),
+                                            Identifier("place_polygon"),
+                                            SQL(" "),
+                                            Identifier("county"),
+                                            SQL("ON ST_Intersects("),
+                                            Identifier("osm"),
+                                            SQL("."),
+                                            Identifier("power_grid"),
+                                            SQL("."),
+                                            Identifier("geom"),
+                                            SQL(", "),
+                                            Identifier("county"),
+                                            SQL("."),
+                                            Identifier("geom"),
+                                            SQL(") AND "),
+                                            Identifier("county"),
+                                            SQL(".admin_level = %s "),
+                                        ]
+                                    ),
+                                ]
+                            ),
+                            SQL(" "),
+                            Composed(
+                                [
+                                    SQL("LEFT JOIN "),
+                                    Identifier("osm"),
+                                    SQL("."),
+                                    Identifier("place_polygon"),
+                                    SQL(" "),
+                                    Identifier("city"),
+                                    SQL("ON ST_Intersects("),
+                                    Identifier("osm"),
+                                    SQL("."),
+                                    Identifier("power_grid"),
+                                    SQL("."),
+                                    Identifier("geom"),
+                                    SQL(", "),
+                                    Identifier("city"),
+                                    SQL("."),
+                                    Identifier("geom"),
+                                    SQL(") AND "),
+                                    Identifier("city"),
+                                    SQL(".admin_level = %s "),
+                                ]
+                            ),
+                        ]
+                    ),
+                    SQL(" "), # Climate Join
+                    Composed(
+                        [
+                            SQL("INNER JOIN ("),
+                            SQL(
+                                "SELECT * " # Subquery selects all columns
+                            ),
+                            Composed(
+                                [
+                                    SQL("FROM "),
+                                    Identifier("climate"),
+                                    SQL("."),
+                                    Identifier("wildfire"), # Climate table is "wildfire"
+                                    SQL(" s "),
+                                ]
+                            ),
+                            SQL("WHERE s.ssp = %s AND s.decade IN %s AND s.month IN %s"),
+                            Composed([SQL(") AS "), Identifier("climate_table"), SQL(" ")]),
+                            Composed(
+                                [
+                                    SQL("ON "),
+                                    Identifier("osm"),
+                                    SQL("."),
+                                    Identifier("power_grid"),
+                                    SQL(".osm_id = "),
+                                    Identifier("climate_table"),
+                                    SQL(".osm_id"),
+                                ]
+                            ),
+                        ]
+                    ),
+                ]
+            ),
+            [6, 8, 370, (2080, 2090), (6, 7)], # Params: county_admin_level, city_admin_level, ssp, decade_tuple, month_tuple
+        ),
         # Test case no climate
         (
             schemas.GetDataInputParameters(
-                osm_category="infrastructure",
+                osm_category="power_grid",
                 osm_types=["power"],
                 osm_subtypes=["line"],
                 epsg_code=4326,
@@ -473,7 +684,7 @@ def test_create_from_statement(input_params, expected_from_statement):
                                     SQL(" ON "),
                                     Identifier("osm"),
                                     SQL("."),
-                                    SQL("infrastructure"),
+                                    SQL("power_grid"),
                                     SQL(".osm_id = "),
                                     Identifier("osm"),
                                     SQL("."),
@@ -493,7 +704,7 @@ def test_create_from_statement(input_params, expected_from_statement):
                                     SQL("ON ST_Intersects("),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("geom"),
                                     SQL(", "),
@@ -519,7 +730,7 @@ def test_create_from_statement(input_params, expected_from_statement):
                             SQL("ON ST_Intersects("),
                             Identifier("osm"),
                             SQL("."),
-                            Identifier("infrastructure"),
+                            Identifier("power_grid"),
                             SQL("."),
                             Identifier("geom"),
                             SQL(", "),
@@ -551,11 +762,9 @@ def test_create_join_statement(input_params, expected_join_statement, expected_p
     [
         (
             schemas.GetDataInputParameters(
-                osm_category="infrastructure",
+                osm_category="power_grid",
                 osm_types=["power"],
                 osm_subtypes=["line"],
-                county=True,
-                city=True,
                 epsg_code=4326,
                 climate_variable="burntFractionAll",
                 climate_decade=[2060, 2070],
@@ -574,7 +783,7 @@ def test_create_join_statement(input_params, expected_join_statement, expected_p
                                     SQL("WHERE "),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("osm_type"),
                                     SQL(" IN %s"),
@@ -586,7 +795,7 @@ def test_create_join_statement(input_params, expected_join_statement, expected_p
                                     SQL("AND "),
                                     Identifier("osm"),
                                     SQL("."),
-                                    Identifier("infrastructure"),
+                                    Identifier("power_grid"),
                                     SQL("."),
                                     Identifier("osm_subtype"),
                                     SQL(" IN %s"),
@@ -613,7 +822,7 @@ def test_create_join_statement(input_params, expected_join_statement, expected_p
                                                             Identifier("osm"),
                                                             SQL("."),
                                                             Identifier(
-                                                                "infrastructure"
+                                                                "power_grid"
                                                             ),
                                                             SQL("."),
                                                             Identifier("geom"),
@@ -634,7 +843,7 @@ def test_create_join_statement(input_params, expected_join_statement, expected_p
                                             SQL("ST_Intersects(ST_Transform("),
                                             Identifier("osm"),
                                             SQL("."),
-                                            Identifier("infrastructure"),
+                                            Identifier("power_grid"),
                                             SQL("."),
                                             Identifier("geom"),
                                             SQL(", %s), ST_GeomFromText(%s, %s))"),
@@ -665,6 +874,9 @@ def test_create_where_clause(input_params, expected_where_clause, expected_param
     query_builder = query.GetDataQueryBuilder(input_params=input_params)
     generated_where_clause, generated_params = query_builder._create_where_clause()
 
+    # print(f"Generated: {generated_where_clause.as_string(query_builder.input_params)}")
+    # print(f"Expected: {expected_where_clause.as_string(query_builder.input_params)}")
+
     assert generated_where_clause == expected_where_clause
     assert generated_params == expected_params
 
@@ -672,11 +884,9 @@ def test_create_where_clause(input_params, expected_where_clause, expected_param
 def test_create_limit():
     # Set the limit value
     input_params = schemas.GetDataInputParameters(
-        osm_category="infrastructure",
+        osm_category="power_grid",
         osm_types=["power"],
         osm_subtypes=["line"],
-        county=True,
-        city=True,
         epsg_code=4326,
         climate_variable="burntFractionAll",
         climate_decade=[2060, 2070],
