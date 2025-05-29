@@ -89,7 +89,7 @@ def convert_small_polygons(
 
 
 def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
-    """Converts a DataArray to a Dataframe.
+    """Converts a DataArray to a Dataframe. This should be called after zonal aggregation with xvec
 
     Used since we ultimately want the data in tabular form for PostGIS.
 
@@ -97,11 +97,18 @@ def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
         da (xr.DataArray): Datarray
     """
 
+    # We know that that each ID has a geometry associated with
+    # We want to drop the geometry values (ran into error with converting to dataframe with geometry type that i couldnt resolve)
+    # Solution was replace geometry values with id column values (we do not need geometries after this)
+    ds_modified = (ds.set_index({GEOMETRY_COLUMN: ID_COLUMN})
+                   .rename_dims({GEOMETRY_COLUMN: ID_COLUMN})
+                   .drop_vars([GEOMETRY_COLUMN])
+                   .assign_coords({ID_COLUMN: ds[ID_COLUMN].values}))
+
     df = (
-        ds.stack(id_dim=(GEOMETRY_COLUMN, "decade_month"))
-        .to_dataframe()
-        .reset_index(drop=True)[
-            [ID_COLUMN, "decade_month", GEOMETRY_COLUMN] + list(ds.data_vars)
+        ds_modified.to_dataframe()
+        .reset_index()[
+            [ID_COLUMN, "decade_month"] + list(ds.data_vars)
         ]
     )
 
@@ -400,7 +407,7 @@ def zonal_aggregation_linestring_optimized(
             geom, simplify_tolerance, id_val, id_column, geometry_column
         )
         all_points_data.extend(points)
-    print(all_points_data)
+
     if not all_points_data:
         print(
             "No valid points could be extracted from the geometries after simplification."
@@ -557,6 +564,7 @@ def zonal_aggregation_polygon(
     futures = []
     results = []
     geometry_chunks = np.array_split(infra.geometry, workers)
+
     with cf.ProcessPoolExecutor(max_workers=workers) as executor:
         for i in range(len(geometry_chunks)):
             futures.append(
