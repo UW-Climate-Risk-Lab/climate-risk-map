@@ -7,6 +7,8 @@ Assets will generally be vector features, having geometry properties.
 
 """
 
+import time
+import logging
 from dataclasses import dataclass
 
 from typing import List, Dict
@@ -16,6 +18,7 @@ from dash_extensions.javascript import assign
 from config.exposure.definitions import DEFAULT_ICON_PATH
 from config.exposure.transformer import DataTransformer
 
+logger = logging.getLogger(__name__)
 
 class AssetRegistry:
     _asset_types = {}
@@ -55,35 +58,57 @@ class Asset:
         found in asset_definitions.py.
 
         """
+        start_time_total = time.time()
+        feature_count = len(geojson.get("features", []))
+        logger.debug(f"Starting preprocess_geojson_for_display for {self.name} with {feature_count} features")
 
         # OpenStreetMap data has special property 'tags',
         # which is a json of the feature properties. This must be run first
-
-        for feature in geojson.get("features", []):
+        for i, feature in enumerate(geojson.get("features", [])):
+            if i % 1000 == 0 and i > 0:
+                logger.debug(f"Processed {i}/{feature_count} features in {time.time() - start_time_total:.4f}s")
+                
+            # Parse OSM tags if needed
             if isinstance(self, OpenStreetMapAsset):
+                tags_start_time = time.time()
                 feature = self._parse_tags(feature=feature)
+                if i == 0:
+                    logger.debug(f"  Time to parse tags (first feature): {time.time() - tags_start_time:.4f}s")
 
             # Apply data transformations
+            transform_start_time = time.time()
             feature = DataTransformer.apply(
                 data=feature, transformations=self.data_transformations
             )
+            if i == 0:
+                logger.debug(f"  Time to apply transforms (first feature): {time.time() - transform_start_time:.4f}s")
 
             # Apply styling
+            style_start_time = time.time()
             feature = self._create_feature_style(feature=feature)
+            if i == 0:
+                logger.debug(f"  Time to create style (first feature): {time.time() - style_start_time:.4f}s")
 
             # Apply icon url
+            icon_start_time = time.time()
             feature = self._create_feature_icon_path(feature=feature)
-
-            # Create tooltips
-            # feature = self._create_feature_toolip(feature=feature)
+            if i == 0:
+                logger.debug(f"  Time to create icon path (first feature): {time.time() - icon_start_time:.4f}s")
 
             # Converts geometry to point for clustering 
-            # (this improves performance when displaying points on dash-leaflet)
             if self.cluster:
+                cluster_start_time = time.time()
                 feature = self._convert_feature_to_point(feature=feature)
+                if i == 0:
+                    logger.debug(f"  Time to convert to point (first feature): {time.time() - cluster_start_time:.4f}s")
             
+            # Remove unnecessary properties
+            props_start_time = time.time()
             feature["properties"] = self._remove_feature_properties(feature["properties"], ["style", "icon_path"])
+            if i == 0:
+                logger.debug(f"  Time to remove properties (first feature): {time.time() - props_start_time:.4f}s")
 
+        logger.debug(f"Total time for preprocess_geojson_for_display ({feature_count} features): {time.time() - start_time_total:.4f}s")
         return geojson
     
     def _remove_feature_properties(self, props: Dict, props_to_keep: List[str] = list()):

@@ -1,0 +1,4 @@
+X_DIM = "lon"
+Y_DIM = "lat"
+METADATA_KEY = "UW_CRL_DERIVED"
+CRS="4326"

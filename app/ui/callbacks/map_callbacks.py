@@ -1,8 +1,9 @@
 import logging
 import time
-from dash import Input, Output, no_update
+from dash import Input, Output, no_update, State
 
 from config.map_config import MapConfig
+from config.ui_config import BASEMAP_BUTTON_STYLE, PRIMARY_COLOR, REGION_OVERLAY_STYLE
 
 from services.map_service import MapService
 from services.hazard_service import HazardService
@@ -18,6 +19,25 @@ def register_map_callbacks(app):
     Args:
         app: Dash application instance
     """
+
+    @app.callback(
+        Output("map-placeholder", "children"),
+        Input("auth-status", "data"),
+        prevent_initial_call=True,
+    )
+    def load_map_after_auth(auth_status):
+        """Load the map component after successful authentication
+
+        Args:
+            auth_status: Boolean indicating if user is authenticated
+
+        Returns:
+            The map component or None
+        """
+        if auth_status:
+            # Only create the map component after authentication
+            return MapService.get_base_map()
+        return None
 
     @app.callback(
         Output("region-outline-geojson", "url"),
@@ -157,7 +177,7 @@ def register_map_callbacks(app):
                 allow_duplicate=True,
             ),
             Output("region-features-change-signal", "data"),
-            Output("exposure-select-dropdown", "value")
+            Output("exposure-select-dropdown", "value"),
         ],
         Input("region-select-dropdown", "value"),
         prevent_initial_call=True,
@@ -223,10 +243,16 @@ def register_map_callbacks(app):
             Input("month-slider", "value"),
             Input("region-select-dropdown", "value"),
         ],
+        State(MapConfig.BASE_MAP_COMPONENT["base_map_layer"]["id"], "url"),
     )
     @handle_callback_error(output_count=2)
     def update_hazard_tiles(
-        selected_hazard: str, ssp: int, decade: int, month: int, selected_region: str
+        selected_hazard: str,
+        ssp: int,
+        decade: int,
+        month: int,
+        selected_region: str,
+        basemap_url: str,
     ):
         """Update climate tiles based on user selections
 
@@ -251,7 +277,7 @@ def register_map_callbacks(app):
             or (decade is None)
             or (month is None)
         ):
-            return no_update
+            return basemap_url, 0
 
         url, opacity = HazardService.get_hazard_tilejson_url(
             hazard_name=selected_hazard,
@@ -269,7 +295,11 @@ def register_map_callbacks(app):
             Output(
                 MapConfig.BASE_MAP_COMPONENT["color_bar_layer"]["parent_div_id"],
                 "children",
-            )
+            ),
+            Output(
+                MapConfig.BASE_MAP_COMPONENT["color_bar_layer"]["parent_div_id"],
+                "style",
+            ),
         ],
         [
             Input("hazard-indicator-dropdown", "value"),
@@ -278,7 +308,7 @@ def register_map_callbacks(app):
             Input("month-slider", "value"),
         ],
     )
-    @handle_callback_error(output_count=1)
+    @handle_callback_error(output_count=2)
     def update_color_bar(selected_hazard, ssp, decade, month):
         if (
             (ssp is None)
@@ -286,14 +316,14 @@ def register_map_callbacks(app):
             or (decade is None)
             or (month is None)
         ):
-            return no_update
+            return [], {"display": "none"}
 
         color_bar = MapService.get_color_bar(hazard_name=selected_hazard)
 
-        return [color_bar]
+        return [color_bar], {"display": "block"}
 
     @app.callback(
-        [Output("ssp-dropdown", "options")],
+        Output("ssp-dropdown", "options"),
         [Input("hazard-indicator-dropdown", "value")],
     )
     @handle_callback_error(output_count=1)
@@ -311,7 +341,7 @@ def register_map_callbacks(app):
 
         ssp_options = HazardService.get_available_ssp(hazard_name=hazard_name)
 
-        return [ssp_options]
+        return ssp_options
 
     @app.callback(
         [Output("exposure-select-dropdown", "options")],
@@ -336,3 +366,54 @@ def register_map_callbacks(app):
         ]
 
         return [exposure_options]
+
+    @app.callback(
+        [
+            Output(MapConfig.BASE_MAP_COMPONENT["base_map_layer"]["id"], "url"),
+            Output(MapConfig.BASE_MAP_COMPONENT["base_map_layer"]["id"], "attribution"),
+            Output("basemap-toggle-btn", "style"),
+            Output("region-outline-geojson", "style"),
+        ],
+        [Input("basemap-toggle-btn", "n_clicks")],
+        prevent_initial_call=True,
+    )
+    @handle_callback_error(output_count=2)
+    def toggle_basemap_btn_visibility(n_clicks):
+        """Toggle legend visibility when button is clicked
+
+        Changes button color to give on/off visual cue to user
+
+        Args:
+            n_clicks (int): Number of button clicks
+
+        Returns:
+            str, dict : Updated style for legend container
+        """
+        if n_clicks is None:
+            return no_update
+
+        button_style = BASEMAP_BUTTON_STYLE.copy()
+        region_overlay_style = REGION_OVERLAY_STYLE.copy()
+
+        # Toggle visibility based on even/odd clicks
+        if n_clicks % 2 == 1:
+            button_style["backgroundColor"] = PRIMARY_COLOR
+            button_style["color"] = "white"
+            region_overlay_style["color"] = "white"
+
+            url = "http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution = "&copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+
+            return url, attribution, button_style, region_overlay_style
+        else:
+            button_style["backgroundColor"] = "white"
+            button_style["color"] = PRIMARY_COLOR
+            region_overlay_style["color"] = PRIMARY_COLOR
+
+            url = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+            attribution = '&copy; <a href="https://carto.com/attributions">CARTO</a>'
+            
+            return url, attribution, button_style, region_overlay_style
+        
+
+        

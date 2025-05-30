@@ -5,8 +5,10 @@ from config.ui_config import POWER_LINE_CUSTOM_COLOR_RANGES
 def load_asset_definitions():
     return ASSET_DEFINITIONS.copy()
 
+
 def load_asset_group_definitions():
     return ASSET_GROUP_DEFINITIONS.copy()
+
 
 DEFAULT_ICON_PATH = ASSETS_PATH + "/icons/black-dot.svg"
 
@@ -28,24 +30,35 @@ ASSET_GROUP_DEFINITIONS = {
         "assets": [
             "osm-data-center",
             "osm-power-substation",
-            "osm-power-transmission-line"
+            "osm-power-transmission-line",
         ],
         "icon": "assets/icons/data-center.svg",
+    },
+    "commercial-real-estate": {
+        "label": "Commercial Real Estate",
+        "description": "Retail, Office, St",
+        "assets": ["osm-commercial-building", "osm-office-building", "osm-hotel"],
+        "icon": None,
+    },
+    "agriculture": {
+        "label": "Agriculture",
+        "description": "Agricultural Assets",
+        "assets": ["osm-farmland", "osm-vineyard"],
+        "icon": None,
     },
     "hifld-high-voltage-power-grid": {
         "label": "High Voltage Transmission Lines",
         "description": "Transmission lines over 345 kV",
         "assets": ["hifld-power-transmission-line"],
-        "icon": None
-    }
-
+        "icon": None,
+    },
 }
 
 ASSET_DEFINITIONS = {
     "osm-power-plant": {
         "type": "OpenStreetMap",
         "label": "Power Plants",
-        "osm_category": "infrastructure",
+        "osm_category": "power_grid",
         "osm_type": "power",
         "osm_subtype": "plant",
         "geom_types": ["MultiPolygon"],
@@ -93,7 +106,7 @@ ASSET_DEFINITIONS = {
     "osm-power-transmission-line": {
         "type": "OpenStreetMap",
         "label": "Power Transmission Lines",
-        "osm_category": "infrastructure",
+        "osm_category": "power_grid",
         "osm_type": "power",
         "osm_subtype": "line",
         "geom_types": ["LineString"],
@@ -110,13 +123,22 @@ ASSET_DEFINITIONS = {
             "ranges": POWER_LINE_CUSTOM_COLOR_RANGES,
             "categories": None,
         },
-        "custom_icon": None,
+        "custom_icon": {
+            "property": "power",
+            "categories": [
+                {
+                    "property_value": "line",
+                    "icon_path": DEFAULT_ICON_PATH,
+                    "label": None,
+                },
+            ],
+        },
         "data_transformations": ["osm_line_voltage"],
     },
     "osm-power-distribution-line": {
         "type": "OpenStreetMap",
         "label": "Power Distribution Lines",
-        "osm_category": "infrastructure",
+        "osm_category": "power_grid",
         "osm_type": "power",
         "osm_subtype": "minor_line",
         "geom_types": ["LineString"],
@@ -133,13 +155,22 @@ ASSET_DEFINITIONS = {
             "ranges": POWER_LINE_CUSTOM_COLOR_RANGES,
             "categories": None,
         },
-        "custom_icon": None,
+        "custom_icon": {
+            "property": "power",
+            "categories": [
+                {
+                    "property_value": "minor_line",
+                    "icon_path": DEFAULT_ICON_PATH,
+                    "label": None,
+                },
+            ],
+        },
         "data_transformations": ["osm_line_voltage"],
     },
     "osm-power-substation": {
         "type": "OpenStreetMap",
         "label": "Power Substations",
-        "osm_category": "infrastructure",
+        "osm_category": "power_grid",
         "osm_type": "power",
         "osm_subtype": "substation",
         "geom_types": ["MultiPolygon", "Point"],
@@ -178,7 +209,7 @@ ASSET_DEFINITIONS = {
             "fillOpacity": 0.5,
         },
         "cluster": True,
-        "superClusterOptions": {"radius": 1},
+        "superClusterOptions": {"radius": 20},
         "custom_color": None,
         "custom_icon": {
             "property": "telecom",
@@ -195,7 +226,7 @@ ASSET_DEFINITIONS = {
     "osm-storage-rental": {
         "type": "OpenStreetMap",
         "label": "Storage Rental Facility",
-        "osm_category": "shop",
+        "osm_category": "commericial_real_estate",
         "osm_type": "shop",
         "osm_subtype": "storage_rental",
         "geom_types": ["MultiPolygon", "Point"],
@@ -215,6 +246,148 @@ ASSET_DEFINITIONS = {
                     "property_value": "storage_rental",
                     "icon_path": ASSETS_PATH + "/icons/storage-rental.svg",
                     "label": "Storage Rental Facility",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-commercial-building": {
+        "type": "OpenStreetMap",
+        "label": "Commercial Building",
+        "osm_category": "commercial_real_estate",
+        "osm_type": "building",
+        "osm_subtype": "commercial",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": True,
+        "superClusterOptions": {"radius": 20},
+        "custom_color": None,
+        "custom_icon": {
+            "property": "building",
+            "categories": [
+                {
+                    "property_value": "commercial",
+                    "icon_path": ASSETS_PATH + "/icons/commercial-building.svg",
+                    "label": "Commercial Building",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-office-building": {
+        "type": "OpenStreetMap",
+        "label": "Commercial Office Building",
+        "osm_category": "commercial_real_estate",
+        "osm_type": "building",
+        "osm_subtype": "office",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": True,
+        "superClusterOptions": {"radius": 20},
+        "custom_color": None,
+        "custom_icon": {
+            "property": "building",
+            "categories": [
+                {
+                    "property_value": "office",
+                    "icon_path": ASSETS_PATH + "/icons/office.svg",
+                    "label": "Commercial Office Building",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-hotel": {
+        "type": "OpenStreetMap",
+        "label": "Hotel",
+        "osm_category": "commercial_real_estate",
+        "osm_type": "tourism",
+        "osm_subtype": "hotel",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": True,
+        "superClusterOptions": {"radius": 20},
+        "custom_color": None,
+        "custom_icon": {
+            "property": "tourism",
+            "categories": [
+                {
+                    "property_value": "hotel",
+                    "icon_path": ASSETS_PATH + "/icons/hotel.svg",
+                    "label": "Hotel",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-farmland": {
+        "type": "OpenStreetMap",
+        "label": "Farmland",
+        "osm_category": "agriculture",
+        "osm_type": "landuse",
+        "osm_subtype": "farmland",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#8B4513",
+            "weight": 1.5,
+            "fillColor": "#DAA520",
+            "fillOpacity": 0.35,
+            "dashArray": "3, 4",
+            "lineCap": "round",
+        },
+        "cluster": False,
+        "superClusterOptions": False,
+        "custom_color": None,
+        "custom_icon": {
+            "property": "landuse",
+            "categories": [
+                {
+                    "property_value": "farmland",
+                    "icon_path": ASSETS_PATH + "/icons/farmland.svg",
+                    "label": "Farmland",
+                },
+            ],
+        },
+        "data_transformations": None,
+    },
+    "osm-vineyard": {
+        "type": "OpenStreetMap",
+        "label": "Vineyard",
+        "osm_category": "agriculture",
+        "osm_type": "landuse",
+        "osm_subtype": "vineyard",
+        "geom_types": ["MultiPolygon", "Point"],
+        "style": {
+            "color": "#6a6a6a",
+            "weight": 2,
+            "fillColor": "#6a6a6a",
+            "fillOpacity": 0.5,
+        },
+        "cluster": True,
+        "superClusterOptions": {"radius": 20},
+        "custom_color": None,
+        "custom_icon": {
+            "property": "landuse",
+            "categories": [
+                {
+                    "property_value": "vineyard",
+                    "icon_path": ASSETS_PATH + "/icons/vineyard.svg",
+                    "label": "Vineyard",
                 },
             ],
         },

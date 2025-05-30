@@ -1,5 +1,35 @@
 {
   "databases": {
+    "usa": {
+      "osm_region": "north-america",
+      "osm_subregion": "us",
+      "bounding_box": {
+        "x_min": "-126.1",
+        "y_min": "23.6",
+        "x_max": "-65.1",
+        "y_max": "50.2"
+      }
+    },
+    "south_korea": {
+      "osm_region": "asia",
+      "osm_subregion": "south-korea",
+      "bounding_box": {
+        "x_min": "123.0",
+        "y_min": "32.6",
+        "x_max": "132.0",
+        "y_max": "39.3"
+      }
+    },
+    "japan": {
+      "osm_region": "asia",
+      "osm_subregion": "japan",
+      "bounding_box": {
+        "x_min": "122.6",
+        "y_min": "20.4",
+        "x_max": "159.0",
+        "y_max": "52.2"
+      }
+    },
     "washington": {
       "osm_region": "north-america/us",
       "osm_subregion": "washington",
@@ -10,7 +40,7 @@
         "y_max": "49.5"
       }
     },
-    "us-virgin-islands": {
+    "us_virgin_islands": {
       "osm_region": "north-america/us",
       "osm_subregion": "us-virgin-islands",
       "bounding_box": {
@@ -19,43 +49,111 @@
         "x_max": "-63.5",
         "y_max": "19.1"
       }
+    },
+    "california": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "california",
+      "bounding_box": {
+        "x_min": "-124.4",
+        "y_min": "32.5",
+        "x_max": "-114.1",
+        "y_max": "42.0"
+      }
+    },
+    "florida": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "florida",
+      "bounding_box": {
+        "x_min": "-87.6",
+        "y_min": "24.5",
+        "x_max": "-80.0",
+        "y_max": "31.0"
+      }
+    },
+    "idaho": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "idaho",
+      "bounding_box": {
+        "x_min": "-117.2",
+        "y_min": "42.0",
+        "x_max": "-111.0",
+        "y_max": "49.0"
+      }
+    },
+    "new_york": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "new-york",
+      "bounding_box": {
+        "x_min": "-79.8",
+        "y_min": "40.5",
+        "x_max": "-71.8",
+        "y_max": "45.0"
+      }
+    },
+    "oregon": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "oregon",
+      "bounding_box": {
+        "x_min": "-124.6",
+        "y_min": "42.0",
+        "x_max": "-116.5",
+        "y_max": "46.3"
+      }
+    },
+    "texas": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "texas",
+      "bounding_box": {
+        "x_min": "-106.7",
+        "y_min": "25.8",
+        "x_max": "-93.5",
+        "y_max": "36.5"
+      }
     }
   },
   "climate_exposure_args": [
     {
-      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/historical/fwi_decade_month_historical.zarr",
+      "zarr_store_path": "climate-risk-map/backend/climate/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/historical/fwi_decade_month_historical.zarr",
       "climate_variable": "fwi",
       "ssp": "historical",
       "zonal_agg_method": "mean",
       "polygon_area_threshold": "20.0"
     },
     {
-      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp126/fwi_decade_month_ssp126.zarr",
-      "climate_variable": "fwi",
-      "ssp": "126",
-      "zonal_agg_method": "mean",
-      "polygon_area_threshold": "20.0"
-    },
-    {
-      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp245/fwi_decade_month_ssp245.zarr",
+      "zarr_store_path": "climate-risk-map/backend/climate/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp245/fwi_decade_month_ssp245.zarr",
       "climate_variable": "fwi",
       "ssp": "245",
       "zonal_agg_method": "mean",
       "polygon_area_threshold": "20.0"
     },
     {
-      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp370/fwi_decade_month_ssp370.zarr",
-      "climate_variable": "fwi",
-      "ssp": "370",
-      "zonal_agg_method": "mean",
-      "polygon_area_threshold": "20.0"
-    },
-    {
-      "zarr_store_path": "climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp585/fwi_decade_month_ssp585.zarr",
+      "zarr_store_path": "climate-risk-map/backend/climate/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp585/fwi_decade_month_ssp585.zarr",
       "climate_variable": "fwi",
       "ssp": "585",
       "zonal_agg_method": "mean",
       "polygon_area_threshold": "20.0"
+    }
+  ],
+  "usda_wildfire_expsoure_args": [
+    {
+      "zarr_store_path": "climate-risk-map/backend/climate/usda/BP_CONUS.zarr",
+      "usda_variable": "burn_probability",
+      "zonal_agg_method": "max",
+      "polygon_area_threshold": "1.0"
+    }
+  ],
+  "geotiff_args": [
+    {
+      "s3_prefix_input": "climate-risk-map/backend/climate/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/historical/fwi_decade_month_historical.zarr",
+      "s3_prefix_geotiff": "climate-risk-map/frontend/NEX-GDDP-CMIP6/fwi/historical/cogs"
+    },
+    {
+      "s3_prefix_input": "climate-risk-map/backend/climate/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp245/fwi_decade_month_ssp245.zarr",
+      "s3_prefix_geotiff": "climate-risk-map/frontend/NEX-GDDP-CMIP6/fwi/ssp245/cogs"
+    },
+    {
+      "s3_prefix_input": "climate-risk-map/backend/climate/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp585/fwi_decade_month_ssp585.zarr",
+      "s3_prefix_geotiff": "climate-risk-map/frontend/NEX-GDDP-CMIP6/fwi/ssp585/cogs"
     }
   ]
 }

@@ -54,8 +54,8 @@ class Hazard:
         if measure not in self.available_measures:
             logger.error(f"{measure} is not available for {self.name}")
             return None
-        file = f"{self.name}_{measure}-{decade}-{month:02d}-{region.name}.tif"
-        uri = f"s3://{self.geotiff.s3_bucket}/{self.geotiff.s3_prefix}/ssp{str(ssp)}/{self.geotiff.format}/{file}"
+        file = f"{measure}-{decade}-{month:02d}-global-0p05deg.tif"
+        uri = f"s3://{self.geotiff.s3_bucket}/{self.geotiff.s3_prefix}/ssp{str(ssp)}/{self.geotiff.format}/global/{file}"
         return uri
 
 
@@ -63,8 +63,8 @@ class HazardConfig:
 
     HAZARDS = [
         Hazard(
-            name="fwi",
-            label=r"Fire Weather Index (NASA NEX GDDP Ensemble Mean)",
+            name="wildfire",
+            label=r"Wildfire Risk Index",
             available_measures=[
                 "ensemble_mean",
                 "ensemble_median",
@@ -73,12 +73,14 @@ class HazardConfig:
                 "ensemble_stdev",
                 "ensemble_q1",
                 "ensemble_q3",
+                "usda_burn_probability",
+                "ensemble_mean_historic_baseline"
             ],
-            display_measure="ensemble_mean",
+            display_measure="ensemble_q3",
             unit="",
             min_value=0,
-            max_value=50,
-            available_ssp=[126, 245, 370, 585],
+            max_value=20,
+            available_ssp=[245, 585],
             geotiff=Geotiff(
                 format="cogs",
                 s3_bucket=S3_BUCKET,

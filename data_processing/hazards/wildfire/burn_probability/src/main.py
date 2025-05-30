@@ -1,400 +1,145 @@
-import xarray as xr
 import os
-import numpy as np
+import numpy as np 
+import xarray as xr
 import rioxarray
-from rasterio.enums import Resampling # Make sure Resampling is imported
-# import statsmodels.api as sm # Not used in the original script logic provided
-from pathlib import Path
-import logging
-import zarr
-import fsspec
+from rasterio.enums import Resampling
+from pathlib import Path # Still good for path handling
+
 import s3fs
-# No Dask imports needed anymore
-import gc # Garbage collector
+import fsspec
+import zarr
 
-# --- Configuration ---
-# User provided configuration
-FWI_VARIABLE_NAMES = ['value_q1', 'value_mean', 'value_q3'] # NASA NEX CMIP6 Ensemble mean and interquartile range of climate models
-FWI_FUTUE_DECADES = ['2020', '2030', '2040', '2050', '2060', '2070', '2080', '2090', '2100'] # These are treated as individual years/decades to process
-FWI_FIRE_MONTHS = ['05', '06', '07', '08', '09', '10'] # Months as strings 'MM'
-
-# Define chunk sizes for initial loading (helps with lazy loading from Zarr/TIF)
-# Operations will likely load data into memory regardless.
-# Ensure 'month' key exists if used later, otherwise map decade_month appropriately
-CHUNKS = {'y': 2048, 'x': 2048, 'month': 6, 'decade_month': 12} # Adjusted decade_month chunking
-# --- End Configuration ---
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-def load_datasets(s3_bucket, fwi_var_names, chunks):
-    """Load required datasets lazily initially."""
-    logger.info("Loading datasets...")
-    # Define chunks specifically for loading
-    load_chunks = {k: v for k, v in chunks.items() if k in ['lat', 'lon', 'y', 'x', 'decade_month', 'month']}
-    spatial_chunks = {k:v for k,v in chunks.items() if k in ['y', 'x']}
-
-    # Load burn probability (GeoTIFF) - loads lazily with rioxarray if chunked
-    try:
-        da_burn_probability = rioxarray.open_rasterio(
-            "data/BP_WA.tif",
-            chunks=spatial_chunks
-        ).sel(band=1, drop=True)
-        if da_burn_probability.rio.crs is None:
-             logger.warning("Burn probability GeoTIFF missing CRS, assuming EPSG:4326. Please verify.")
-             da_burn_probability = da_burn_probability.rio.write_crs("EPSG:4326")
-        else:
-             da_burn_probability = da_burn_probability.rio.reproject("EPSG:4326")
-        logger.info(f"Burn probability loaded with shape: {da_burn_probability.shape}")
-        # Note: Subsequent operations will likely load this into memory.
-    except Exception as e:
-        logger.error(f"Failed to load burn probability data: {e}")
-        raise
-
-    # Load FWI Datasets (Zarr from S3) - loads lazily with xarray
-    try:
-        s3 = s3fs.S3FileSystem(anon=False)
-
-        # Historical FWI
-        hist_path = f"s3://{s3_bucket}/climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/historical/fwi_decade_month_historical.zarr"
-        hist_map = s3fs.S3Map(root=hist_path, s3=s3, check=False)
-        ds_fwi_historical = xr.open_dataset(
-            hist_map,
-            engine="zarr",
-            chunks=load_chunks, # Still useful for initial lazy load
-            consolidated=True
-        )[fwi_var_names]
-        logger.info(f"Historical FWI ({', '.join(fwi_var_names)}) loaded.")
-
-        # Future FWI (Load the whole dataset, filtering happens later per year)
-        future_path = f"s3://{s3_bucket}/climate-risk-map/backend/climate/scenariomip/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp370/fwi_decade_month_ssp370.zarr"
-        future_map = s3fs.S3Map(root=future_path, s3=s3, check=False)
-        ds_fwi_future_full = xr.open_dataset(
-            future_map,
-            engine="zarr",
-            chunks=load_chunks, # Still useful for initial lazy load
-            consolidated=True
-        )[fwi_var_names]
-        logger.info(f"Full Future FWI ({', '.join(fwi_var_names)}) loaded.")
-
-    except Exception as e:
-        logger.error(f"Failed to load FWI data from S3: {e}")
-        raise
-
-    return da_burn_probability, ds_fwi_historical, ds_fwi_future_full # Return full future dataset
-
-def calculate_mean_fwi_by_month(ds, fwi_var_names, filter_months=None):
-    """Calculate mean FWI across years for each month."""
-    logger.info(f"Calculating mean FWI by month for variables: {', '.join(fwi_var_names)}...")
-
-    if 'decade_month' not in ds.coords:
-        logger.error("Coordinate 'decade_month' not found in dataset.")
-        raise KeyError("'decade_month' coordinate missing.")
-    # Ensure coord is string for splitting, handle potential non-string types
-    if ds['decade_month'].dtype != object and ds['decade_month'].dtype != 'str':
-        logger.warning(f"Converting decade_month coordinate from {ds['decade_month'].dtype} to string.")
-        try:
-            ds['decade_month'] = ds['decade_month'].astype(str)
-        except Exception as e:
-            logger.error(f"Failed to convert decade_month to string: {e}")
-            raise
-
-    try:
-        # Extract month string 'MM'
-        months = [dm.split('-')[1] for dm in ds.decade_month.values]
-        ds = ds.assign_coords(month=("decade_month", months))
-    except Exception as e:
-        logger.error(f"Error processing 'decade_month' coordinate: {e}. Values: {ds.decade_month.values[:10]}")
-        raise
-
-    # This calculation will likely load data into memory
-    monthly_mean_fwi = ds.groupby("month").mean(dim="decade_month")
-    logger.info("Monthly mean FWI calculated.")
-
-    # Filter for specific fire months if requested
-    if filter_months:
-        try:
-            if 'month' in monthly_mean_fwi.coords:
-                # Ensure filter months are strings 'MM' for comparison
-                filter_months_str = [str(m).zfill(2) for m in filter_months]
-                monthly_mean_fwi = monthly_mean_fwi.sel(month=filter_months_str)
-                logger.info(f"Filtered monthly mean FWI to months: {filter_months_str}")
-            else:
-                logger.error("Coordinate 'month' not found after groupby mean calculation.")
-                raise KeyError("'month' coordinate missing after groupby.")
-        except KeyError as e:
-            logger.error(f"Failed to select fire months. Available: {monthly_mean_fwi.get('month', 'N/A').values}. Requested: {filter_months_str}. Error: {e}")
-            raise
-
-    return monthly_mean_fwi
-
-def reproject_fwi_data(ds_fwi, target_da, fwi_var_names):
-    """Reproject FWI dataset to match target DataArray (in-memory)."""
-    logger.info(f"Reprojecting FWI data for variables: {', '.join(fwi_var_names)} using NEAREST neighbor...")
-
-    # Ensure CRS and spatial dimensions are set
-    ds_fwi_reproj = ds_fwi.rio.write_crs("EPSG:4326")
-    try:
-        # Attempt to set spatial dims, log warning if fails but continue
-        ds_fwi_reproj = ds_fwi_reproj.rio.set_spatial_dims(x_dim="lon", y_dim="lat", inplace=False)
-    except Exception as e:
-        logger.warning(f"Could not automatically set spatial dims 'lon', 'lat': {e}. Check dimension names.")
-
-    # Reprojection will load data into memory if not already loaded
-    try:
-        logger.info("Starting reprojection match (this may take time and memory)...")
-        # Ensure target_da is loaded if it's still lazy
-        target_da_loaded = target_da.load()
-        ds_fwi_reproj_matched = ds_fwi_reproj.rio.reproject_match(
-            target_da_loaded, # Use loaded target
-            resampling=Resampling.nearest,
-        )
-        del target_da_loaded # Clean up loaded target
-        gc.collect()
-        logger.info("Reprojection match completed.")
-    except Exception as e:
-        logger.error(f"Reprojection failed: {e}")
-        raise
-
-    logger.info(f"FWI data reprojected.")
-    return ds_fwi_reproj_matched
+S3_BUCKET = os.environ["S3_BUCKET"]
+S3_URI_ZARR_OUTPUT = f"s3://{S3_BUCKET}/climate-risk-map/backend/climate/usda/BP_CONUS.zarr"
 
 
-def calculate_future_probability_vectorized(p_now, fwi_now_monthly_mean_ds, fwi_future_monthly_mean_ds, fwi_var_names):
-    """Calculate future probability using relative change method (in-memory)."""
-    logger.info("Calculating future burn probabilities (vectorized, in-memory)...")
+def transform_geographic_coordinates(data_array: xr.DataArray) -> xr.DataArray:
+    """
+    Renames spatial coordinates/dimensions from 'x', 'y' to 'lon', 'lat'
+    respectively, and converts longitude values from the -180 to 180 range
+    to the 0 to 360 range. The data along the longitude dimension is
+    reordered to match the new 0-360 longitude representation.
 
-    # Align datasets - this might load data
-    logger.info("Aligning historical and future monthly mean FWI datasets...")
-    # Ensure inputs are loaded before align if necessary
-    p_now_loaded = p_now.load()
-    fwi_now_loaded = fwi_now_monthly_mean_ds.load()
-    fwi_future_loaded = fwi_future_monthly_mean_ds.load()
+    Args:
+        data_array: An xarray.DataArray typically from rioxarray with 'x' and 'y'
+                    dimensions and coordinates. 'x' is assumed to be longitude
+                    in degrees (-180 to 180), and 'y' is latitude.
 
-    aligned_hist_ds, aligned_future_ds = xr.align(
-        fwi_now_loaded, fwi_future_loaded, join='inner', copy=False
-    )
-    # Align burn probability separately if its coords differ slightly after load/reproject
-    p_now_aligned, _ = xr.align(p_now_loaded, aligned_hist_ds, join="inner", copy=False)
+    Returns:
+        A new xarray.DataArray with 'lon' and 'lat' coordinates/dimensions,
+        where 'lon' is in the 0-360 degree range, and data is
+        appropriately reordered. Original DataArray attributes (like CRS)
+        are preserved. Coordinate attributes are also preserved by the
+        rename operation.
+    """
+    # 1. Basic check for required dimension/coordinate names
+    if 'x' not in data_array.coords or 'y' not in data_array.coords:
+        raise ValueError("Input DataArray must have 'x' and 'y' coordinates.")
+    if 'x' not in data_array.dims or 'y' not in data_array.dims:
+        raise ValueError("Input DataArray must have 'x' and 'y' as dimension names for renaming.")
 
-    logger.info("Alignment complete.")
+    # 2. Rename coordinates and associated dimensions 'x' to 'lon' and 'y' to 'lat'
+    #    xarray's rename operation typically returns a new DataArray.
+    renamed_da = data_array.rename({'x': 'lon', 'y': 'lat'})
 
-    # Perform calculations - these operate on in-memory NumPy arrays now
-    output_probabilities = {}
-    epsilon = 1e-9
+    # 3. Convert 'lon' coordinate from -180 to 180 range to 0 to 360 range
 
-    for var_name in fwi_var_names:
-        if var_name not in aligned_hist_ds or var_name not in aligned_future_ds:
-            logger.warning(f"Variable '{var_name}' not found in aligned datasets. Skipping.")
-            continue
+    # Calculate new longitude values using modulo arithmetic.
+    # We operate on the .data (or .values) to get the NumPy array of coordinates.
+    new_lon_values = np.mod(renamed_da['lon'].data, 360)
 
-        logger.info(f"Calculating future probability for variable: {var_name}")
-        hist_var = aligned_hist_ds[var_name]
-        future_var = aligned_future_ds[var_name]
-        future_var_safe = future_var.where(future_var > epsilon, epsilon)
-        relative_change_var = 1.0 + (future_var_safe - hist_var) / future_var_safe
-        # Use aligned burn probability
-        p_future_var = p_now_aligned * relative_change_var
-        p_future_var = p_future_var.clip(0, 1)
-        # Rename output variable slightly for clarity
-        output_var_name = f"burn_probability_{var_name}" # Changed from future_burn_prob_
-        p_future_var.name = output_var_name
-        output_probabilities[output_var_name] = p_future_var
+    # Assign the new coordinate values. This creates a new DataArray (or modifies
+    # a copy if assign_coords is used that way) with the 'lon' coordinate
+    # labels updated. The underlying data order is not yet changed to match
+    # a global 0-360 map.
+    da_relabelled_lon = renamed_da.assign_coords({'lon': new_lon_values})
 
-    # Clean up loaded versions
-    del p_now_loaded, fwi_now_loaded, fwi_future_loaded, p_now_aligned, aligned_hist_ds, aligned_future_ds
-    gc.collect()
+    # Sort the DataArray by the new 'lon' coordinates.
+    # This is a crucial step: it reorders the data slices along the 'lon'
+    # dimension to ensure that data is continuous and correctly placed in the
+    # 0-360 degree representation. It also makes the 'lon' coordinate monotonic.
+    # This returns a new DataArray.
+    da_transformed = da_relabelled_lon.sortby('lon')
 
-    if not output_probabilities:
-         logger.error("No output probabilities were calculated. Check variable names and data.")
-         raise ValueError("Probability calculation resulted in an empty dataset.")
+    return da_transformed
 
-    ds_p_future = xr.Dataset(output_probabilities)
-    # The dimension is still 'month' at this point
-    logger.info("Future probability calculation completed (dimension is 'month').")
-    return ds_p_future
+def main(target_resolution_kilometer: int = 0.5):
+    # --- User Configuration ---
+    # Ensure this path points to your actual input GeoTIFF file
+    input_filepath = "./src/data/BP_CONUS/BP_CONUS.tif"
+    # Define the output path for the final data in EPSG:4326
+    output_filepath_epsg4326 = "./burn_probability_1km_max_epsg4326.tif"
+    # --- End User Configuration ---
 
-
-def main():
-    """Main execution function (No Dask, Looping through years)"""
-    s3_bucket = os.environ.get("S3_BUCKET")
-    if not s3_bucket:
-        logger.error("S3_BUCKET environment variable not set.")
+    if not Path(input_filepath).exists():
+        print(f"Error: Input file not found at '{input_filepath}'. Please ensure the path is correct.")
         return
 
-    output_dir = Path("data")
-    output_dir.mkdir(exist_ok=True)
-
-    # --- No Dask Client Setup ---
-    logger.info("Running script without Dask cluster.")
-
-    ds_fwi_hist_reproj = None # Initialize variables to ensure they exist in finally block
-    da_burn_probability = None
-    ds_fwi_future_full = None
-
+    # 1. Open the raster in its native CRS (EPSG:5070)
     try:
-        # --- Load Data (Once) ---
-        da_burn_probability, ds_fwi_historical, ds_fwi_future_full = load_datasets(
-            s3_bucket, FWI_VARIABLE_NAMES, CHUNKS
-        )
-        logger.info("Initial data loading complete.")
-
-        # --- Process Historical Data (Once) ---
-        logger.info("Processing historical data...")
-        ds_fwi_historical_monthly_mean = calculate_mean_fwi_by_month(
-            ds_fwi_historical, FWI_VARIABLE_NAMES, filter_months=FWI_FIRE_MONTHS
-        )
-        ds_fwi_historical.close()
-        del ds_fwi_historical
-        gc.collect()
-        logger.info("Historical monthly mean calculated.")
-
-        logger.info("Reprojecting historical data (this may take time and memory)...")
-        ds_fwi_hist_reproj = reproject_fwi_data(
-            ds_fwi_historical_monthly_mean, da_burn_probability, FWI_VARIABLE_NAMES
-        )
-        ds_fwi_historical_monthly_mean.close()
-        del ds_fwi_historical_monthly_mean
-        gc.collect()
-        logger.info("Historical data reprojection complete.")
-        # Load historical reprojected data into memory as it's used in every loop iteration
-        logger.info("Loading historical reprojected data into memory...")
-        ds_fwi_hist_reproj.load()
-        logger.info("Historical reprojected data loaded.")
-
-
-        # --- Loop Through Future Years ---
-        for year in FWI_FUTUE_DECADES:
-            logger.info(f"--- Processing year: {year} ---")
-
-            ds_fwi_future_year = None # Initialize year-specific variables
-            ds_fwi_future_monthly_mean_year = None
-            ds_fwi_future_reproj_year = None
-            ds_burn_probability_future_year = None
-
-            try:
-                # Filter full future dataset for the current year
-                logger.info(f"Filtering future data for year {year}...")
-                decade_months_year_filter = [f"{year}-{month}" for month in FWI_FIRE_MONTHS]
-                if 'decade_month' in ds_fwi_future_full.coords:
-                    # Use isel if decade_month is not an index, or sel if it is
-                    # Check if coordinate is an index
-                    if 'decade_month' in ds_fwi_future_full.indexes:
-                         ds_fwi_future_year = ds_fwi_future_full.sel(decade_month=decade_months_year_filter)
-                    else:
-                         # If not an index, boolean indexing might be needed or ensure it's set as index
-                         logger.warning("decade_month is not an index, attempting boolean selection.")
-                         ds_fwi_future_year = ds_fwi_future_full.isel(decade_month=ds_fwi_future_full['decade_month'].isin(decade_months_year_filter))
-
-                    logger.info(f"Filtered future FWI for {year}.")
-                else:
-                    logger.error(f"Coordinate 'decade_month' not found in full future dataset for filtering year {year}.")
-                    continue # Skip to next year if coordinate missing
-
-                # Process Future Data for the current year
-                logger.info(f"Calculating monthly mean for future year {year}...")
-                ds_fwi_future_monthly_mean_year = calculate_mean_fwi_by_month(
-                    ds_fwi_future_year, FWI_VARIABLE_NAMES, filter_months=FWI_FIRE_MONTHS # Ensure filtering matches historical
-                )
-                del ds_fwi_future_year # Clean up filtered data
-                gc.collect()
-                logger.info(f"Future monthly mean calculated for {year}.")
-
-                # Reproject Future Data for the current year
-                logger.info(f"Reprojecting future data for {year} (this may take time and memory)...")
-                ds_fwi_future_reproj_year = reproject_fwi_data(
-                    ds_fwi_future_monthly_mean_year, da_burn_probability, FWI_VARIABLE_NAMES
-                )
-                del ds_fwi_future_monthly_mean_year # Clean up monthly mean
-                gc.collect()
-                logger.info(f"Future data reprojection complete for {year}.")
-
-                # Calculate Future Burn Probability for the current year
-                logger.info(f"Calculating final burn probabilities for {year}...")
-                ds_burn_probability_future_year = calculate_future_probability_vectorized(
-                    da_burn_probability, # Use original burn prob (loaded/reprojected once)
-                    ds_fwi_hist_reproj,    # Use historical reprojected (loaded once)
-                    ds_fwi_future_reproj_year, # Use future reprojected for this year
-                    FWI_VARIABLE_NAMES
-                )
-                logger.info(f"Final burn probability calculation complete for {year}.")
-
-                # Clean up year-specific future reprojected data
-                del ds_fwi_future_reproj_year
-                gc.collect()
-
-                # *** Add decade_month coordinate back before saving ***
-                logger.info(f"Reconstructing decade_month coordinate for year {year}...")
-                if 'month' in ds_burn_probability_future_year.coords:
-                    months_coords = ds_burn_probability_future_year['month'].values
-                    decade_months_coords_year = [f"{year}-{m}" for m in months_coords]
-                    # Rename dimension and coordinate
-                    ds_burn_probability_future_year = ds_burn_probability_future_year.rename({'month': 'decade_month'})
-                    # Assign new coordinate values
-                    ds_burn_probability_future_year['decade_month'] = ('decade_month', decade_months_coords_year)
-                    logger.info(f"Replaced 'month' dimension with 'decade_month' for year {year}.")
-                else:
-                    logger.warning(f"Could not find 'month' coordinate to reconstruct 'decade_month' for year {year}.")
-
-
-                # --- Save Results for the current year ---
-                logger.info(f"Saving results dataset for {year} to Zarr on S3...")
-                s3_output_uri = f"s3://{s3_bucket}/climate-risk-map/backend/climate/scenariomip/burn_probability/burn_probability_{year}.zarr" # Use year in filename
-
-                # Define encoding for compression
-                encoding = {}
-
-                for var_name in ds_burn_probability_future_year.data_vars:
-                     # Check dimensions match example storage chunks length
-                    encoding[var_name] = {
-                        'compressor': zarr.Blosc(cname='zstd', clevel=3, shuffle=zarr.Blosc.SHUFFLE),
-                    }
-                logger.info(f"Using encoding for saving year {year}: {encoding}")
-
-                fs_write = s3fs.S3FileSystem(anon=False)
-                s3_map_write = s3fs.S3Map(root=s3_output_uri, s3=fs_write, check=False)
-
-                logger.info(f"Starting write to Zarr for year {year} (computes result in memory first)...")
-                ds_burn_probability_future_year.to_zarr(
-                    store=s3_map_write,
-                    mode="w",
-                    consolidated=True,
-                    encoding=encoding,
-                )
-                logger.info(f"Results for year {year} successfully saved to {s3_output_uri}")
-
-                # Clean up final dataset object for the year
-                ds_burn_probability_future_year.close()
-                del ds_burn_probability_future_year
-                gc.collect()
-
-            except Exception as e:
-                logger.exception(f"An error occurred during processing for year {year}: {e}")
-                # Optionally decide whether to continue to the next year or stop
-                # continue
-
-        # --- End of Loop ---
-        logger.info("Finished processing all years.")
-
+        da_burn_probability_native = rioxarray.open_rasterio(input_filepath)
     except Exception as e:
-        logger.exception(f"An error occurred during the main processing pipeline outside the year loop: {e}")
-    finally:
-        # Clean up objects loaded/processed outside the loop
-        logger.info("Performing final cleanup...")
-        if ds_fwi_hist_reproj is not None:
-            ds_fwi_hist_reproj.close()
-            del ds_fwi_hist_reproj
-        if da_burn_probability is not None:
-            da_burn_probability.close()
-            del da_burn_probability
-        if ds_fwi_future_full is not None:
-            ds_fwi_future_full.close()
-            del ds_fwi_future_full
-        gc.collect()
-        logger.info("Script finished.")
+        print(f"Error opening raster file '{input_filepath}': {e}")
+        return
 
-    logger.info("Processing complete!")
+    # Remove band dimension if it exists and has size 1, or select band 1 if multiple
+    if "band" in da_burn_probability_native.dims:
+        if len(da_burn_probability_native.band) > 1:
+            print(f"Selecting band 1 from {len(da_burn_probability_native.band)} bands.")
+            da_burn_probability_native = da_burn_probability_native.sel(band=1, drop=True)
+        elif len(da_burn_probability_native.band) == 1:
+            da_burn_probability_native = da_burn_probability_native.squeeze("band", drop=True)
+
+    print(f"Opened raster: {input_filepath}")
+    print(f"Original CRS: {da_burn_probability_native.rio.crs}")
+    print(f"Original shape: {da_burn_probability_native.shape}")
+    original_x_res, original_y_res = da_burn_probability_native.rio.resolution()
+    print(f"Original resolution (x, y): {original_x_res:.2f}, {original_y_res:.2f} (units of original CRS, likely meters)")
+
+    target_resolution_meters = target_resolution_kilometer * 1000
+
+    # Preserve the y-axis direction by using the sign of the original y-resolution
+    target_y_res_meters_signed = target_resolution_meters * np.sign(original_y_res)
+    if target_y_res_meters_signed == 0: # Should not happen with valid spatial data
+        target_y_res_meters_signed = -target_resolution_meters # Default to negative if resolution was 0
+
+    print(f"\nAggregating to {target_resolution_meters}m x {target_resolution_meters}m in original CRS using 'max' resampling...")
+    da_aggregated_native_crs = da_burn_probability_native.rio.reproject(
+        da_burn_probability_native.rio.crs,  # Target CRS is the same as native for this step
+        resolution=(target_resolution_meters, target_y_res_meters_signed),
+        resampling=Resampling.max
+    )
+    
+    print(f"Shape after aggregation in native CRS: {da_aggregated_native_crs.shape}")
+    agg_x_res, agg_y_res = da_aggregated_native_crs.rio.resolution()
+    print(f"Resolution after aggregation (x, y): {agg_x_res:.2f}, {agg_y_res:.2f} meters")
+
+    # 3. Reproject the aggregated (1km) raster to EPSG:4326 (latitude/longitude)
+    print(f"\nReprojecting aggregated data to EPSG:4326...")
+    da_aggregated_epsg4326 = da_aggregated_native_crs.rio.reproject("EPSG:4326")
+    da_aggregated_epsg4326.name = "burn_probability"
+    da_aggregated_epsg4326.where(da_aggregated_epsg4326 != -9999, 0.0)
+    da_aggregated_epsg4326.attrs['_FillValue'] = np.float32(0.0)
+    da_aggregated_epsg4326 = transform_geographic_coordinates(da_aggregated_epsg4326) # Converts lon to 0-360
+    da_aggregated_epsg4326 = da_aggregated_epsg4326.where(da_aggregated_epsg4326 > 0)
+
+    print(f"Shape after reprojection to EPSG:4326: {da_aggregated_epsg4326.shape}")
+    final_x_res, final_y_res = da_aggregated_epsg4326.rio.resolution()
+    print(f"Final resolution in EPSG:4326 (x, y): {final_x_res:.6f}, {final_y_res:.6f} degrees (approx.)")
+
+    # Writing results to S3 as Zarr
+    try:
+        fs = s3fs.S3FileSystem(anon=False)
+        # Let to_zarr() handle the computation
+        da_aggregated_epsg4326.to_zarr(
+            store=s3fs.S3Map(root=S3_URI_ZARR_OUTPUT, s3=fs),
+            mode="w",
+            consolidated=True,
+        )
+        print("Written to S3 successfully!")
+    except Exception as e:
+        print(f"Error writing to s3: {str(e)}")
+        raise ValueError
 
 if __name__ == "__main__":
     main()

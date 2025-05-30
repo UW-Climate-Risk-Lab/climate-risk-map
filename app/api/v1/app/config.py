@@ -1,8 +1,12 @@
 OSM_AVAILABLE_CATEGORIES = {
-    "infrastructure": {"has_subtypes": True},
+    "power_grid": {"has_subtypes": True},
     "amenity": {"has_subtypes": True},
     "place": {"has_subtypes": False},
-    "landuse": {"has_subtypes": False}
+    "landuse": {"has_subtypes": False},
+    "data_center": {"has_subtypes": True},
+    "commercial_real_estate": {"has_subtypes": True},
+    "agriculture": {"has_subtypes": True},
+    "administrative": {"has_subtypes": True}
 }
 
 OSM_SCHEMA_NAME = "osm"

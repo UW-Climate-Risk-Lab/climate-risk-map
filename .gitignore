@@ -171,3 +171,6 @@ test.ipynb
 
 # Ignore all directories named 'data' in any location
 **/data/
+
+# Ignore cached .pbf data from app
+*.pbf

@@ -1,4 +1,6 @@
-FROM debian:bookworm-slim AS builder
+FROM debian:bookworm-slim
+
+COPY --from=ghcr.io/astral-sh/uv:0.7.8 /uv /uvx /bin/
 
 # Install gdal dependencies
 RUN apt-get update && apt-get install -y \
@@ -16,37 +18,23 @@ ENV CPLUS_INCLUDE_PATH=/usr/include/gdal \
     C_INCLUDE_PATH=/usr/include/gdal \
     CMAKE_PREFIX_PATH='/usr/include/gdal;/usr/include/geos'
 
-# Create a virtual environment, which allows poetry itself to be installed
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Poetry configuration
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=1 \
-    POETRY_VIRTUALENVS_CREATE=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
-
-RUN pip install poetry==1.8.3
-
 # Set working directory
 WORKDIR /app
 
-# Install dependencies using poetry
-COPY pyproject.toml poetry.lock* ./
-RUN poetry install --no-root --without dev && rm -rf $POETRY_CACHE_DIR
+# Configure uv - enable bytecode compilation for faster app start time
+ENV UV_COMPILE_BYTECODE=1
 
-# The runtime image, used to just run the code provided its virtual environment
-FROM debian:bookworm-slim AS runtime
+# Disable uv trying to manage Python versions, use the one from the base image
+# ENV UV_PYTHON_DOWNLOADS=0
 
-# Install GDAL runtime libraries
-RUN apt-get update && apt-get install -y \
-    gdal-bin \
-    libgdal-dev \
-    libgeos-dev \
-    --fix-missing
+# Copy from the cache instead of linking since it's a mounted volume
+ENV UV_LINK_MODE=copy
 
-# Copy the virtual environment from the builder stage to the runtime stage
-COPY --from=builder /app/.venv /app/.venv
+# Install the project's dependencies using the lockfile and settings
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --no-install-project --no-dev
 
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal \
     C_INCLUDE_PATH=/usr/include/gdal \
@@ -58,4 +46,4 @@ WORKDIR /app
 
 COPY src/ src/
     
-ENTRYPOINT ["/bin/bash", "-c", "source /app/.venv/bin/activate && exec python src/run.py \"$@\"", "--"]
+ENTRYPOINT ["/bin/bash", "-c", "uv run src/run.py \"$@\"", "--"]

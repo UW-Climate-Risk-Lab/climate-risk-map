@@ -17,12 +17,15 @@ from config.settings import (
     ENABLE_AI_ANALYSIS,
     AGENT_ID,
     AGENT_ALIAS_ID,
+    AGENT_REGION
 )
 from config.hazard_config import HazardConfig
 from config.exposure import get_asset
 from config.map_config import MapConfig
 from config.chat.messages import ChatMessage
 from config.chat.prompts import INITIAL_PROMPT
+
+from services.download_service import DownloadService
 
 from utils.geo_utils import calc_bbox_area
 from utils.file_utils import dataframe_to_csv_bytes
@@ -56,10 +59,14 @@ class ChatService:
         )
         text_response = ""
 
+        input_tokens = 0
+        output_tokens = 0
+
         try:
             # runtime_agent = ChatService._get_bedrock_runtime_client() # If using class method client
             runtime_agent = boto3.client(
-                service_name="bedrock-agent-runtime"
+                service_name="bedrock-agent-runtime",
+                region_name=AGENT_REGION
             )  # Instantiate per call
 
             invoke_params = {
@@ -85,6 +92,7 @@ class ChatService:
             for event in event_stream:
                 if "chunk" in event:
                     chunk = event["chunk"]
+                    logger.info(chunk)
                     if "bytes" in chunk:
                         text_response += chunk["bytes"].decode("utf-8")
                     else:
@@ -95,6 +103,14 @@ class ChatService:
                     logger.debug(
                         f"Trace event received for session {session_id}"
                     )  # Example
+
+                    try:
+                        temp_input_tokens = event["trace"]["trace"]["orchestrationTrace"]["modelInvocationOutput"]["metadata"]["usage"]["inputTokens"]
+                        temp_output_tokens = event["trace"]["trace"]["orchestrationTrace"]["modelInvocationOutput"]["metadata"]["usage"]["outputTokens"]
+                        input_tokens = input_tokens + temp_input_tokens
+                        output_tokens = output_tokens + temp_output_tokens
+                    except Exception as e:
+                        pass
                 elif "files" in event:
                     # Placeholder for file/image handling from Bedrock Agent Code Interpreter
                     # This part needs implementation based on expected file output
@@ -119,17 +135,23 @@ class ChatService:
             logger.info(
                 f"Agent invocation successful for session {session_id}. Response length: {len(text_response)}"
             )
+            logger.info(f"Input tokens: {str(input_tokens)}")
+            logger.info(f"Output tokens: {str(output_tokens)}")
             return text_response
 
         except runtime_agent.exceptions.ValidationException as e:
             logger.error(
                 f"Bedrock Agent Validation Error for session {session_id}: {e}. Input: '{input_text[:100]}...'"
             )
+            logger.info(f"Input tokens: {str(input_tokens)}")
+            logger.info(f"Output tokens: {str(output_tokens)}")
             return f"Agent Error: Input validation failed. {e}", None
         except runtime_agent.exceptions.ConflictException as e:
             logger.error(
                 f"Bedrock Agent Conflict Error for session {session_id}: {e}. Maybe session issue?"
             )
+            logger.info(f"Input tokens: {str(input_tokens)}")
+            logger.info(f"Output tokens: {str(output_tokens)}")
             # You might want to try creating a new session or inform the user
             return (
                 f"Agent Error: Session conflict. Please try closing and reopening the chat. {e}",
@@ -137,6 +159,8 @@ class ChatService:
             )
         except Exception as e:
             logger.error(f"Error invoking Bedrock Agent for session {session_id}: {e}")
+            logger.info(f"Input tokens: {str(input_tokens)}")
+            logger.info(f"Output tokens: {str(output_tokens)}")
             return (
                 f"An unexpected error occurred while communicating with the AI agent: {e}",
                 None,
@@ -307,6 +331,12 @@ class ChatService:
         session_id = str(uuid.uuid4())
         logger.info(f"Starting new AI session: {session_id}")
 
+        df = DownloadService.parse_osm_tags(df=df, tag_format="prefix")
+
+        # This won't be used in analysis at this point. Column takes up a lot of data
+        if "geometry_wkt" in df.columns:
+            df = df.drop(columns="geometry_wkt")
+
         try:
             csv_bytes = dataframe_to_csv_bytes(df=df)
             if not csv_bytes:
@@ -317,6 +347,11 @@ class ChatService:
                 f"Error converting DataFrame to CSV for session {session_id}: {e}"
             )
             return None, None
+
+        # Add dataset context
+        initial_prompt = initial_prompt + "Here is a sample of the first 3 rows of the data\n" +str(df.head(3)) + "\n"
+        initial_prompt = initial_prompt + "Here are the datatypes of the avilable columns\n" + str(df.dtypes)
+
 
         session_state = {
             "files": [

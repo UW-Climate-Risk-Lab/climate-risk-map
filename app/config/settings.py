@@ -30,5 +30,13 @@ S3_BUCKET = os.environ["S3_BUCKET"]
 
 # AWS Bedrock Settings
 ENABLE_AI_ANALYSIS = os.environ.get("ENABLE_AI_ANALYSIS", "False").lower() == "true"
+AGENT_REGION = os.environ.get("AGENT_REGION", "us-west-2")
 AGENT_ID = os.environ.get("AGENT_ID", "id")
 AGENT_ALIAS_ID = os.environ.get("AGENT_ALIAS_ID", "id")
+
+# Auth Service
+
+APP_PASSWORD_WALL_ENABLED = os.environ.get('APP_PASSWORD_WALL_ENABLED', 'false')
+APP_PASSWORD = os.environ.get('APP_PASSWORD', None)
+
+APPLICATION_TITLE = os.environ.get("APPLICATION_TITLE", "UW Climate Risk Lab")

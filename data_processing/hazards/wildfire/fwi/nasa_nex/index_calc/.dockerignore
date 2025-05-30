@@ -1,0 +1,19 @@
+# .dockerignore
+
+# Ignore Python virtual environment
+.venv
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore Git directory
+.git/
+.gitignore
+
+# Ignore test cache etc.
+.pytest_cache/
+.coverage
+
+# Add any other files/folders specific to your local setup
+# e.g., .vscode/, .idea/, *.log, build/, dist/

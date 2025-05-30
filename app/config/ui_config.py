@@ -9,7 +9,6 @@ the application and make global style changes easily.
 
 from config.settings import ASSETS_PATH
 
-
 # Color scheme
 # Primary colors
 PRIMARY_COLOR = "#39275B"  # UW purple
@@ -27,7 +26,7 @@ ALERT_WARNING_COLOR = "#F0AD4E"
 ALERT_DANGER_COLOR = "#D9534F"
 
 # Logo location
-LOGO_PATH = ASSETS_PATH + "/icons/CRL-Logo.png"
+LOGO_PATH = ASSETS_PATH + "/icons/cloud-bolt-uw.png"
 
 # Logo style
 LOGO_STYLE = {
@@ -206,11 +205,28 @@ LEGEND_CONTAINER_STYLE = {
 
 LEGEND_BUTTON_STYLE = {
     "position": "absolute",
-    "top": "190px",
+    "top": "240px",
     "right": "10px",
     "zIndex": "1001",
     "backgroundColor": PRIMARY_COLOR,
     "color": "white",
+    "border": f"1px solid {PRIMARY_COLOR}",
+    "borderRadius": "4px",
+    "padding": "10px 10px",
+    "fontSize": "12px",
+    "cursor": "pointer",
+    "display": "flex",
+    "alignItems": "center",
+    "gap": "0px",
+}
+
+BASEMAP_BUTTON_STYLE = {
+    "position": "absolute",
+    "top": "190px",
+    "right": "10px",
+    "zIndex": "1002",
+    "backgroundColor": "white",
+    "color": PRIMARY_COLOR,
     "border": f"1px solid {PRIMARY_COLOR}",
     "borderRadius": "4px",
     "padding": "10px 10px",
@@ -227,12 +243,18 @@ MAP_FEATURES_LOADING_SPINNER_STYLE = {
     "left": "50%",
     "transform": "translate(-50%, -50%)",
     "zIndex": 1500,  # Very high z-index
-    "backgroundColor": "rgba(255, 255, 255, 0.5)",  # Semi-transparent background
+    "backgroundColor": "rgba(0, 0, 0, 0)",  # Semi-transparent background
     "borderRadius": "10px",
     "padding": "20px",
     "display": "flex",
     "alignItems": "center",
     "justifyContent": "center",
+}
+
+REGION_OVERLAY_STYLE = {
+    "color": PRIMARY_COLOR,
+    "weight": 2,
+    "fillOpacity": 0,
 }
 
 POWER_LINE_CUSTOM_COLOR_RANGES = [
@@ -241,3 +263,16 @@ POWER_LINE_CUSTOM_COLOR_RANGES = [
     {"min": 300, "max": 500, "color": "#63B1E5", "label": "300-500 kV"},
     {"min": 500, "max": float("inf"), "color": "#C75B12", "label": "> 500 kV"},
 ]
+
+PASSWORD_CONTAINER_STYLE = {
+    "position": "fixed",
+    "top": 0,
+    "left": 0,
+    "width": "100%",
+    "height": "100%",
+    "backgroundColor": PRIMARY_COLOR,
+    "zIndex": 9999,
+    "display": "flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+}

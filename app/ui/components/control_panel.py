@@ -11,6 +11,7 @@ from config.ui_config import (
     BUTTON_STYLE,
     PANEL_BACKGROUND_COLOR,
 )
+from config.settings import ENABLE_AI_ANALYSIS, APPLICATION_TITLE
 from config.map_config import MapConfig
 from config.hazard_config import HazardConfig
 
@@ -35,7 +36,7 @@ def create_title_bar() -> html.Div:
                     ),
                     dbc.Col(
                         html.Div(
-                            "UW Climate Risk Map",
+                            APPLICATION_TITLE,
                             style=TITLE_STYLE,
                         ),
                         width="auto",
@@ -68,11 +69,10 @@ def create_region_selector() -> dbc.Row:
                                 "label": region.label,
                                 "value": region.name,
                             }
-                            for region in MapConfig.REGIONS
+                            for region in sorted(MapConfig.REGIONS, key=lambda region: region.label)
                         ],
                         id="region-select-dropdown",
                         placeholder="Select a Region",
-                        value=MapConfig.BASE_MAP_COMPONENT["default_region_name"],
                     ),
                 ]
             )
@@ -251,6 +251,14 @@ def create_download_section():
     Returns:
         html.Div: Download section component
     """
+    ai_button_style = BUTTON_STYLE.copy()
+    download_button_style = BUTTON_STYLE.copy()
+
+    if not ENABLE_AI_ANALYSIS:
+        ai_button_style["display"] = "none"
+    else:
+        download_button_style["display"] = "none"
+
     return html.Div(
         children=[
             dbc.Row(
@@ -265,7 +273,7 @@ def create_download_section():
                                 id="download-btn",
                                 className="me-1",
                                 n_clicks=0,
-                                style=BUTTON_STYLE,
+                                style=download_button_style,
                             ),
                             dcc.Download(id="data-download"),
                         ],
@@ -279,7 +287,7 @@ def create_download_section():
                                 id="analysis-btn",
                                 className="me-1",
                                 n_clicks=0,
-                                style=BUTTON_STYLE,
+                                style=ai_button_style,
                             )
                         ],
                     ),

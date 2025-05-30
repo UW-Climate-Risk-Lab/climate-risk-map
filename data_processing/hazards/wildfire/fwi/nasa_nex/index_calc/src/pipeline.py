@@ -12,8 +12,8 @@ from urllib.parse import urlparse
 from pathlib import PurePosixPath
 from distributed import Client
 
-import src.constants as constants
-import src.calc as calc
+import constants as constants
+import calc as calc
 
 @dataclass
 class BoundingBox:
@@ -154,8 +154,8 @@ def generate_current_year_config(s3_client,
         input_uris.append(input_uri)
 
     # Construct output Zarr file names
-    current_year_file = f"fwi_day_{model}_{scenario}_{ensemble_member}_gn_{year}.zarr"
-    prior_year_file = f"fwi_day_{model}_{scenario}_{ensemble_member}_gn_{year - 1}.zarr"
+    current_year_file = f"fwi_month_{model}_{scenario}_{ensemble_member}_gn_{year}.zarr"
+    prior_year_file = f"fwi_month_{model}_{scenario}_{ensemble_member}_gn_{year - 1}.zarr"
 
     base_s3_path = PurePosixPath(constants.OUTPUT_BUCKET,
                                  constants.OUTPUT_PREFIX,

@@ -29,9 +29,10 @@ fi
 ROOT_DIR=$(pwd)
 MIGRATIONS_DIR="$ROOT_DIR/migrations"
 OSM_ETL_DIR="$ROOT_DIR/etl/osm"
-EXPOSURE_ETL_DIR="$ROOT_DIR/etl/exposure/nasa_nex"
+EXPOSURE_ETL_DIR="$ROOT_DIR/etl/exposure"
 ASSET_GROUP_DIR="$ROOT_DIR/materialized_views/asset_groups"
 UNEXPOSED_DIR="$ROOT_DIR/materialized_views/unexposed_ids"
+GEOTIFF_ETL_DIR="$ROOT_DIR/etl/geotiff"
 CONFIG_JSON="$ROOT_DIR/config.json"
 
 if [ ! -f "$CONFIG_JSON" ]; then
@@ -67,7 +68,7 @@ fi
 PGOSM_SRID=${PGOSM_SRID:-4326}
 
 # Check required environment variables
-required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_REGION" "PGOSM_SUBREGION" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST")
+required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_REGION" "PGOSM_SUBREGION" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST" "PG_MAINTENANCE_MEMORY")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -170,7 +171,7 @@ run_osm_etl() {
     
     # Build Docker image
     echo "Building ETL Docker image..."
-    docker build -t database-v1-osm-etl .
+    sudo docker build -t database-v1-osm-etl .
     
     if [ $? -ne 0 ]; then
         echo "Error: Failed to build ETL Docker image"
@@ -181,7 +182,7 @@ run_osm_etl() {
     # Run Docker container with environment variables
     echo "Running ETL process to load OSM data..."
 
-    docker run --rm \
+    sudo docker run --rm \
         -e POSTGRES_USER=$PGOSM_USER \
         -e POSTGRES_PASSWORD=$PGOSM_PASSWORD \
         -e POSTGRES_HOST=$PGOSM_HOST \
@@ -220,7 +221,7 @@ run_migrations() {
         fi  
         # Execute the SQL file with explicit connection parameters
         echo "Executing $FILE..."
-        if ! psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" -f "$FILE"; then
+        if ! PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" -f "$FILE"; then
             echo "Error executing $FILE"
             exit 1
         fi
@@ -242,7 +243,7 @@ create_views() {
         for SQL_FILE in "$ASSET_GROUP_DIR"/*.sql; do
             if [ -f "$SQL_FILE" ]; then
                 echo "Processing $SQL_FILE..."
-                psql $DB_CONN -f "$SQL_FILE"
+                PGPASSWORD=$PG_SUPER_PASSWORD psql $DB_CONN -f "$SQL_FILE"
                 
                 if [ $? -ne 0 ]; then
                     echo "Error: Failed to execute $SQL_FILE"
@@ -260,7 +261,7 @@ create_views() {
         for SQL_FILE in "$UNEXPOSED_DIR"/*.sql; do
             if [ -f "$SQL_FILE" ]; then
                 echo "Processing $SQL_FILE..."
-                psql $DB_CONN -f "$SQL_FILE"
+                PGPASSWORD=$PG_SUPER_PASSWORD psql $DB_CONN -f "$SQL_FILE"
                 
                 if [ $? -ne 0 ]; then
                     echo "Error: Failed to execute $SQL_FILE"
@@ -280,10 +281,10 @@ create_views() {
 refresh_asset_views() {
     echo "===== STEP 4a: REFRESHING ASSET VIEWS ====="
 
-    for VIEW in administrative agriculture commercial_real_estate data_center power_grid residential_real_estate
+    for VIEW in power_grid commercial_real_estate data_center agriculture administrative
     do
         echo "Refreshing osm.$VIEW..."
-        psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
+        PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
             -c "REFRESH MATERIALIZED VIEW osm.$VIEW;"
     done
 }
@@ -296,18 +297,18 @@ refresh_unexposed_id_views() {
     # Refresh all unexposed_ids views
     # Note, does not check if exposure exists for every SSP scenario and time step
 
-    for VIEW in unexposed_ids_nasa_nex_fwi unexposed_ids_nasa_nex_pr_percent_change
+    for VIEW in unexposed_ids_nasa_nex_fwi unexposed_ids_usda_burn_probability
     do
         echo "Refreshing osm.$VIEW..."
-        psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
+        PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
             -c "REFRESH MATERIALIZED VIEW osm.$VIEW;"
     done
 }
 
 
 # Step 5: Run Climate ETL Process
-run_exposure_etl() {
-    echo "===== STEP 6: RUNNING CLIMATE ETL PROCESS ====="
+run_nasa_nex_exposure_etl() {
+    echo "===== STEP 5: RUNNING NASA NEX EXPOSURE ETL PROCESS ====="
     
     # Check if Docker is installed
     if ! command -v docker &> /dev/null; then
@@ -316,27 +317,27 @@ run_exposure_etl() {
     fi
     
     # Check if ETL directory exists
-    if [ ! -d "$EXPOSURE_ETL_DIR" ]; then
+    if [ ! -d "$EXPOSURE_ETL_DIR/nasa_nex" ]; then
         echo "Error: ETL directory not found at $EXPOSURE_ETL_DIR"
         exit 1
     fi
     
     # Check if Dockerfile exists in ETL directory
-    if [ ! -f "$EXPOSURE_ETL_DIR/Dockerfile" ]; then
+    if [ ! -f "$EXPOSURE_ETL_DIR/nasa_nex/Dockerfile" ]; then
         echo "Error: Dockerfile not found in Climate ETL directory"
         exit 1
     fi
     
     
-    # Navigate to ETL directory
-    cd "$EXPOSURE_ETL_DIR"
+    # Navigate to NASA NEX ETL directory
+    cd "$EXPOSURE_ETL_DIR/nasa_nex"
     
     # Build Docker image
-    echo "Building Climate ETL Docker image..."
-    docker build -t database-v1-climate-etl .
+    echo "Building NASA NEX ETL Docker image..."
+    sudo docker build -t database-v1-nasa-nex-etl .
     
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to build Climate ETL Docker image"
+        echo "Error: Failed to build NASA NEX EXPOSURE ETL Docker image"
         cd "$ROOT_DIR"  # Return to root directory
         exit 1
     fi
@@ -372,17 +373,18 @@ run_exposure_etl() {
         echo "  - Y min: $Y_MIN"
         echo "  - X max: $X_MAX"
         echo "  - Y max: $Y_MAX"
+        echo "  - Postgres maintenance memory $PG_MAINTENANCE_MEMORY"
         
         # Run Docker container with environment variables and arguments
         echo "Running ETL process for climate dataset $((i+1))..."
         
-        docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+        sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
             -e PG_DBNAME=$PG_DBNAME \
             -e PGUSER=$PGCLIMATE_USER \
             -e PGPASSWORD=$PGCLIMATE_PASSWORD \
             -e PGHOST=$PGCLIMATE_HOST \
             -e PGPORT=$PGPORT \
-            database-v1-climate-etl \
+            database-v1-nasa-nex-etl \
             --s3-zarr-store-uri "$S3_ZARR_STORE_URI" \
             --climate-variable "$CLIMATE_VARIABLE" \
             --ssp "$SSP" \
@@ -392,6 +394,7 @@ run_exposure_etl() {
             --y_min "$Y_MIN" \
             --x_max "$X_MAX" \
             --y_max "$Y_MAX" \
+            --pg_maintenance_memory "$PG_MAINTENANCE_MEMORY" \
         
         if [ $? -ne 0 ]; then
             echo "Error: ETL process failed for dataset $((i+1))"
@@ -405,10 +408,192 @@ run_exposure_etl() {
     # Return to root directory
     cd "$ROOT_DIR"
     
-    echo "Climate ETL process completed successfully for all datasets"
+    echo "NASA NEX ETL process completed successfully for all datasets"
+}
+
+# Step 5a: Run USDA Burn Probability ETL Process
+run_usda_wildfire_exposure_etl() {
+    echo "===== STEP 5a: RUNNING USDA WILDFIRE ETL PROCESS ====="
+    
+    # Check if Docker is installed
+    if ! command -v docker &> /dev/null; then
+        echo "Error: Docker is not installed or not in PATH"
+        exit 1
+    fi
+    
+    # Check if ETL directory exists
+    if [ ! -d "$EXPOSURE_ETL_DIR/usda" ]; then
+        echo "Error: ETL directory not found at $EXPOSURE_ETL_DIR"
+        exit 1
+    fi
+    
+    # Check if Dockerfile exists in ETL directory
+    if [ ! -f "$EXPOSURE_ETL_DIR/usda/Dockerfile" ]; then
+        echo "Error: Dockerfile not found in USDA ETL directory"
+        exit 1
+    fi
+    
+    
+    # Navigate to NASA NEX ETL directory
+    cd "$EXPOSURE_ETL_DIR/usda"
+    
+    # Build Docker image
+    echo "Building USDA Wildfire Exposure ETL Docker image..."
+    sudo docker build -t database-v1-usda-wildfire-etl .
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to build Climate ETL Docker image"
+        cd "$ROOT_DIR"  # Return to root directory
+        exit 1
+    fi
+    
+    # Get the number of datasets
+    DATASET_COUNT=$(jq '.usda_wildfire_expsoure_args | length' "$CONFIG_JSON")
+    echo "Found $DATASET_COUNT climate datasets to process"
+
+    # Get Bounding Box for Database
+    X_MIN=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.x_min' "$CONFIG_JSON")
+    Y_MIN=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.y_min' "$CONFIG_JSON")
+    X_MAX=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.x_max' "$CONFIG_JSON")
+    Y_MAX=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].bounding_box.y_max' "$CONFIG_JSON")
+    
+    # Loop through each dataset in the JSON file
+    for ((i=0; i<$DATASET_COUNT; i++)); do
+        # Extract dataset properties
+        ZARR_STORE_PATH=$(jq -r ".usda_wildfire_expsoure_args[$i].zarr_store_path" "$CONFIG_JSON")
+        S3_ZARR_STORE_URI="s3://${S3_BUCKET}/${ZARR_STORE_PATH}"
+
+        USDA_VARIABLE=$(jq -r ".usda_wildfire_expsoure_args[$i].usda_variable" "$CONFIG_JSON")
+        ZONAL_AGG_METHOD=$(jq -r ".usda_wildfire_expsoure_args[$i].zonal_agg_method" "$CONFIG_JSON")
+        POLYGON_AREA_THRESHOLD=$(jq -r ".usda_wildfire_expsoure_args[$i].polygon_area_threshold" "$CONFIG_JSON")
+        
+        echo "Processing dataset $((i+1))/$DATASET_COUNT:"
+        echo "  - Zarr Store URI: $S3_ZARR_STORE_URI"
+        echo "  - Variable: $USDA_VARIABLE"
+        echo "  - Zonal Aggregation Method: $ZONAL_AGG_METHOD"
+        echo "  - Polygon Area Threshold: $POLYGON_AREA_THRESHOLD"
+        echo "  - X min: $X_MIN"
+        echo "  - Y min: $Y_MIN"
+        echo "  - X max: $X_MAX"
+        echo "  - Y max: $Y_MAX"
+        echo "  - Postgres maintenance memory $PG_MAINTENANCE_MEMORY"
+        
+        # Run Docker container with environment variables and arguments
+        echo "Running ETL process for climate dataset $((i+1))..."
+        
+        sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+            -e PG_DBNAME=$PG_DBNAME \
+            -e PGUSER=$PGCLIMATE_USER \
+            -e PGPASSWORD=$PGCLIMATE_PASSWORD \
+            -e PGHOST=$PGCLIMATE_HOST \
+            -e PGPORT=$PGPORT \
+            database-v1-usda-wildfire-etl \
+            --s3-zarr-store-uri "$S3_ZARR_STORE_URI" \
+            --usda-variable "$USDA_VARIABLE" \
+            --zonal-agg-method "$ZONAL_AGG_METHOD" \
+            --polygon-area-threshold "$POLYGON_AREA_THRESHOLD" \
+            --x_min "$X_MIN" \
+            --y_min "$Y_MIN" \
+            --x_max "$X_MAX" \
+            --y_max "$Y_MAX" \
+            --pg_maintenance_memory "$PG_MAINTENANCE_MEMORY" \
+        
+        if [ $? -ne 0 ]; then
+            echo "Error: ETL process failed for dataset $((i+1))"
+            cd "$ROOT_DIR"  # Return to root directory
+            exit 1
+        fi
+        
+        echo "Dataset $((i+1)) processed successfully"
+    done
+    
+    # Return to root directory
+    cd "$ROOT_DIR"
+    
+    echo "USDA Wildfire process completed successfully for all datasets"
 }
 
 
+
+# Step 6: Run Geotiff Process
+run_geotiff_etl() {
+    echo "===== STEP 6: RUNNING GEOTIFF ETL PROCESS ====="
+    
+    # Check if Docker is installed
+    if ! command -v docker &> /dev/null; then
+        echo "Error: Docker is not installed or not in PATH"
+        exit 1
+    fi
+    
+    # Check if ETL directory exists
+    if [ ! -d "$GEOTIFF_ETL_DIR" ]; then
+        echo "Error: Geotiff ETL directory not found at $GEOTIFF_ETL_DIR"
+        exit 1
+    fi
+    
+    # Check if Dockerfile exists in ETL directory
+    if [ ! -f "$GEOTIFF_ETL_DIR/Dockerfile" ]; then
+        echo "Error: Dockerfile not found in Climate ETL directory"
+        exit 1
+    fi
+    
+    
+    # Navigate to ETL directory
+    cd "$GEOTIFF_ETL_DIR"
+    
+    # Build Docker image
+    echo "Building Geotiff ETL Docker image..."
+    sudo docker build -t database-v1-geotiff-etl .
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to build Geotiff ETL Docker image"
+        cd "$ROOT_DIR"  # Return to root directory
+        exit 1
+    fi
+    
+    # Get the number of datasets
+    GEOTIFF_DATASET_COUNT=$(jq '.geotiff_args | length' "$CONFIG_JSON")
+    echo "Found $GEOTIFF_DATASET_COUNT climate datasets to process"
+    
+    # Loop through each dataset in the JSON file
+    for ((i=0; i<$GEOTIFF_DATASET_COUNT; i++)); do
+        # Extract dataset properties
+        S3_PREFIX_INPUT_GEOTIFF=$(jq -r ".geotiff_args[$i].s3_prefix_input" "$CONFIG_JSON")
+        S3_URI_INPUT_GEOTIFF="s3://${S3_BUCKET}/${S3_PREFIX_INPUT_GEOTIFF}"
+        S3_PREFIX_GEOTIFF=$(jq -r ".geotiff_args[$i].s3_prefix_geotiff" "$CONFIG_JSON")
+
+        CLIMATE_VARIABLE=$(jq -r ".climate_exposure_args[$i].climate_variable" "$CONFIG_JSON")
+        SSP=$(jq -r ".climate_exposure_args[$i].ssp" "$CONFIG_JSON")
+        ZONAL_AGG_METHOD=$(jq -r ".climate_exposure_args[$i].zonal_agg_method" "$CONFIG_JSON")
+        POLYGON_AREA_THRESHOLD=$(jq -r ".climate_exposure_args[$i].polygon_area_threshold" "$CONFIG_JSON")
+        
+        echo "Processing geotiff $((i+1))/$GEOTIFF_DATASET_COUNT:"
+        echo "  - Region: $PG_DBNAME"
+        
+        # Run Docker container with environment variables and arguments
+        echo "Running Geotiff ETL process for climate dataset $((i+1))..."
+        
+        sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+            database-v1-geotiff-etl \
+            --s3-bucket "$S3_BUCKET" \
+            --s3-uri-input "$S3_URI_INPUT_GEOTIFF" \
+            --s3-prefix-geotiff "$S3_PREFIX_GEOTIFF" \
+            --region "$PG_DBNAME"
+        
+        if [ $? -ne 0 ]; then
+            echo "Error: Geotiff ETL process failed for dataset $((i+1))"
+            cd "$ROOT_DIR"  # Return to root directory
+            exit 1
+        fi
+        
+        echo "Geotiff dataset $((i+1)) processed successfully"
+    done
+    
+    # Return to root directory
+    cd "$ROOT_DIR"
+    
+    echo "Geotiff ETL process completed successfully for all datasets"
+}
 
 # Main execution
 main() {
@@ -433,29 +618,39 @@ main() {
         refresh_unexposed_id_views
 
         # Run Climate Exposure ETL process
-        run_exposure_etl
+        run_nasa_nex_exposure_etl
+
+        run_usda_wildfire_exposure_etl
 
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
+
+        # Run Geotiff pipeline (Currently running ad hoc for global, no need for individual regions)
+        # run_geotiff_etl
 
     else
         # Initialize the database
         init_database
 
+        # Run migrations
+        run_migrations
+
         # Run OSM ETL process
         run_osm_etl
 
-        # Run migrations
-        run_migrations
-        
         # Create views
         create_views
         
         # Run Climate ETL process
-        run_exposure_etl
+        run_nasa_nex_exposure_etl
+
+        run_usda_wildfire_exposure_etl
 
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
+
+        # Run Geotiff pipeline (Currently running ad hoc for global, no need for individual regions)
+        # run_geotiff_etl
 
     fi
 

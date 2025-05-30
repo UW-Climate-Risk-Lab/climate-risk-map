@@ -3,14 +3,18 @@ import atexit
 import dash_bootstrap_components as dbc
 from dash import Dash
 
-from config.settings import ASSETS_PATH, DEBUG
+from config.settings import ASSETS_PATH, DEBUG, APP_PASSWORD
 from ui.components.layout import create_main_layout
 from ui.callbacks import register_all_callbacks
 from dao.database import DatabaseManager
 from utils.log_utils import configure_logging
+from services.auth_service import AuthService
 
 # Configure application logging
-configure_logging()
+if DEBUG:
+    configure_logging(log_level=logging.DEBUG)
+else:
+    configure_logging()
 logger = logging.getLogger(__name__)
 
 # Initialize the Dash application
@@ -21,6 +25,14 @@ app = Dash(
     assets_folder=ASSETS_PATH
 )
 server = app.server
+
+# Check password protection status
+if AuthService.is_password_protection_enabled():
+    logger.info("Password protecti4on is enabled")
+    if not APP_PASSWORD:
+        logger.warning("APP_PASSWORD is not set, but password protection is enabled")
+else:
+    logger.info("Password protection is disabled")
 
 # Set application layout
 app.layout = create_main_layout()
