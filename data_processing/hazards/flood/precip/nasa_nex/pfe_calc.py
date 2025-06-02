@@ -23,6 +23,9 @@ S3_BUCKET = os.getenv("S3_BUCKET")
 DEFAULT_HISTORICAL_START_YEAR = 1981
 DEFAULT_HISTORICAL_END_YEAR = 2014
 
+FIRST_FUTURE_YEAR = 2020
+LAST_FUTURE_YEAR = 2100
+
 OUTPUT_ZARR_PATH_PREFIX = 'climate-risk-map/backend/climate/NEX-GDDP-CMIP6'
 
 CHUNKS_CONFIG = {'time': -1, 'lat': 120, 'lon': 288}
@@ -302,22 +305,22 @@ def process_future_scenario(model_name, ensemble_member_id, start_year, end_year
         return False
 
 # --- Main function ---
-def process_single_model(model_name, ensemble_member_id, scenario, start_year, end_year, 
+def process_single_model(model_name, ensemble_member_id, scenario, future_start_year, future_end_year, 
                         historical_start_year, historical_end_year):
     """Process a single model for the given scenario and time period"""
     print(f"\n{'='*60}")
-    print(f"Processing: {model_name} ({ensemble_member_id}) - {scenario} {start_year}-{end_year}")
+    print(f"Processing: {model_name} ({ensemble_member_id}) - {scenario} {future_start_year}-{future_end_year}")
     print(f"{'='*60}")
     
     # Process based on scenario
     if scenario == "historical":
         success = process_historical(
-            model_name, ensemble_member_id, start_year, end_year,
+            model_name, ensemble_member_id, historical_start_year, historical_end_year,
             OUTPUT_ZARR_PATH_PREFIX, S3_BUCKET, CHUNKS_CONFIG, RETURN_PERIODS_YEARS
         )
     else:
         success = process_future_scenario(
-            model_name, ensemble_member_id, start_year, end_year, scenario,
+            model_name, ensemble_member_id, future_start_year, future_end_year, scenario,
             OUTPUT_ZARR_PATH_PREFIX, S3_BUCKET, CHUNKS_CONFIG, RETURN_PERIODS_YEARS,
             historical_start_year, historical_end_year
         )
@@ -334,8 +337,8 @@ def main():
     parser.add_argument('--model', type=str, help='Model name (e.g., ACCESS-CM2). If not provided, will process all models with use=True')
     parser.add_argument('--scenario', type=str, required=True, 
                        help='Scenario name (historical, ssp126, ssp245, ssp370, ssp585)')
-    parser.add_argument('--start-year', type=int, required=True, help='Start year')
-    parser.add_argument('--end-year', type=int, required=True, help='End year')
+    parser.add_argument('--future-start-year', type=int, required=True, help='Future Start year')
+    parser.add_argument('--future-end-year', type=int, required=True, help='Future End year')
     parser.add_argument('--ensemble-member', type=str, help='Ensemble member ID (only used when --model is specified)')
     parser.add_argument('--historical-start-year', type=int, default=DEFAULT_HISTORICAL_START_YEAR,
                        help=f'Historical baseline start year for PCF (default: {DEFAULT_HISTORICAL_START_YEAR})')
@@ -398,7 +401,7 @@ def main():
             total_count = 1
             success = process_single_model(
                 args.model, ensemble_member_id, args.scenario, 
-                args.start_year, args.end_year,
+                args.future_start_year, args.future_end_year,
                 args.historical_start_year, args.historical_end_year
             )
             if success:
@@ -421,7 +424,7 @@ def main():
                 total_count += 1
                 success = process_single_model(
                     model_config['model'], model_config['ensemble_member'], args.scenario,
-                    args.start_year, args.end_year,
+                    args.future_start_year, args.future_end_year,
                     args.historical_start_year, args.historical_end_year
                 )
                 if success:
