@@ -150,12 +150,10 @@ def calculate_historical_monthly_pfes(start_year,
         calculate_monthly_return_periods_for_apply,
         return_periods_config=return_periods_config # Pass as kwarg
     )
-    monthly_pfes_da = monthly_pfes_da.compute()
-    monthly_pfes_da = monthly_pfes_da.rename({'month': 'month_of_year'})
     monthly_pfes_da.name = "monthly_pfe_mm_day"
 
     # Ensure correct chunking after apply
-    final_chunks = {'month_of_year': -1, 'return_period':-1}
+    final_chunks = {'month': -1, 'return_period':-1}
     if 'lat' in monthly_pfes_da.dims: final_chunks['lat'] = chunks.get('lat', 50)
     if 'lon' in monthly_pfes_da.dims: final_chunks['lon'] = chunks.get('lon', 50)
     monthly_pfes_da = monthly_pfes_da.chunk(final_chunks)
@@ -201,7 +199,7 @@ if __name__ == '__main__':
         if memory_limit_gb < 1: memory_limit_gb = 1
 
         print(f"CPUs: {n_cpus}, Total Memory: {memory_available_gb}GB, Memory per worker: {memory_limit_gb}GB")
-        client = Client(n_workers=int(n_cpus), threads_per_worker=2, memory_limit=f"{memory_limit_gb}GB")
+        client = Client(n_workers=int(n_cpus), threads_per_worker=4, memory_limit=f"{memory_limit_gb}GB")
         print(f"Dask dashboard link: {client.dashboard_link}")
 
         for model_data in MODELS:
