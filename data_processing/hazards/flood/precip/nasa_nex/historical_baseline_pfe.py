@@ -16,6 +16,7 @@ from aws_batch import MODELS
 
 # --- Configuration ---
 MEMORY_AVAILABLE = os.getenv("MEMORY_AVAILABLE", "16") # Default to 16GB if not set
+DASK_WORKERS = os.getenv("DASK_WORKERS", "8")
 HISTORICAL_START_YEAR = 1981
 HISTORICAL_END_YEAR = 1983 # Reduced for testing; use 2014 for full run
 OUTPUT_ZARR_PATH_PREFIX = 'climate-risk-map/backend/climate/NEX-GDDP-CMIP6'
@@ -190,12 +191,12 @@ if __name__ == '__main__':
     if S3_BUCKET == 'your-s3-bucket-name':
         print("--- PLEASE CONFIGURE YOUR S3_BUCKET ---")
     else:
-        n_cpus = multiprocessing.cpu_count()
+        n_cpus = int(DASK_WORKERS)
         try:
             memory_available_gb = float(MEMORY_AVAILABLE)
         except ValueError:
             memory_available_gb = 16.0 # Fallback
-        memory_limit_gb = int(memory_available_gb / n_cpus) if n_cpus > 0 else int(memory_available_gb)
+        memory_limit_gb = int(memory_available_gb / n_cpus * 0.9) if n_cpus > 0 else int(memory_available_gb)
         if memory_limit_gb < 1: memory_limit_gb = 1
 
         print(f"CPUs: {n_cpus}, Total Memory: {memory_available_gb}GB, Memory per worker: {memory_limit_gb}GB")
