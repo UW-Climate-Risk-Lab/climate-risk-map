@@ -9,6 +9,7 @@ import os
 import numpy as np
 import s3fs
 from dask.distributed import Client
+import argparse
 
 from src.pipeline import find_best_file
 from models import MODELS
@@ -18,19 +19,9 @@ MEMORY_AVAILABLE = os.getenv("MEMORY_AVAILABLE", "112")
 DASK_WORKERS_ENV = os.getenv("DASK_WORKERS", str(multiprocessing.cpu_count()))
 S3_BUCKET = os.getenv("S3_BUCKET")
 
-HISTORICAL_START_YEAR = 1981
-HISTORICAL_END_YEAR = 1983 # Use 2014 for full historical run
-
-# Example: Define future periods and scenarios you want to process
-# Each item is a dictionary: {"start_year": YYYY, "end_year": YYYY, "scenario_name": "sspXXX"}
-FUTURE_PERIODS_CONFIG = [
-    {"start_year": 2020, "end_year": 2039},
-    {"start_year": 2040, "end_year": 2059},
-    {"start_year": 2060, "end_year": 2079},
-    {"start_year": 2080, "end_year": 2100},
-]
-
-FUTURE_SCENARIOS = ["ssp126", "ssp245", "ssp370", "ssp585"]
+# Default historical period for PCF baseline
+DEFAULT_HISTORICAL_START_YEAR = 1981
+DEFAULT_HISTORICAL_END_YEAR = 2014
 
 OUTPUT_ZARR_PATH_PREFIX = 'climate-risk-map/tests/NEX-GDDP-CMIP6-FULL' # Example test path
 
@@ -77,11 +68,6 @@ def calculate_monthly_return_periods_for_apply(pr_daily_data_for_one_month, retu
         except Exception as e_time_conv:
             print(f"Warning: Failed to convert integer years to datetime64 for xclim: {e_time_conv}. "
                   "Proceeding with integer years, which might cause issues with xclim.stats.fa.")
-            # If this conversion is absolutely critical and xclim cannot handle integer years for fa,
-            # you might consider returning nan_template_result here instead of just printing a warning.
-            # For example:
-            # print(f"Error: Critical failure converting integer years to datetime64: {e_time_conv}. Returning NaNs.")
-            # return nan_template_result
     if 'time' not in annual_max_for_month_renamed.dims: return nan_template_result
 
     if hasattr(annual_max_for_month_renamed.data, 'chunks'):
@@ -99,6 +85,43 @@ def calculate_monthly_return_periods_for_apply(pr_daily_data_for_one_month, retu
         return nan_template_result
     return rp_values
 
+# --- Check if zarr file exists on S3 ---
+def zarr_exists_on_s3(s3_path):
+    """Check if a zarr dataset exists on S3 by looking for .zattrs file"""
+    try:
+        fs = s3fs.S3FileSystem(anon=False)
+        # Check if .zattrs exists in the zarr directory
+        zattrs_path = f"{s3_path}/.zattrs"
+        if s3_path.startswith("s3://"):
+            zattrs_path = zattrs_path.replace("s3://", "")
+        return fs.exists(zattrs_path)
+    except Exception as e:
+        print(f"Error checking if zarr exists at {s3_path}: {e}")
+        return False
+
+# --- Load historical PFE from S3 ---
+def load_historical_pfe_from_s3(model_name, ensemble_member_id, start_year, end_year, 
+                                output_s3_uri_prefix, s3_bucket_name):
+    """Load cached historical PFE data from S3"""
+    historical_s3_path = f"s3://{s3_bucket_name}/{output_s3_uri_prefix}/{model_name}/historical/{ensemble_member_id}/pfe_data_{str(start_year)}-{str(end_year)}.zarr"
+    
+    try:
+        print(f"Loading historical PFE from: {historical_s3_path}")
+        ds = xr.open_zarr(historical_s3_path, consolidated=True)
+        if 'historical_pfe' in ds:
+            return ds['historical_pfe']
+        else:
+            print(f"Warning: 'historical_pfe' not found in dataset, checking for other variable names...")
+            # Try other possible variable names
+            for var in ds.data_vars:
+                if 'historical' in var.lower() and 'pfe' in var.lower():
+                    print(f"Found historical PFE data as: {var}")
+                    return ds[var]
+            raise ValueError("No historical PFE variable found in dataset")
+    except Exception as e:
+        print(f"Error loading historical PFE from S3: {e}")
+        return None
+
 # --- Generic PFE Calculation for a given period ---
 def _calculate_monthly_pfes_for_period(
     period_start_year, period_end_year, scenario_name,
@@ -115,11 +138,6 @@ def _calculate_monthly_pfes_for_period(
         return None
 
     try:
-        # Note on use_cftime=False: If input NetCDF files use non-standard calendars 
-        # (e.g., 'noleap', '360_day'), np.datetime64 might not represent them accurately.
-        # xclim generally handles cftime objects well, so using use_cftime=True (default) 
-        # is often safer if your data's calendar might be non-standard.
-        # Forcing False can lead to errors or misinterpretation of time coordinates.
         ds_period = xr.open_mfdataset(input_uris, combine='by_coords', parallel=True, engine='h5netcdf', use_cftime=False)
     except Exception as e:
         print(f"  Error loading data for PFE calculation: {e}")
@@ -135,7 +153,7 @@ def _calculate_monthly_pfes_for_period(
         pr_data.attrs['units'] = 'mm/day'
     
     pr_data = pr_data.chunk(initial_chunks_config)
-    pr_data = pr_data.persist() # Persist this period's data
+    pr_data = pr_data.persist()
 
     template_lat = pr_data.lat if 'lat' in pr_data.coords else None
     template_lon = pr_data.lon if 'lon' in pr_data.coords else None
@@ -158,130 +176,208 @@ def _calculate_monthly_pfes_for_period(
     print(f"  Finished PFEs for: {scenario_name} {period_start_year}-{period_end_year}")
     return monthly_pfes
 
-# --- Main Orchestration Function per GCM ---
-def process_gcm_for_full_pfe_pcf_calculation(
-    model_name, ensemble_member_id,
-    hist_start_year, hist_end_year,
-    future_periods_list, # List of {"start_year", "end_year"},
-    future_scenarios_list,
-    output_s3_uri_prefix,
-    initial_chunks_config,
-    return_periods_cfg,
-    s3_bucket_name # Pass S3_BUCKET directly
-):
-    print(f"\nProcessing GCM: {model_name}, Ensemble Member: {ensemble_member_id}")
+# --- Process historical scenario ---
+def process_historical(model_name, ensemble_member_id, start_year, end_year, 
+                      output_s3_uri_prefix, s3_bucket_name, initial_chunks_config, 
+                      return_periods_cfg):
+    """Process and save historical PFE data"""
+    output_s3_path = f"s3://{s3_bucket_name}/{output_s3_uri_prefix}/{model_name}/historical/{ensemble_member_id}/pfe_data_{str(start_year)}-{str(end_year)}.zarr"
+    
+    # Check if already exists
+    if zarr_exists_on_s3(output_s3_path):
+        print(f"Historical PFE already exists at: {output_s3_path}, skipping calculation")
+        return True
+    
+    print(f"Processing historical PFE for {model_name} {ensemble_member_id} ({start_year}-{end_year})")
     s3_client = boto3.client('s3')
-
-    # 1. Calculate Historical Monthly PFEs (all return periods)
-    print(f"Calculating historical monthly PFEs ({hist_start_year}-{hist_end_year})...")
-    historical_monthly_pfes_da = _calculate_monthly_pfes_for_period(
-        hist_start_year, hist_end_year, "historical",
+    
+    historical_pfe = _calculate_monthly_pfes_for_period(
+        start_year, end_year, "historical",
         model_name, ensemble_member_id,
         initial_chunks_config, return_periods_cfg, s3_client
     )
-    if historical_monthly_pfes_da is None:
-        print(f"Failed to calculate historical PFEs for {model_name} {ensemble_member_id}. Skipping this GCM.")
-        return
     
-    print("Persisting historical PFEs...")
-    historical_pfe = historical_monthly_pfes_da.persist() # Persist for reuse
-    print("Historical PFEs calculated and persisted.")
+    if historical_pfe is None:
+        print(f"Failed to calculate historical PFEs")
+        return False
+    
+    historical_pfe.name = "historical_pfe"
+    
+    # Create dataset and save
+    output_dataset = xr.Dataset({
+        "historical_pfe": historical_pfe
+    })
+    
+    output_dataset.attrs['description'] = f"Historical Monthly PFEs for {model_name} {ensemble_member_id}"
+    output_dataset.attrs['xclim_version'] = xclim.__version__
+    output_dataset.attrs['CMIP6_model'] = model_name
+    output_dataset.attrs['CMIP6_ensemble_member'] = ensemble_member_id
+    output_dataset.attrs['period'] = f"{start_year}-{end_year}"
+    output_dataset.attrs['scenario'] = 'historical'
+    
+    print(f"Saving historical PFE to: {output_s3_path}")
+    try:
+        s3_map = s3fs.S3Map(root=output_s3_path, s3=s3fs.S3FileSystem(anon=False), check=False)
+        with dask.diagnostics.ProgressBar():
+            output_dataset.to_zarr(store=s3_map, mode="w", consolidated=True)
+        print(f"Successfully saved historical PFE")
+        return True
+    except Exception as e:
+        print(f"Error writing historical data to S3: {str(e)}")
+        return False
 
-    historical_pfe.name = "historical_monthly_pfe_for_pcf"
+# --- Process future scenario ---
+def process_future_scenario(model_name, ensemble_member_id, start_year, end_year, scenario,
+                          output_s3_uri_prefix, s3_bucket_name, initial_chunks_config, 
+                          return_periods_cfg, historical_start_year, historical_end_year):
+    """Process future scenario and calculate PCF using cached historical data"""
+    output_s3_path = f"s3://{s3_bucket_name}/{output_s3_uri_prefix}/{model_name}/{scenario}/{ensemble_member_id}/pfe_pcf_data_{str(start_year)}-{str(end_year)}.zarr"
+    
+    # Check if already exists
+    if zarr_exists_on_s3(output_s3_path):
+        print(f"Future PFE/PCF already exists at: {output_s3_path}, skipping calculation")
+        return True
+    
+    print(f"Processing future scenario {scenario} for {model_name} {ensemble_member_id} ({start_year}-{end_year})")
+    
+    # Load historical PFE
+    historical_pfe = load_historical_pfe_from_s3(
+        model_name, ensemble_member_id, 
+        historical_start_year, historical_end_year,
+        output_s3_uri_prefix, s3_bucket_name
+    )
+    
+    if historical_pfe is None:
+        print(f"Error: Could not load historical PFE data, cannot calculate PCF")
+        return False
+    
+    # Calculate future PFE
+    s3_client = boto3.client('s3')
+    future_pfe = _calculate_monthly_pfes_for_period(
+        start_year, end_year, scenario,
+        model_name, ensemble_member_id,
+        initial_chunks_config, return_periods_cfg, s3_client
+    )
+    
+    if future_pfe is None:
+        print(f"Failed to calculate future PFEs")
+        return False
+    
+    future_pfe.name = "future_monthly_pfe_mm_day"
+    
+    # Calculate PCF
+    print("Calculating Pluvial Change Factor (PCF)...")
+    pcf = future_pfe / historical_pfe
+    pcf.name = "pluvial_change_factor"
+    pcf.attrs['description'] = (f"Pluvial Change Factor: Ratio of future ({scenario} {start_year}-{end_year}) "
+                               f"to historical ({historical_start_year}-{historical_end_year}) monthly PFE")
+    pcf.attrs['units'] = 'dimensionless'
+    
+    # Create output dataset
+    output_dataset = xr.Dataset({
+        future_pfe.name: future_pfe,
+        pcf.name: pcf
+    })
+    
+    output_dataset.attrs['description'] = (
+        f"Future Monthly PFEs and Pluvial Change Factor for {model_name} {ensemble_member_id}. "
+        f"Future: {scenario} {start_year}-{end_year}. Historical baseline: {historical_start_year}-{historical_end_year}."
+    )
+    output_dataset.attrs['xclim_version'] = xclim.__version__
+    output_dataset.attrs['CMIP6_model'] = model_name
+    output_dataset.attrs['CMIP6_ensemble_member'] = ensemble_member_id
+    output_dataset.attrs['historical_period_for_pcf'] = f"{historical_start_year}-{historical_end_year}"
+    output_dataset.attrs['future_period_for_pcf'] = f"{start_year}-{end_year}"
+    output_dataset.attrs['ssp_scenario'] = scenario
+    
+    print(f"Saving future PFE/PCF to: {output_s3_path}")
+    try:
+        s3_map = s3fs.S3Map(root=output_s3_path, s3=s3fs.S3FileSystem(anon=False), check=False)
+        with dask.diagnostics.ProgressBar():
+            output_dataset.to_zarr(store=s3_map, mode="w", consolidated=True)
+        print(f"Successfully saved future PFE/PCF")
+        return True
+    except Exception as e:
+        print(f"Error writing future data to S3: {str(e)}")
+        return False
 
-    for future_period in future_periods_list:
-        for future_scenario in future_scenarios_list:
-            fut_start = future_period["start_year"]
-            fut_end = future_period["end_year"]
-            ssp_scenario = future_scenario
-            print(f"\n  Processing future period: ({fut_start}-{fut_end})")
-
-            future_monthly_pfes_da = _calculate_monthly_pfes_for_period(
-                fut_start, fut_end, ssp_scenario,
-                model_name, ensemble_member_id,
-                initial_chunks_config, return_periods_cfg, s3_client
-            )
-            if future_monthly_pfes_da is None:
-                print(f"  Failed to calculate future PFEs for {ssp_scenario} ({fut_start}-{fut_end}). Skipping.")
-                continue
-            
-            print(f"  Persisting future PFEs for {ssp_scenario} ({fut_start}-{fut_end})...")
-            future_pfe = future_monthly_pfes_da.persist()
-            future_pfe.name = "future_monthly_pfe_mm_day" # Set name for dataset var
-
-            print("  Calculating Pluvial Change Factor (PCF)...")
-            pcf = future_pfe / historical_pfe # Element-wise division
-            pcf.name = "pluvial_change_factor"
-            pcf_description = (f"Pluvial Change Factor: Ratio of future ({ssp_scenario} {fut_start}-{fut_end}) "
-                            f"Monthly PFE to historical ({hist_start_year}-{hist_end_year}) monthly PFE.")
-            pcf.attrs['description'] = pcf_description
-            pcf.attrs['units'] = 'dimensionless'
-
-            output_dataset = xr.Dataset({
-                future_pfe.name: future_pfe,
-                pcf.name: pcf,
-                historical_pfe.name: historical_pfe
-            })
-            output_dataset.attrs['description'] = (
-                f"Future Monthly PFEs and Pluvial Change Factor for {model_name} {ensemble_member_id}. "
-                f"Future: {ssp_scenario} {fut_start}-{fut_end}. Hist Baseline: {hist_start_year}-{hist_end_year}."
-            )
-            output_dataset.attrs['xclim_version'] = xclim.__version__
-            output_dataset.attrs['CMIP6_model'] = model_name
-            output_dataset.attrs['CMIP6_ensemble_member'] = ensemble_member_id
-            output_dataset.attrs['historical_period_for_pcf'] = f"{hist_start_year}-{hist_end_year}"
-            output_dataset.attrs['future_period_for_pcf'] = f"{fut_start}-{fut_end}"
-            output_dataset.attrs['ssp_scenario'] = ssp_scenario
-
-            output_s3_full_path = f"s3://{s3_bucket_name}/{output_s3_uri_prefix}/{model_name}/{ssp_scenario}/{ensemble_member_id}/pfe_pcf_data_{str(fut_start)}-{str(fut_end)}.zarr"
-            print(f"  Attempting to save data to: {output_s3_full_path}")
-            try:
-                s3_map = s3fs.S3Map(root=output_s3_full_path, s3=s3fs.S3FileSystem(anon=False), check=False)
-                with dask.diagnostics.ProgressBar():
-                    output_dataset.to_zarr(store=s3_map, mode="w", consolidated=True)
-                print(f"  Successfully saved data to {output_s3_full_path}")
-            except Exception as e:
-                print(f"  Error writing data to S3 ({output_s3_full_path}): {str(e)}")
-
-# --- Main Execution ---
-if __name__ == '__main__':
+# --- Main function ---
+def main():
+    parser = argparse.ArgumentParser(description='Calculate PFE and PCF for climate models')
+    parser.add_argument('--model', type=str, required=True, help='Model name (e.g., ACCESS-CM2)')
+    parser.add_argument('--scenario', type=str, required=True, 
+                       help='Scenario name (historical, ssp126, ssp245, ssp370, ssp585)')
+    parser.add_argument('--start-year', type=int, required=True, help='Start year')
+    parser.add_argument('--end-year', type=int, required=True, help='End year')
+    parser.add_argument('--ensemble-member', type=str, help='Ensemble member ID (if not provided, will look up from MODELS)')
+    parser.add_argument('--historical-start-year', type=int, default=DEFAULT_HISTORICAL_START_YEAR,
+                       help=f'Historical baseline start year for PCF (default: {DEFAULT_HISTORICAL_START_YEAR})')
+    parser.add_argument('--historical-end-year', type=int, default=DEFAULT_HISTORICAL_END_YEAR,
+                       help=f'Historical baseline end year for PCF (default: {DEFAULT_HISTORICAL_END_YEAR})')
+    
+    args = parser.parse_args()
+    
+    # Validate inputs
     if not S3_BUCKET or S3_BUCKET == 'your-s3-bucket-name':
         print("CRITICAL ERROR: S3_BUCKET environment variable is not set or is set to placeholder.")
-    else:
-        try:
-            n_actual_workers = int(DASK_WORKERS_ENV)
-        except ValueError:
-            n_actual_workers = multiprocessing.cpu_count()
-        try:
-            memory_available_gb = float(MEMORY_AVAILABLE)
-        except ValueError:
-            memory_available_gb = 16.0
-        
-        threads_per_worker_config = 1
-        memory_per_worker_gb = int(memory_available_gb * 0.9 / n_actual_workers) if n_actual_workers > 0 else int(memory_available_gb * 0.9)
-        if memory_per_worker_gb < 1: memory_per_worker_gb = 1
+        return
+    
+    # Find ensemble member if not provided
+    ensemble_member_id = args.ensemble_member
+    if not ensemble_member_id:
+        # Look up from MODELS
+        model_config = next((m for m in MODELS if m['model'] == args.model and m.get('use', False)), None)
+        if not model_config:
+            print(f"Error: Model {args.model} not found in MODELS config or not marked for use")
+            return
+        ensemble_member_id = model_config['ensemble_member']
+        print(f"Using ensemble member {ensemble_member_id} from MODELS config")
+    
+    # Setup Dask
+    try:
+        n_actual_workers = int(DASK_WORKERS_ENV)
+    except ValueError:
+        n_actual_workers = multiprocessing.cpu_count()
+    try:
+        memory_available_gb = float(MEMORY_AVAILABLE)
+    except ValueError:
+        memory_available_gb = 16.0
+    
+    threads_per_worker_config = 1
+    memory_per_worker_gb = int(memory_available_gb * 0.9 / n_actual_workers) if n_actual_workers > 0 else int(memory_available_gb * 0.9)
+    if memory_per_worker_gb < 1: memory_per_worker_gb = 1
 
-        print(f"Configuring Dask Client: Workers={n_actual_workers}, Threads/Worker={threads_per_worker_config}, Memory/Worker={memory_per_worker_gb}GB")
+    print(f"Configuring Dask Client: Workers={n_actual_workers}, Threads/Worker={threads_per_worker_config}, Memory/Worker={memory_per_worker_gb}GB")
+    
+    try:
+        client = Client(n_workers=n_actual_workers, threads_per_worker=threads_per_worker_config, 
+                       memory_limit=f"{memory_per_worker_gb}GB")
+        print(f"Dask dashboard link: {client.dashboard_link}")
         
-        try:
-            client = Client(n_workers=n_actual_workers, threads_per_worker=threads_per_worker_config, memory_limit=f"{memory_per_worker_gb}GB")
-            print(f"Dask dashboard link: {client.dashboard_link}")
+        # Process based on scenario
+        if args.scenario == "historical":
+            success = process_historical(
+                args.model, ensemble_member_id, args.start_year, args.end_year,
+                OUTPUT_ZARR_PATH_PREFIX, S3_BUCKET, CHUNKS_CONFIG, RETURN_PERIODS_YEARS
+            )
+        else:
+            success = process_future_scenario(
+                args.model, ensemble_member_id, args.start_year, args.end_year, args.scenario,
+                OUTPUT_ZARR_PATH_PREFIX, S3_BUCKET, CHUNKS_CONFIG, RETURN_PERIODS_YEARS,
+                args.historical_start_year, args.historical_end_year
+            )
+        
+        client.close()
+        
+        if success:
+            print("Processing completed successfully")
+        else:
+            print("Processing failed")
+            exit(1)
+            
+    except Exception as e_client:
+        print(f"Failed to initialize Dask client or during processing: {e_client}")
+        raise
 
-            for model_config in MODELS:
-                if model_config.get("use", False):
-                    process_gcm_for_full_pfe_pcf_calculation(
-                        model_name=model_config["model"],
-                        ensemble_member_id=model_config["ensemble_member"],
-                        hist_start_year=HISTORICAL_START_YEAR,
-                        hist_end_year=HISTORICAL_END_YEAR,
-                        future_periods_list=FUTURE_PERIODS_CONFIG,
-                        future_scenarios_list=FUTURE_SCENARIOS,
-                        output_s3_uri_prefix=OUTPUT_ZARR_PATH_PREFIX,
-                        initial_chunks_config=CHUNKS_CONFIG,
-                        return_periods_cfg=RETURN_PERIODS_YEARS,
-                        s3_bucket_name=S3_BUCKET
-                    )
-            client.close()
-        except Exception as e_client:
-            print(f"Failed to initialize Dask client or during main processing loop: {e_client}")
-            raise
+if __name__ == '__main__':
+    main()
