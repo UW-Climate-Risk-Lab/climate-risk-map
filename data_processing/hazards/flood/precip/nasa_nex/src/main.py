@@ -8,15 +8,19 @@ import dask.diagnostics
 import os
 import numpy as np
 import s3fs
+import cftime
 from dask.distributed import Client
 import argparse
+import re
 
-from src.pipeline import find_best_file
+from pathlib import PurePosixPath
+
+import constants
 from models import MODELS
 
 # --- Configuration ---
-MEMORY_AVAILABLE = os.getenv("MEMORY_AVAILABLE", "112")
-DASK_WORKERS_ENV = os.getenv("DASK_WORKERS", str(multiprocessing.cpu_count()))
+MEMORY_AVAILABLE = os.getenv("MEMORY_AVAILABLE")
+DASK_WORKERS_ENV = os.getenv("DASK_WORKERS")
 S3_BUCKET = os.getenv("S3_BUCKET")
 
 # Default historical period for PCF baseline
@@ -24,12 +28,53 @@ DEFAULT_HISTORICAL_START_YEAR = 1981
 DEFAULT_HISTORICAL_END_YEAR = 2014
 
 FIRST_FUTURE_YEAR = 2020
-LAST_FUTURE_YEAR = 2100
+LAST_FUTURE_YEAR = 2099
 
 OUTPUT_ZARR_PATH_PREFIX = 'climate-risk-map/backend/climate/NEX-GDDP-CMIP6'
 
 CHUNKS_CONFIG = {'time': -1, 'lat': 120, 'lon': 288}
 RETURN_PERIODS_YEARS = [2, 5, 20, 100, 500]
+
+def find_best_file(s3_client, model, scenario, ensemble_member, year, var_candidates):
+    """
+    Finds the best matching file on S3 based on variable candidates and version priority.
+    """
+    for variable in var_candidates:
+        # Construct the S3 prefix path
+        var_prefix = PurePosixPath(constants.INPUT_PREFIX, model, scenario, ensemble_member, variable)
+        
+        # List objects in the S3 bucket under the given prefix
+        response = s3_client.list_objects_v2(Bucket=constants.INPUT_BUCKET, Prefix=str(var_prefix))
+        
+        if "Contents" not in response:
+            continue
+        
+        # Regex to match the required file pattern
+        pattern = (
+            rf"^{variable}_day_{re.escape(model)}_{re.escape(scenario)}_"
+            rf"{re.escape(ensemble_member)}_g[^_]+_{year}(_v\d+\.\d+)?\.nc$"
+        )
+        file_regex = re.compile(pattern)
+        
+        # Filter matching files using the regex
+        matching_files = [
+            PurePosixPath(obj["Key"]).name
+            for obj in response["Contents"]
+            if file_regex.match(PurePosixPath(obj["Key"]).name)
+        ]
+        
+        if not matching_files:
+            continue
+        
+        # Prioritize files with v1.1 if available
+        v1_1_files = [f for f in matching_files if "_v1.1.nc" in f]
+
+        chosen_file = v1_1_files[0] if v1_1_files else matching_files[0]
+        
+        # Construct and return the full S3 URI
+        return f"s3://{constants.INPUT_BUCKET}/{var_prefix / chosen_file}"
+    
+    return None
 
 # --- Helper Function for Consistent NaN Output ---
 def _create_nan_data_array_for_pfe(return_periods_cfg, template_lat_coords, template_lon_coords, name='pfe_values'):
@@ -106,7 +151,7 @@ def zarr_exists_on_s3(s3_path):
 def load_historical_pfe_from_s3(model_name, ensemble_member_id, start_year, end_year, 
                                 output_s3_uri_prefix, s3_bucket_name):
     """Load cached historical PFE data from S3"""
-    historical_s3_path = f"s3://{s3_bucket_name}/{output_s3_uri_prefix}/{model_name}/historical/{ensemble_member_id}/pfe_data_{str(start_year)}-{str(end_year)}.zarr"
+    historical_s3_path = f"s3://{s3_bucket_name}/{output_s3_uri_prefix}/{model_name}/historical/{ensemble_member_id}/pr_pfe_month_of_year_{model_name}_historical_{ensemble_member_id}_gn_{str(start_year)}-{str(end_year)}.zarr"
     
     try:
         print(f"Loading historical PFE from: {historical_s3_path}")
@@ -141,7 +186,7 @@ def _calculate_monthly_pfes_for_period(
         return None
 
     try:
-        ds_period = xr.open_mfdataset(input_uris, combine='by_coords', parallel=True, engine='h5netcdf', use_cftime=False)
+        ds_period = xr.open_mfdataset(input_uris, combine='by_coords', parallel=True, engine='h5netcdf', decode_times=True)
     except Exception as e:
         print(f"  Error loading data for PFE calculation: {e}")
         return None
@@ -149,7 +194,8 @@ def _calculate_monthly_pfes_for_period(
     if 'pr' not in ds_period:
         print(f"  Error: 'pr' variable not found for PFE calculation.")
         return None
-    pr_data = ds_period.pr.sel(time=slice(f"{period_start_year}-01-01", f"{period_end_year}-12-31"))
+    
+    pr_data = ds_period.pr
 
     if pr_data.attrs.get('units', '').lower() == 'kg m-2 s-1':
         pr_data = pr_data * 86400
@@ -335,10 +381,10 @@ def process_single_model(model_name, ensemble_member_id, scenario, future_start_
 def main():
     parser = argparse.ArgumentParser(description='Calculate PFE and PCF for climate models')
     parser.add_argument('--model', type=str, help='Model name (e.g., ACCESS-CM2). If not provided, will process all models with use=True')
-    parser.add_argument('--scenario', type=str, required=True, 
+    parser.add_argument('--scenario', type=str, required=True,
                        help='Scenario name (historical, ssp126, ssp245, ssp370, ssp585)')
-    parser.add_argument('--future-start-year', type=int, required=True, help='Future Start year')
-    parser.add_argument('--future-end-year', type=int, required=True, help='Future End year')
+    parser.add_argument('--future-year-period', type=int, default=10,
+                       help='Number of years to process in each future period (default: 10)')
     parser.add_argument('--ensemble-member', type=str, help='Ensemble member ID (only used when --model is specified)')
     parser.add_argument('--historical-start-year', type=int, default=DEFAULT_HISTORICAL_START_YEAR,
                        help=f'Historical baseline start year for PCF (default: {DEFAULT_HISTORICAL_START_YEAR})')
@@ -369,86 +415,101 @@ def main():
     print(f"Configuring Dask Client: Workers={n_actual_workers}, Threads/Worker={threads_per_worker_config}, Memory/Worker={memory_per_worker_gb}GB")
     
     try:
-        client = Client(n_workers=n_actual_workers, threads_per_worker=threads_per_worker_config, 
+        client = Client(n_workers=n_actual_workers, threads_per_worker=threads_per_worker_config,
                        memory_limit=f"{memory_per_worker_gb}GB")
         print(f"Dask dashboard link: {client.dashboard_link}")
-        
+
         success_count = 0
-        total_count = 0
-        
-        # Determine which models to process
+        total_processing_attempts = 0 # Renamed for clarity
+
+        models_to_process_configs = []
         if args.model:
-            # Process single specified model
             ensemble_member_id = args.ensemble_member
+            model_config_entry = next((m for m in MODELS if m['model'] == args.model), None) # Used for scenario validation
+
             if not ensemble_member_id:
-                # Look up from MODELS
-                model_config = next((m for m in MODELS if m['model'] == args.model and m.get('use', False)), None)
-                if not model_config:
-                    print(f"Error: Model {args.model} not found in MODELS config or not marked for use")
+                # Look up from MODELS if not provided
+                resolved_model_config = next((m for m in MODELS if m['model'] == args.model and m.get('use', False)), None)
+                if not resolved_model_config:
+                    print(f"Error: Model {args.model} not found in MODELS config or not marked for use, and no --ensemble-member provided.")
                     client.close()
                     return
-                ensemble_member_id = model_config['ensemble_member']
-                print(f"Using ensemble member {ensemble_member_id} from MODELS config")
-            
+                ensemble_member_id = resolved_model_config['ensemble_member']
+                print(f"Using ensemble member {ensemble_member_id} from MODELS config for {args.model}")
+
             # Validate scenario is supported by this model
-            model_config = next((m for m in MODELS if m['model'] == args.model), None)
-            if model_config and args.scenario not in model_config['scenario']:
+            if model_config_entry and args.scenario not in model_config_entry['scenario']:
                 print(f"Error: Scenario {args.scenario} not supported by model {args.model}")
-                print(f"Supported scenarios: {model_config['scenario']}")
+                print(f"Supported scenarios for {args.model}: {model_config_entry['scenario']}")
                 client.close()
                 return
             
-            total_count = 1
-            success = process_single_model(
-                args.model, ensemble_member_id, args.scenario, 
-                args.future_start_year, args.future_end_year,
-                args.historical_start_year, args.historical_end_year
-            )
-            if success:
-                success_count = 1
+            models_to_process_configs.append({'model': args.model, 'ensemble_member': ensemble_member_id})
         else:
-            # Process all models with use=True
-            models_to_process = [m for m in MODELS if m.get('use', False) and args.scenario in m['scenario']]
-            
-            if not models_to_process:
+            # Process all models with use=True that support the scenario
+            models_to_process_configs = [
+                m for m in MODELS if m.get('use', False) and args.scenario in m['scenario']
+            ]
+            if not models_to_process_configs:
                 print(f"No models found with use=True that support scenario {args.scenario}")
                 client.close()
                 return
-            
-            print(f"\nProcessing {len(models_to_process)} models with use=True for scenario {args.scenario}")
-            print("Models to process:")
-            for model_config in models_to_process:
-                print(f"  - {model_config['model']} ({model_config['ensemble_member']})")
-            
-            for model_config in models_to_process:
-                total_count += 1
+            print(f"\nFound {len(models_to_process_configs)} models with use=True for scenario {args.scenario}")
+            for mc in models_to_process_configs:
+                print(f"  - {mc['model']} ({mc['ensemble_member']})")
+
+        if args.scenario == "historical":
+            print(f"\nProcessing historical period: {args.historical_start_year}-{args.historical_end_year}")
+            for model_config in models_to_process_configs:
+                total_processing_attempts += 1
                 success = process_single_model(
                     model_config['model'], model_config['ensemble_member'], args.scenario,
-                    args.future_start_year, args.future_end_year,
+                    args.historical_start_year, # future_start_year effectively this for historical
+                    args.historical_end_year,   # future_end_year effectively this for historical
                     args.historical_start_year, args.historical_end_year
                 )
                 if success:
                     success_count += 1
+        else: # Future scenarios
+            for future_start_loop_year in range(FIRST_FUTURE_YEAR, LAST_FUTURE_YEAR + 1, args.future_year_period):
+                future_end_loop_year = min(future_start_loop_year + args.future_year_period - 1, LAST_FUTURE_YEAR)
+                
+                if future_start_loop_year > future_end_loop_year : #Handles cases where period might exceed LAST_FUTURE_YEAR
+                    break
+
+                print(f"\nProcessing future period: {future_start_loop_year}-{future_end_loop_year} for scenario {args.scenario}")
+                
+                for model_config in models_to_process_configs:
+                    total_processing_attempts += 1
+                    success = process_single_model(
+                        model_config['model'], model_config['ensemble_member'], args.scenario,
+                        future_start_loop_year, future_end_loop_year,
+                        args.historical_start_year, args.historical_end_year
+                    )
+                    if success:
+                        success_count += 1
         
         client.close()
-        
+
         # Summary
         print(f"\n{'='*60}")
         print(f"PROCESSING SUMMARY")
         print(f"{'='*60}")
-        print(f"Total models processed: {total_count}")
+        print(f"Total processing attempts: {total_processing_attempts}")
         print(f"Successful: {success_count}")
-        print(f"Failed: {total_count - success_count}")
-        
-        if success_count == total_count:
-            print("✓ All models processed successfully")
+        print(f"Failed: {total_processing_attempts - success_count}")
+
+        if total_processing_attempts == 0:
+            print("No models/periods were attempted.")
+        elif success_count == total_processing_attempts:
+            print("✓ All processing attempts successful")
         elif success_count > 0:
-            print(f"⚠ Partial success: {success_count}/{total_count} models processed")
+            print(f"⚠ Partial success: {success_count}/{total_processing_attempts} attempts successful")
             exit(1)
         else:
-            print("✗ All models failed")
+            print("✗ All processing attempts failed")
             exit(1)
-            
+
     except Exception as e_client:
         print(f"Failed to initialize Dask client or during processing: {e_client}")
         raise

@@ -1115,7 +1115,7 @@ dependencies = [
 requires-dist = [
     { name = "bokeh", specifier = ">=3.7.2" },
     { name = "boto3", specifier = ">=1.37.1" },
-    { name = "cftime", specifier = ">=1.6.4.post1" },
+    { name = "cftime", specifier = ">=1.6" },
     { name = "dask", specifier = ">=2025.3.0" },
     { name = "distributed", specifier = ">=2025.3.0" },
     { name = "fsspec", specifier = ">=2025.3.2" },

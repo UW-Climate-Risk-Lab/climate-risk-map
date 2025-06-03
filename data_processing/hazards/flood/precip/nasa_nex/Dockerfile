@@ -36,4 +36,4 @@ ENV PYTHONUNBUFFERED=1
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Set the entrypoint to run the Python script
-ENTRYPOINT ["python", "/app/src/pipeline.py"]
+ENTRYPOINT ["python", "/app/src/main.py"]

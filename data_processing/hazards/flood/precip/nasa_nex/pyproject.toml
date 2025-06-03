@@ -7,7 +7,7 @@ requires-python = "~=3.11"
 dependencies = [
     "bokeh>=3.7.2",
     "boto3>=1.37.1",
-    "cftime>=1.6.4.post1",
+    "cftime>=1.6",
     "dask>=2025.3.0",
     "distributed>=2025.3.0",
     "fsspec>=2025.3.2",
