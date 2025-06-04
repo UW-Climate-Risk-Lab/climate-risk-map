@@ -27,8 +27,8 @@ S3_BUCKET = os.getenv("S3_BUCKET")
 DEFAULT_HISTORICAL_START_YEAR = 1981
 DEFAULT_HISTORICAL_END_YEAR = 2014
 
-FIRST_FUTURE_YEAR = 2020
-LAST_FUTURE_YEAR = 2099
+FIRST_FUTURE_YEAR = 2015
+LAST_FUTURE_YEAR = 2100
 
 OUTPUT_ZARR_PATH_PREFIX = 'climate-risk-map/backend/climate/NEX-GDDP-CMIP6'
 
@@ -383,8 +383,8 @@ def main():
     parser.add_argument('--model', type=str, help='Model name (e.g., ACCESS-CM2). If not provided, will process all models with use=True')
     parser.add_argument('--scenario', type=str, required=True,
                        help='Scenario name (historical, ssp126, ssp245, ssp370, ssp585)')
-    parser.add_argument('--future-year-period', type=int, default=10,
-                       help='Number of years to process in each future period (default: 10)')
+    parser.add_argument('--future-year-period', type=int, default=30,
+                       help='Number of years to process in each future period (default: 30 for proper sample size)')
     parser.add_argument('--ensemble-member', type=str, help='Ensemble member ID (only used when --model is specified)')
     parser.add_argument('--historical-start-year', type=int, default=DEFAULT_HISTORICAL_START_YEAR,
                        help=f'Historical baseline start year for PCF (default: {DEFAULT_HISTORICAL_START_YEAR})')
