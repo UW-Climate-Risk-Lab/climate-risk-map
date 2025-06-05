@@ -35,6 +35,17 @@ def setup_args():
     )
     parser.add_argument("--ssp", required=True, help="SSP of climate hazard data")
     parser.add_argument(
+        "--time-period-type",
+        default="decade_month",
+        choices=["decade_month", "year_span_month"],
+        help="Type of time period representation in the dataset."
+    )
+    parser.add_argument(
+        "--return-period",
+        type=int,
+        help="Return period in years. Optional, for datasets that have this dimension."
+    )
+    parser.add_argument(
         "--zonal-agg-method", required=True, help="Zonal aggregation method"
     )
     parser.add_argument(
@@ -67,13 +78,15 @@ def main(
     s3_zarr_store_uri: str,
     climate_variable: str,
     ssp: str,
+    time_period_type: str,
     zonal_agg_method: str,
     polygon_area_threshold: str,
     x_min: str,
     y_min: str,
     x_max: str,
     y_max: str,
-    pg_maintenance_memory: str
+    pg_maintenance_memory: str,
+    return_period: int = None,
 ):
     """Runs a processing pipeline for a given zarr store"""
 
@@ -109,6 +122,7 @@ def main(
         y_min=y_min,
         x_max=x_max,
         y_max=y_max,
+        return_period=return_period,
     )
 
     metadata = utils.create_metadata(ds=ds)
@@ -121,6 +135,7 @@ def main(
     df = infra_intersection.main(
         climate_ds=ds,
         climate_variable=climate_variable,
+        time_period_type=time_period_type,
         crs=constants.CRS,
         zonal_agg_method=zonal_agg_method,
         polygon_area_threshold=polygon_area_threshold,
@@ -136,8 +151,10 @@ def main(
             df=df,
             ssp_value=ssp,
             climate_variable=climate_variable,
+            time_period_type=time_period_type,
             conn=infra_intersection_load_conn,
-            maintenance_work_mem=pg_maintenance_memory
+            maintenance_work_mem=pg_maintenance_memory,
+            return_period=return_period,
         )
         connection_pool.putconn(infra_intersection_load_conn)
 
@@ -149,6 +166,8 @@ if __name__ == "__main__":
         s3_zarr_store_uri=args.s3_zarr_store_uri,
         climate_variable=args.climate_variable,
         ssp=args.ssp,
+        time_period_type=args.time_period_type,
+        return_period=args.return_period,
         zonal_agg_method=args.zonal_agg_method,
         polygon_area_threshold=args.polygon_area_threshold,
         x_min=args.x_min,

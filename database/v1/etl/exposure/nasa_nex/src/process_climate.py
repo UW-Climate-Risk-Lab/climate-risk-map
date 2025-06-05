@@ -49,6 +49,7 @@ def main(
     y_min: float,
     x_max: float,
     y_max: float,
+    return_period: int = None,
 ) -> xr.Dataset:
     """Processes climate data
 
@@ -61,6 +62,7 @@ def main(
         y_min (str): For bounding box, latitude minimum
         x_max (str): For bounding box, longitude maximum
         y_max (str): For bounding box, latitude maximum
+        return_period (int, optional): Return period in years to filter by. Defaults to None.
 
     Returns:
         xr.Dataset: Xarray dataset of processed climate data
@@ -82,6 +84,14 @@ def main(
     ds.rio.write_coordinate_system(inplace=True)
 
     ds = ds.sel({x_dim: slice(x_min, x_max), y_dim: slice(y_min, y_max)})
+
+    # Filter by return period if provided
+    if return_period is not None and 'return_period' in ds.dims:
+        logger.info(f"Filtering dataset by return period: {return_period} years.")
+        ds = ds.sel(return_period=return_period)
+        # Drop the now-scalar coordinate
+        if 'return_period' in ds.coords:
+            ds = ds.drop_vars('return_period')
 
     # Rename variables from value_* to ensemble_*
     ds = rename_value_variables(ds)
