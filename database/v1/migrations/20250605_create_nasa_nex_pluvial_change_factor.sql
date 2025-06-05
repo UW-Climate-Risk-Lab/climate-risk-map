@@ -9,7 +9,7 @@ CREATE TABLE climate.nasa_nex_pluvial_change_factor (
     start_year SMALLINT NOT NULL,
     end_year SMALLINT NOT NULL,
     ssp SMALLINT NOT NULL, -- ssp -999 is for 'historical' values
-    return_period SMALLINT NOT NULL, -- in years
+    return_period SMALLINT NOT NULL, -- should be in years
     ensemble_mean FLOAT NOT NULL,
     ensemble_median FLOAT NOT NULL,
     ensemble_stddev FLOAT NOT NULL,
