@@ -16,6 +16,7 @@ import re
 from pathlib import PurePosixPath
 
 import constants
+import ensemble
 from models import MODELS
 
 # --- Configuration ---
@@ -358,6 +359,17 @@ def process_single_model(model_name, ensemble_member_id, scenario, future_start_
     print(f"Processing: {model_name} ({ensemble_member_id}) - {scenario} {future_start_year}-{future_end_year}")
     print(f"{'='*60}")
     
+    # Construct output path based on scenario
+    if scenario == "historical":
+        output_s3_path = f"s3://{S3_BUCKET}/{OUTPUT_ZARR_PATH_PREFIX}/{model_name}/historical/{ensemble_member_id}/pr_pfe_month_of_year_{model_name}_historical_{ensemble_member_id}_gn_{str(historical_start_year)}-{str(historical_end_year)}.zarr"
+    else:
+        output_s3_path = f"s3://{S3_BUCKET}/{OUTPUT_ZARR_PATH_PREFIX}/{model_name}/{scenario}/{ensemble_member_id}/pr_pfe_pcf_month_of_year_{model_name}_{scenario}_{ensemble_member_id}_gn_{str(future_start_year)}-{str(future_end_year)}.zarr"
+    
+    # Check if already exists
+    if zarr_exists_on_s3(output_s3_path):
+        print(f"Output already exists at: {output_s3_path}, skipping calculation")
+        return True, output_s3_path  # Return success and URI
+    
     # Process based on scenario
     if scenario == "historical":
         success = process_historical(
@@ -373,10 +385,11 @@ def process_single_model(model_name, ensemble_member_id, scenario, future_start_
     
     if success:
         print(f"✓ Successfully processed {model_name} ({ensemble_member_id}) - {scenario}")
+        return True, output_s3_path
     else:
         print(f"✗ Failed to process {model_name} ({ensemble_member_id}) - {scenario}")
-    
-    return success
+        return False, None
+
 
 def main():
     parser = argparse.ArgumentParser(description='Calculate PFE and PCF for climate models')
@@ -422,6 +435,11 @@ def main():
         success_count = 0
         total_processing_attempts = 0 # Renamed for clarity
 
+        # Dictionary to collect successful URIs by scenario
+        successful_uris_by_scenario = {
+            args.scenario: [],
+        }
+
         models_to_process_configs = []
         if args.model:
             ensemble_member_id = args.ensemble_member
@@ -462,7 +480,7 @@ def main():
             print(f"\nProcessing historical period: {args.historical_start_year}-{args.historical_end_year}")
             for model_config in models_to_process_configs:
                 total_processing_attempts += 1
-                success = process_single_model(
+                success, output_uri = process_single_model(
                     model_config['model'], model_config['ensemble_member'], args.scenario,
                     args.historical_start_year, # future_start_year effectively this for historical
                     args.historical_end_year,   # future_end_year effectively this for historical
@@ -470,6 +488,8 @@ def main():
                 )
                 if success:
                     success_count += 1
+                    if output_uri:
+                        successful_uris_by_scenario[args.scenario].append(output_uri)
         else: # Future scenarios
             for future_start_loop_year in range(FIRST_FUTURE_YEAR, LAST_FUTURE_YEAR + 1, args.future_year_period):
                 future_end_loop_year = min(future_start_loop_year + args.future_year_period - 1, LAST_FUTURE_YEAR)
@@ -481,13 +501,40 @@ def main():
                 
                 for model_config in models_to_process_configs:
                     total_processing_attempts += 1
-                    success = process_single_model(
+                    success, output_uri = process_single_model(
                         model_config['model'], model_config['ensemble_member'], args.scenario,
                         future_start_loop_year, future_end_loop_year,
                         args.historical_start_year, args.historical_end_year
                     )
                     if success:
                         success_count += 1
+                        if output_uri:
+                            successful_uris_by_scenario[args.scenario].append(output_uri)
+        
+        # Run ensemble calculation if all scenarios processed successfully.
+        # Will evaluate to False and not run if None was returned for any output URI
+        if all(successful_uris_by_scenario[args.scenario]):
+            print(f"\n{'='*60}")
+            print(f"ENSEMBLE CALCULATION")
+            print(f"{'='*60}")
+            print(f"Starting ensemble calculation for {args.scenario} with {len(successful_uris_by_scenario[args.scenario])} models")
+            
+            try:
+                ensemble_outputs = ensemble.run(
+                    model_uris=successful_uris_by_scenario[args.scenario],
+                    scenario=args.scenario,
+                    variable_names=['future_monthly_pfe_mm_day', 'pluvial_change_factor'],
+                    output_bucket=S3_BUCKET,
+                )
+                
+                print("\nEnsemble outputs:")
+                for var_name, output_uri in ensemble_outputs.items():
+                    print(f"{var_name}: {output_uri}")
+                    
+            except Exception as e:
+                print(f"Error during ensemble calculation: {e}")
+                import traceback
+                traceback.print_exc()
         
         client.close()
 
