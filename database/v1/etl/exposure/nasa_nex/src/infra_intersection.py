@@ -135,7 +135,7 @@ def convert_ds_to_df_year_span_month(ds: xr.Dataset) -> pd.DataFrame:
     
     df = ds_modified.to_dataframe().reset_index()
     
-    # Ensure correct column order and types if necessary
+    df = df.rename(columns={"month_of_year", "month"})
     
     return df
 
