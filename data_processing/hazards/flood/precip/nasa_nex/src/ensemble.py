@@ -185,7 +185,9 @@ def run(
         logger.info(f"Processing {len(periods_dict.keys())} time periods")
         
         # Process each period separately and then combine
-        period_stats = []
+        period_stats_list = []
+        period_keys_in_order = []
+
         for period_key, model_das in periods_dict.items():
             # Combine DataArrays of all models for this period
             start_yr, end_yr = period_key
@@ -204,26 +206,29 @@ def run(
             # Compute statistics for this period
             stats = compute_ensemble_stats(period_data)
             
-            # Ensure start_year and end_year are preserved in the output
-            for stat_var in stats.data_vars:
-                if 'start_year' not in stats[stat_var].dims:
-                    stats[stat_var] = stats[stat_var].expand_dims(start_year=[start_yr])
-                if 'end_year' not in stats[stat_var].dims:
-                    stats[stat_var] = stats[stat_var].expand_dims(end_year=[end_yr])
-            
-            period_stats.append(stats)
-
-            # Clear from memory
-            del periods_dict[period_key]
+            period_stats_list.append(stats)
+            period_keys_in_order.append(period_key)
 
         
-        if not period_stats:
+        if not period_stats_list:
             logger.error(f"No statistics computed for {var_name}")
             continue
         
-        # Combine all periods
+        # Combine all periods along a new 'year_period' dimension
         logger.info("Combining statistics across all periods")
-        ensemble_stats = xr.concat(period_stats, dim=['start_year', 'end_year'])
+        ensemble_stats = xr.concat(period_stats_list, dim='year_period')
+
+        period_labels = [
+            f"{s_yr}-{e_yr}"
+            for s_yr, e_yr in zip(ensemble_stats.start_year.values, ensemble_stats.end_year.values)
+        ]
+        # 2. Assign these new string labels to the 'year_period' dimension
+        # Assign start_year and end_year as coordinates to the new 'period' dimension
+        start_years = [key[0] for key in period_keys_in_order]
+        end_years = [key[1] for key in period_keys_in_order]
+        ensemble_stats = ensemble_stats.assign_coords(year_period=period_labels,
+                                                      start_year=('year_period', start_years),
+                                                      end_year=('year_period', end_years))
         
         # Add global attributes
         
