@@ -650,6 +650,9 @@ main() {
         # Run OSM ETL process
         run_osm_etl
 
+        # Try creating views if there are ny new ones
+        create_views
+
         # Refresh Asset Views (capture new IDs from OSM)
         refresh_asset_views
 
