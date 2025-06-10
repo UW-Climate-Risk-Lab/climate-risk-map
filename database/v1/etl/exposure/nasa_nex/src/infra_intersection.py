@@ -135,7 +135,12 @@ def convert_ds_to_df_year_span_month(ds: xr.Dataset) -> pd.DataFrame:
     
     df = ds_modified.to_dataframe().reset_index()
     
-    df = df.rename(columns={"month_of_year", "month"})
+    df = df.rename(columns={"month_of_year": "month"})
+
+    # This ensures the start year and end year are properly labeled in the datset
+    # The year_period column will be in format YYYY-YYYY (example: "2015-2044")
+    df["start_year"] = df["year_period"].str[0:4].astype(int)
+    df["end_year"] = df["year_period"].str[5:].astype(int)
     
     return df
 
@@ -148,7 +153,6 @@ def convert_ds_to_df(ds: xr.Dataset, time_period_type: str) -> pd.DataFrame:
         return convert_ds_to_df_year_span_month(ds)
     else:
         raise ValueError(f"Unsupported time_period_type: {time_period_type}")
-
 
 def task_xvec_zonal_stats(
     climate: xr.Dataset,
@@ -177,14 +181,31 @@ def task_xvec_zonal_stats(
         pd.DataFrame: DataFrame in format of convert_da_to_df()
     """
 
-    ds = climate.xvec.zonal_stats(
-        geometry,
-        x_coords=x_dim,
-        y_coords=y_dim,
-        stats=zonal_agg_method,
-        method=method,
-        index=index,
-    )
+    
+    if time_period_type == "year_span_month":
+        # We need to drop this due to the multiindex dimension breaking the xvec zonal stats function (This was the error)
+        # ValueError: conflicting dimensions for multi-index product variables 'variable' ('variable',), 'year_period' ('year_period',), 
+        # 'end_year' ('year_period',), 'start_year' ('year_period',), 'month_of_year' ('month_of_year',)
+        climate_dropped_years = climate.drop(("start_year", "end_year")) 
+
+        ds = climate_dropped_years.xvec.zonal_stats(
+            geometry,
+            x_coords=x_dim,
+            y_coords=y_dim,
+            stats=zonal_agg_method,
+            method=method,
+            index=index,
+        )
+
+    else:
+        ds = climate.xvec.zonal_stats(
+            geometry,
+            x_coords=x_dim,
+            y_coords=y_dim,
+            stats=zonal_agg_method,
+            method=method,
+            index=index,
+        )
 
     df = convert_ds_to_df(ds=ds, time_period_type=time_period_type)
 

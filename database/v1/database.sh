@@ -33,6 +33,7 @@ EXPOSURE_ETL_DIR="$ROOT_DIR/etl/exposure"
 ASSET_GROUP_DIR="$ROOT_DIR/materialized_views/asset_groups"
 UNEXPOSED_DIR="$ROOT_DIR/materialized_views/unexposed_ids"
 GEOTIFF_ETL_DIR="$ROOT_DIR/etl/geotiff"
+HAZARD_VIEW_DIR="$ROOT_DIR/materialized_views/hazards"
 CONFIG_JSON="$ROOT_DIR/config.json"
 
 if [ ! -f "$CONFIG_JSON" ]; then
@@ -297,7 +298,7 @@ refresh_unexposed_id_views() {
     # Refresh all unexposed_ids views
     # Note, does not check if exposure exists for every SSP scenario and time step
 
-    for VIEW in unexposed_ids_nasa_nex_fwi unexposed_ids_usda_burn_probability
+    for VIEW in unexposed_ids_nasa_nex_fwi unexposed_ids_usda_burn_probability unexposed_ids_nasa_nex_pfe_mm_day unexposed_ids_nasa_nex_pluvial_change_factor
     do
         echo "Refreshing osm.$VIEW..."
         PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
@@ -305,6 +306,30 @@ refresh_unexposed_id_views() {
     done
 }
 
+# Step 4c: Create or Refresh Hazard Views
+create_or_refresh_hazard_views() {
+    echo "===== STEP 4c: CREATING/REFRESHING HAZARD VIEWS ====="
+    
+    # Database connection string
+    DB_CONN="-U $PGUSER -d $PG_DBNAME -h $PGHOST -p $PGPORT"
+    
+    echo "Creating/refreshing hazard views..."
+    if [ -d "$HAZARD_VIEW_DIR" ]; then
+        for SQL_FILE in "$HAZARD_VIEW_DIR"/*.sql; do
+            if [ -f "$SQL_FILE" ]; then
+                echo "Processing $SQL_FILE..."
+                if ! PGPASSWORD=$PG_SUPER_PASSWORD psql $DB_CONN -f "$SQL_FILE"; then
+                    echo "Error executing $SQL_FILE"
+                    exit 1
+                fi
+            fi
+        done
+    else
+        echo "Warning: Hazard view directory not found at $HAZARD_VIEW_DIR"
+    fi
+    
+    echo "Hazard views created/refreshed successfully"
+}
 
 # Step 5: Run Climate ETL Process
 run_nasa_nex_exposure_etl() {
@@ -362,6 +387,8 @@ run_nasa_nex_exposure_etl() {
         SSP=$(jq -r ".climate_exposure_args[$i].ssp" "$CONFIG_JSON")
         ZONAL_AGG_METHOD=$(jq -r ".climate_exposure_args[$i].zonal_agg_method" "$CONFIG_JSON")
         POLYGON_AREA_THRESHOLD=$(jq -r ".climate_exposure_args[$i].polygon_area_threshold" "$CONFIG_JSON")
+        TIME_PERIOD_TYPE=$(jq -r ".climate_exposure_args[$i].time_period_type" "$CONFIG_JSON")
+        RETURN_PERIOD=$(jq -r ".climate_exposure_args[$i].return_period" "$CONFIG_JSON")
         
         echo "Processing dataset $((i+1))/$DATASET_COUNT:"
         echo "  - Zarr Store URI: $S3_ZARR_STORE_URI"
@@ -378,23 +405,35 @@ run_nasa_nex_exposure_etl() {
         # Run Docker container with environment variables and arguments
         echo "Running ETL process for climate dataset $((i+1))..."
         
-        sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+        DOCKER_RUN_CMD="sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
             -e PG_DBNAME=$PG_DBNAME \
             -e PGUSER=$PGCLIMATE_USER \
             -e PGPASSWORD=$PGCLIMATE_PASSWORD \
             -e PGHOST=$PGCLIMATE_HOST \
             -e PGPORT=$PGPORT \
             database-v1-nasa-nex-etl \
-            --s3-zarr-store-uri "$S3_ZARR_STORE_URI" \
-            --climate-variable "$CLIMATE_VARIABLE" \
-            --ssp "$SSP" \
-            --zonal-agg-method "$ZONAL_AGG_METHOD" \
-            --polygon-area-threshold "$POLYGON_AREA_THRESHOLD" \
-            --x_min "$X_MIN" \
-            --y_min "$Y_MIN" \
-            --x_max "$X_MAX" \
-            --y_max "$Y_MAX" \
-            --pg_maintenance_memory "$PG_MAINTENANCE_MEMORY" \
+            --s3-zarr-store-uri $S3_ZARR_STORE_URI \
+            --climate-variable $CLIMATE_VARIABLE \
+            --ssp $SSP \
+            --zonal-agg-method $ZONAL_AGG_METHOD \
+            --polygon-area-threshold $POLYGON_AREA_THRESHOLD \
+            --x_min $X_MIN \
+            --y_min $Y_MIN \
+            --x_max $X_MAX \
+            --y_max $Y_MAX \
+            --pg_maintenance_memory $PG_MAINTENANCE_MEMORY"
+
+        if [ -n "$TIME_PERIOD_TYPE" ] && [ "$TIME_PERIOD_TYPE" != "null" ]; then
+            DOCKER_RUN_CMD="$DOCKER_RUN_CMD --time-period-type $TIME_PERIOD_TYPE"
+            echo "  - Time Period: $TIME_PERIOD_TYPE"
+        fi
+
+        if [ -n "$RETURN_PERIOD" ] && [ "$RETURN_PERIOD" != "null" ]; then
+            DOCKER_RUN_CMD="$DOCKER_RUN_CMD --return-period $RETURN_PERIOD"
+            echo "  - Return Period: $RETURN_PERIOD"
+        fi
+
+        eval $DOCKER_RUN_CMD
         
         if [ $? -ne 0 ]; then
             echo "Error: ETL process failed for dataset $((i+1))"
@@ -625,6 +664,9 @@ main() {
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
 
+        # Create or refresh hazard views
+        create_or_refresh_hazard_views
+
         # Run Geotiff pipeline (Currently running ad hoc for global, no need for individual regions)
         # run_geotiff_etl
 
@@ -648,6 +690,9 @@ main() {
 
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
+
+        # Create or refresh hazard views
+        create_or_refresh_hazard_views
 
         # Run Geotiff pipeline (Currently running ad hoc for global, no need for individual regions)
         # run_geotiff_etl
