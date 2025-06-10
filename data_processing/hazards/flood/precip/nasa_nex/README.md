@@ -87,9 +87,62 @@ This is performed for each GCM ensemble member, for each specified future time p
 * **Month-Specific PFE (Historical or Future):** A PFE value for a given month, return period, and location (e.g., 100-year PFE for July) represents the daily rainfall amount (in mm/day) that has an estimated 1% chance of being equaled or exceeded in any given July at that location, according to the GEV distribution fitted to the relevant dataset (historical or future) for July.
 * **Month-Specific, Return-Period-Specific PCF:** A PCF value for a given month, return period, and location (e.g., 100-year PCF for July) indicates the projected change in the 100-year return period daily rainfall for July in a future period, relative to the 100-year return period daily rainfall for July in the historical baseline. A PCF > 1 suggests an intensification of that specific magnitude of extreme event for that month.
 
-## 3. Technical Implementation
+## 3. Multi-Model Ensemble Analysis
 
-* **Script:** `pfe_calc.py`
+Following CMIP6 best practices, this project implements a comprehensive multi-model ensemble approach to quantify uncertainty and improve the robustness of precipitation extreme projections. The methodology recognizes that individual GCMs have different strengths and biases, and that ensemble statistics provide more reliable estimates than any single model.
+
+### 3.1. Ensemble Configuration
+
+* **Model Selection:** The project utilizes a curated subset of CMIP6 models from the NASA NEX GDDP collection, with selection criteria including data availability, model quality, and computational feasibility. The active models (`use: True` in `models.py`) include:
+    * ACCESS-CM2, BCC-CSM2-MR, CMCC-CM2-SR5, EC-Earth3-Veg-LR
+    * FGOALS-g3, GFDL-ESM4, INM-CM4-8, MIROC6
+    * MPI-ESM1-2-HR, MPI-ESM1-2-LR, NorESM2-LM, UKESM1-0-LL
+* **Ensemble Member Selection:** Each GCM contributes one specific ensemble member (variant), chosen for optimal data availability and quality. Common variants include `r1i1p1f1`, `r1i1p1f2`, `r3i1p1f1`, etc., where the notation follows CMIP6 conventions (realization, initialization, physics, forcing).
+* **Scenarios:** The ensemble analysis supports multiple SSP scenarios (SSP1-2.6, SSP2-4.5, SSP3-7.0, SSP5-8.5) depending on individual model availability.
+
+### 3.2. Ensemble Processing Workflow
+
+The ensemble calculations (`ensemble.py`) are performed as a post-processing step after individual model PFEs and PCFs have been computed:
+
+**A. Data Aggregation and Harmonization:**
+1. **URI-based Metadata Extraction:** Model name, scenario, ensemble member, and time periods are automatically extracted from S3 URI paths of individual model outputs.
+2. **Period-based Grouping:** Results from different models are grouped by matching time periods (e.g., 2030-2039, 2040-2049) to ensure temporal consistency across the ensemble.
+3. **Data Loading and Labeling:** Each model's data is loaded and augmented with metadata dimensions (`model`, `start_year`, `end_year`) to enable ensemble operations.
+
+**B. Statistical Ensemble Metrics:**
+For each time period and spatial location, the following statistics are computed across the model ensemble:
+* **Central Tendency:**
+    * `ensemble_mean`: Arithmetic mean across models
+    * `ensemble_median`: Median value (less sensitive to outliers)
+* **Uncertainty Quantification:**
+    * `ensemble_stddev`: Standard deviation indicating inter-model variability
+    * `ensemble_min`/`ensemble_max`: Range of model projections
+    * `ensemble_q1`/`ensemble_q3`: First and third quartiles (interquartile range)
+* **Data Quality:**
+    * `ensemble_count`: Number of models contributing to each location/period
+
+**C. Ensemble Output Structure:**
+* **Dimensions:** `(year_period, month_of_year, return_period, lat, lon)`
+* **Variables:** Both future monthly PFEs (`future_monthly_pfe_mm_day`) and pluvial change factors (`pluvial_change_factor`) are processed through the ensemble workflow
+* **Storage:** Results are saved to dedicated Zarr stores with path structure: `s3://{bucket}/{prefix}/{scenario}/{variable}_decade_month_{scenario}.zarr`
+
+### 3.3. Ensemble Interpretation
+
+* **Ensemble Mean:** The primary estimate representing the central tendency of model projections. Most robust for decision-making when considering the full model spread.
+* **Ensemble Median:** Alternative central estimate that is less sensitive to outlier models, particularly useful when the ensemble contains models with extreme projections.
+* **Ensemble Spread (Q1-Q3, Min-Max):** Indicates the uncertainty range in projections. Larger spreads suggest higher model disagreement and greater uncertainty.
+* **Model Agreement:** Locations where most models agree on the direction and magnitude of change (low standard deviation, narrow quartile range) have higher confidence.
+
+### 3.4. Advantages of the Ensemble Approach
+
+* **Uncertainty Quantification:** Provides explicit measures of projection uncertainty through inter-model variability.
+* **Bias Reduction:** Individual model biases tend to cancel out when averaging across multiple models.
+* **Robustness Testing:** Allows identification of robust signals (consistent across models) versus uncertain projections.
+* **Decision Support:** Enables risk-based decision making by considering the full range of plausible outcomes rather than a single model projection.
+
+## 4. Technical Implementation
+
+* **Script:** `main.py` (individual models), `ensemble.py` (multi-model statistics)
 * **Execution:** The script is driven by command-line arguments to specify the model, scenario, and future period length. It can process a single model or loop through a predefined list of GCMs (`MODELS` from `models.py`).
 * **Dask for Parallelism:** Utilizes `dask.distributed.Client` for managing parallel computations. Configuration (number of workers, threads, memory) is determined from environment variables or defaults. `threads_per_worker` is typically set to 1 for CPU-bound tasks.
 * **Chunking Strategy:**
@@ -99,7 +152,7 @@ This is performed for each GCM ensemble member, for each specified future time p
 * **Error Handling & Robustness:** The `calculate_monthly_return_periods_for_apply` function ensures consistently dimensioned NaN outputs for error cases or insufficient data, which is critical for the stability of the `groupby().apply()` concatenation stage. The script also includes checks for file existence and S3 write operations.
 * **Caching of Historical Data:** Historical PFE calculations are performed once per model and saved. Future scenario processing loads these cached historical PFEs, avoiding redundant computations.
 
-## 4. Limitations of this Specific Methodology
+## 5. Limitations of this Specific Methodology
 
 * **Statistical Robustness with Short Future Periods:** If short time windows (e.g., 10 years for decadal future periods, as configurable by `--future-year-period`) are used for GEV fitting, the resulting future PFEs and consequently the PCFs will have higher statistical uncertainty. Longer periods (20-30 years) are generally preferred for more stable extreme value statistics.
 * **Daily Data Focus:** Analysis is based on daily mean precipitation. PFEs represent 24-hour rainfall extremes and do not capture sub-daily intensities, which can be critical for certain types of flash floods. (The First Street Precipitation Model itself does consider sub-daily durations).
@@ -109,7 +162,7 @@ This is performed for each GCM ensemble member, for each specified future time p
 * **Exclusion of Specialized TC Modeling for PCF:** This script's PCF is based purely on GCM-gridded precipitation. It does not explicitly incorporate specialized models for tropical cyclone (TC) rainfall intensity changes, which the First Street methodology includes for relevant regions in their PCF derivation.
 
 
-## 5. How to Run
+## 6. How to Run
 
 1. Install the UV python package manager (if not already installed). This is a common and robust package manager.
 2. Ensure you are currently in this directory (`/climate-risk-map/data_processing/hazards/flood/precip/nasa_nex`)
