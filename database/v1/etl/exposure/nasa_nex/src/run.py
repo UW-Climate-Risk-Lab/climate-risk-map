@@ -43,6 +43,7 @@ def setup_args():
     parser.add_argument(
         "--return-period",
         type=int,
+        required=False,
         help="Return period in years. Optional, for datasets that have this dimension."
     )
     parser.add_argument(
@@ -124,6 +125,15 @@ def main(
         y_max=y_max,
         return_period=return_period,
     )
+
+    # If no data was returned (e.g., bounding box outside dataset extent)
+    # exit the pipeline gracefully.
+    if ds is None:
+        logger.warning(
+            "No climate data available within the specified bounding box. "
+            "Pipeline will terminate without processing any exposure intersections."
+        )
+        return
 
     metadata = utils.create_metadata(ds=ds)
 

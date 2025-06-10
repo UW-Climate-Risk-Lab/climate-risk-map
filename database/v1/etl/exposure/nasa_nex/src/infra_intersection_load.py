@@ -245,45 +245,122 @@ def main(
             logger.info(f"Set local maintenance_work_mem to {maintenance_work_mem}")
 
             if time_period_type == "decade_month":
-                cur.execute(sql.SQL("""
-                    CREATE UNIQUE INDEX idx_unique_{target_table_name}_record ON {schema}.{target_table} (osm_id, month, decade, ssp);
-                """).format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
-                cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_osm_id ON {schema}.{target_table} (osm_id);")
-                            .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
-                cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_month ON {schema}.{target_table} (month);")
-                            .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
-                cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_decade ON {schema}.{target_table} (decade);")
-                            .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
-                cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_month_decade ON {schema}.{target_table} (month, decade);")
-                            .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
-                cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_ssp ON {schema}.{target_table} (ssp);")
-                            .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
+                # Build and execute each index creation with the full index name treated as a single identifier
+                cur.execute(
+                    sql.SQL("CREATE UNIQUE INDEX {index_name} ON {schema}.{target_table} (osm_id, month, decade, ssp);").format(
+                        index_name=sql.Identifier(f"idx_unique_{target_table_name}_record"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
+
+                cur.execute(
+                    sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (osm_id);").format(
+                        index_name=sql.Identifier(f"idx_{target_table_name}_on_osm_id"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
+
+                cur.execute(
+                    sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (month);").format(
+                        index_name=sql.Identifier(f"idx_{target_table_name}_on_month"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
+
+                cur.execute(
+                    sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (decade);").format(
+                        index_name=sql.Identifier(f"idx_{target_table_name}_on_decade"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
+
+                cur.execute(
+                    sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (month, decade);").format(
+                        index_name=sql.Identifier(f"idx_{target_table_name}_on_month_decade"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
+
+                cur.execute(
+                    sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (ssp);").format(
+                        index_name=sql.Identifier(f"idx_{target_table_name}_on_ssp"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
+
             elif time_period_type == "year_span_month":
-                unique_index_cols = "osm_id, month, start_year, end_year, ssp"
+                # Build list of unique columns and convert to SQL identifiers
+                unique_columns = ["osm_id", "month", "start_year", "end_year", "ssp"]
                 if has_return_period:
-                    unique_index_cols += ", return_period"
-                
-                cur.execute(sql.SQL("""
-                    CREATE UNIQUE INDEX idx_unique_{target_table_name}_record ON {schema}.{target_table} ({unique_cols});
-                """).format(
-                    target_table_name=sql.Identifier(target_table_name), 
-                    schema=schema_ident, 
-                    target_table=target_table_ident,
-                    unique_cols=sql.SQL(unique_index_cols)
-                ))
-                cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_osm_id ON {schema}.{target_table} (osm_id);")
-                            .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
-                cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_month ON {schema}.{target_table} (month);")
-                            .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
-                cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_start_year ON {schema}.{target_table} (start_year);")
-                            .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
-                cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_end_year ON {schema}.{target_table} (end_year);")
-                            .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
+                    unique_columns.append("return_period")
+
+                unique_cols_sql = sql.SQL(", ").join(map(sql.Identifier, unique_columns))
+
+                # Unique composite index
+                cur.execute(
+                    sql.SQL("CREATE UNIQUE INDEX {index_name} ON {schema}.{target_table} ({unique_cols});").format(
+                        index_name=sql.Identifier(f"idx_unique_{target_table_name}_record"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                        unique_cols=unique_cols_sql,
+                    )
+                )
+
+                # Simple (non-unique) indexes
+                cur.execute(
+                    sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (osm_id);").format(
+                        index_name=sql.Identifier(f"idx_{target_table_name}_on_osm_id"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
+
+                cur.execute(
+                    sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (month);").format(
+                        index_name=sql.Identifier(f"idx_{target_table_name}_on_month"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
+
+                cur.execute(
+                    sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (start_year);").format(
+                        index_name=sql.Identifier(f"idx_{target_table_name}_on_start_year"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
+
+                cur.execute(
+                    sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (end_year);").format(
+                        index_name=sql.Identifier(f"idx_{target_table_name}_on_end_year"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
+
                 if has_return_period:
-                    cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_return_period ON {schema}.{target_table} (return_period);")
-                                .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
-                cur.execute(sql.SQL("CREATE INDEX idx_{target_table_name}_on_ssp ON {schema}.{target_table} (ssp);")
-                            .format(target_table_name=sql.Identifier(target_table_name), schema=schema_ident, target_table=target_table_ident))
+                    cur.execute(
+                        sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (return_period);").format(
+                            index_name=sql.Identifier(f"idx_{target_table_name}_on_return_period"),
+                            schema=schema_ident,
+                            target_table=target_table_ident,
+                        )
+                    )
+
+                cur.execute(
+                    sql.SQL("CREATE INDEX {index_name} ON {schema}.{target_table} (ssp);").format(
+                        index_name=sql.Identifier(f"idx_{target_table_name}_on_ssp"),
+                        schema=schema_ident,
+                        target_table=target_table_ident,
+                    )
+                )
 
             index_duration = time.time() - index_start_time
             logger.info(f"Index recreation complete in {index_duration:.2f} seconds.")
