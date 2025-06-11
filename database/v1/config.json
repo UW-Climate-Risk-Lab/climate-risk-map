@@ -1,15 +1,5 @@
 {
   "databases": {
-    "us_virgin_islands": {
-      "osm_region": "north-america/us",
-      "osm_subregion": "us-virgin-islands",
-      "bounding_box": {
-        "x_min": "-67.8",
-        "y_min": "17.1",
-        "x_max": "-63.5",
-        "y_max": "19.1"
-      }
-    },
     "south_korea": {
       "osm_region": "asia",
       "osm_subregion": "south-korea",
@@ -78,6 +68,16 @@
         "y_min": "25.8",
         "x_max": "-93.5",
         "y_max": "36.5"
+      }
+    },
+    "us_virgin_islands": {
+      "osm_region": "north-america/us",
+      "osm_subregion": "us-virgin-islands",
+      "bounding_box": {
+        "x_min": "-67.8",
+        "y_min": "17.1",
+        "x_max": "-63.5",
+        "y_max": "19.1"
       }
     }
   },

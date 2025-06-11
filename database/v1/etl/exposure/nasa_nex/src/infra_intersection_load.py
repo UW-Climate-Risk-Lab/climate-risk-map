@@ -5,6 +5,7 @@ import time
 import random
 from typing import Dict
 import os # For potential temp file cleanup
+import tempfile
 
 import pandas as pd
 import psycopg2 as pg
@@ -64,7 +65,8 @@ def main(
     climate_variable: str,
     time_period_type: str,
     conn: pg.extensions.connection,
-    maintenance_work_mem: str = '4GB', # Adjust based on RDS instance RAM (64GB total)
+    maintenance_work_mem: str = '4GB', # Adjust based on RDS instance RAM (64GB total),
+    num_parallel_workers: int = 2,
     statement_timeout: int = 7200 * 1000, # 2 hours in milliseconds
     return_period: int = None,
 ):
@@ -147,6 +149,7 @@ def main(
                     f"idx_{target_table_name}_on_start_year",
                     f"idx_{target_table_name}_on_end_year",
                     f"idx_{target_table_name}_on_ssp",
+                    f"idx_{target_table_name}_on_month_year",
                 ]
                 if has_return_period:
                     base_indexes.append(f"idx_{target_table_name}_on_return_period")
@@ -195,20 +198,34 @@ def main(
             cur.execute(create_temp_table_sql)
 
             # 3. Prepare data and Execute single COPY
-            logger.info("Preparing data in memory for COPY...")
-            sio = io.StringIO()
-            df_for_copy.to_csv(sio, index=False, header=False, na_rep='\\N')
-            sio.seek(0)
-            logger.info(f"Executing single COPY operation for {num_rows} rows...")
-            copy_start_time = time.time()
-            copy_sql = sql.SQL("COPY {temp_table} ({columns}) FROM STDIN WITH (FORMAT CSV, HEADER false)").format(
-                temp_table=temp_table_ident,
-                columns=final_cols_sql
-            )
-            cur.copy_expert(copy_sql, sio)
-            copy_duration = time.time() - copy_start_time
-            logger.info(f"COPY complete in {copy_duration:.2f} seconds.")
-            del sio
+            # Using a temporary file on disk can be faster for very large DataFrames
+            # as it avoids holding the entire serialized CSV in memory at once, which can be
+            # slow due to memory allocation overhead. On an EC2 instance, disk I/O
+            # to EBS or instance storage is generally fast.
+            copy_prep_start_time = time.time()
+            logger.info("Preparing data for COPY using a temporary file...")
+
+            with tempfile.NamedTemporaryFile(mode='w+', encoding='utf-8', suffix='.csv') as tmp:
+                # Write dataframe to the temporary file as CSV
+                df_for_copy.to_csv(tmp, index=False, header=False, na_rep='\\N')
+
+                prep_duration = time.time() - copy_prep_start_time
+                logger.info(f"Data prepared in temporary file in {prep_duration:.2f} seconds.")
+
+                # Rewind the file to the beginning so psycopg2 can read it
+                tmp.seek(0)
+
+                logger.info(f"Executing single COPY operation for {num_rows} rows...")
+                copy_start_time = time.time()
+                copy_sql = sql.SQL("COPY {temp_table} ({columns}) FROM STDIN WITH (FORMAT CSV, HEADER false)").format(
+                    temp_table=temp_table_ident,
+                    columns=final_cols_sql
+                )
+                cur.copy_expert(copy_sql, tmp)
+                copy_duration = time.time() - copy_start_time
+                logger.info(f"COPY complete in {copy_duration:.2f} seconds.")
+                # The 'with' block will automatically close and delete the temporary file.
+
             del df_for_copy
             del df
 
@@ -241,8 +258,23 @@ def main(
             # 7. Recreate Indexes
             logger.info(f"Recreating indexes on {schema_ident}.{target_table_ident}...")
             index_start_time = time.time()
+
+            # --- Performance Tuning for Index Creation ---
+            # Set memory for maintenance tasks. On a parallel build, this is allocated PER WORKER.
             cur.execute(sql.SQL("SET local maintenance_work_mem = %s;"), (maintenance_work_mem,))
-            logger.info(f"Set local maintenance_work_mem to {maintenance_work_mem}")
+            logger.info(f"Set local maintenance_work_mem to {maintenance_work_mem} (per worker)")
+
+            # Enable parallel index creation. For a 32 vCPU instance, using 16 workers is a good start.
+            # This allows PostgreSQL to use multiple CPU cores to build the index much faster.
+            # The total memory used will be maintenance_work_mem * num_parallel_workers.
+            # e.g., 4GB * 16 = 64GB, which is safe on a 128GB RAM instance.
+            cur.execute(sql.SQL("SET local max_parallel_maintenance_workers = %s;"), (num_parallel_workers,))
+            cur.execute(sql.SQL("SET local max_parallel_workers_per_gather = %s;"), (num_parallel_workers,))
+            # Ensure we have enough total parallel workers
+            cur.execute(sql.SQL("SET local max_parallel_workers = %s;"), (num_parallel_workers * 2,))
+            cur.execute("SET LOCAL effective_io_concurrency = 256;")
+            logger.info(f"Set local max_parallel_maintenance_workers and max_parallel_workers_per_gather to {num_parallel_workers}")
+
 
             if time_period_type == "decade_month":
                 # Build and execute each index creation with the full index name treated as a single identifier

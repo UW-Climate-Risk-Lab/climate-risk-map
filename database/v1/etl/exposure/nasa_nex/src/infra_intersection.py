@@ -543,7 +543,7 @@ def zonal_aggregation_linestring_optimized(
         return pd.DataFrame()
 
     # --- Step 5: Aggregate Results ---
-    print("Aggregating results...")
+    print("Aggregating LineString results...")
     # Define the aggregations based on the original logic
     # Consider if 'mean' of median/stddev is appropriate for your analysis.
     agg_dict = {
@@ -598,7 +598,7 @@ def zonal_aggregation_linestring_optimized(
         # df_aggregated['point_count'] = grouped.size()
 
         df_aggregated = df_aggregated.reset_index()
-        print("Aggregation complete.")
+        print("LineString Aggregation complete.")
 
     except KeyError as e:
         # Should be less likely now with checks, but handle just in case
@@ -624,7 +624,7 @@ def zonal_aggregation_polygon(
 ) -> pd.DataFrame:
     # The following parallelizes the zonal aggregation of polygon geometry features
     # Limit workers for memory considerations.
-    workers = min(os.cpu_count(), len(infra.geometry), 4)
+    workers = min(os.cpu_count(), len(infra.geometry), 32)
     futures = []
     results = []
     geometry_chunks = np.array_split(infra.geometry, workers)
@@ -854,10 +854,6 @@ def main(
     )
     logger.info("Zonal Aggregation Computed")
 
-    failed_aggregations = df.loc[df["ensemble_mean"].isna(), ID_COLUMN].nunique()
-    logger.warning(
-        f"{str(failed_aggregations)} osm_ids were unable to be zonally aggregated"
-    )
     df = df.dropna()
 
     # Round ensemble columns to 2 decimal places

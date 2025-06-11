@@ -72,6 +72,12 @@ def setup_args():
         required=True,
         help="Maintenance memory on Postgres Instance, affects data load step. SHould be about 25 percent of total postgres RAM. Example '16GB'",
     )
+    parser.add_argument(
+        "--pg_max_parallel_workers",
+        type=int,
+        required=True,
+        help="Maintenance memory on Postgres Instance, affects data load step. SHould be about 25 percent of total postgres RAM. Example '16GB'",
+    )
     return parser.parse_args()
 
 
@@ -87,6 +93,7 @@ def main(
     x_max: str,
     y_max: str,
     pg_maintenance_memory: str,
+    num_parallel_workers: int,
     return_period: int = None,
 ):
     """Runs a processing pipeline for a given zarr store"""
@@ -164,6 +171,7 @@ def main(
             time_period_type=time_period_type,
             conn=infra_intersection_load_conn,
             maintenance_work_mem=pg_maintenance_memory,
+            num_parallel_workers=num_parallel_workers,
             return_period=return_period,
         )
         connection_pool.putconn(infra_intersection_load_conn)
@@ -184,6 +192,7 @@ if __name__ == "__main__":
         x_max=args.x_max,
         y_min=args.y_min,
         y_max=args.y_max,
-        pg_maintenance_memory=args.pg_maintenance_memory
+        pg_maintenance_memory=args.pg_maintenance_memory,
+        num_parallel_workers=args.pg_max_parallel_workers
     )
     logger.info(f"EXPOSURE SUCCEEDED FOR {args.s3_zarr_store_uri}")
