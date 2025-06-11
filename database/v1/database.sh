@@ -53,7 +53,7 @@ else
 fi
 
 # Override environment variables with command line arguments if provided
-if [ -n "$CLI_DB_NAME" ]; then
+if [ -n "$CLI_DB_NAME" ] && [ "$CLI_DB_NAME" != "all_databases" ]; then
     PG_DBNAME=$CLI_DB_NAME
     echo "Using database name from command line: $PG_DBNAME"
     # Check if the database name exists in config.json
@@ -69,7 +69,14 @@ fi
 PGOSM_SRID=${PGOSM_SRID:-4326}
 
 # Check required environment variables
-required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_REGION" "PGOSM_SUBREGION" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST" "PG_MAINTENANCE_MEMORY")
+if [ "$CLI_DB_NAME" = "all_databases" ]; then
+    # When processing all databases, PG_DBNAME, PGOSM_REGION, and PGOSM_SUBREGION will be set
+    # dynamically for each database inside the loop, so they are not required at this point.
+    required_vars=("PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST" "PG_MAINTENANCE_MEMORY")
+else
+    required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_REGION" "PGOSM_SUBREGION" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST" "PG_MAINTENANCE_MEMORY")
+fi
+
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -634,8 +641,12 @@ run_geotiff_etl() {
     echo "Geotiff ETL process completed successfully for all datasets"
 }
 
-# Main execution
-main() {
+# Main execution logic for a single database (previously main)
+run_single_db() {
+    # Ensure OSM parameters are set for the current database
+    PGOSM_REGION=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].osm_region' "$CONFIG_JSON")
+    PGOSM_SUBREGION=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].osm_subregion' "$CONFIG_JSON")
+
     echo "Starting climate database setup for region: $PG_DBNAME"
     echo "OSM Region: $PGOSM_REGION"
     echo "OSM Subregion: $PGOSM_SUBREGION"
@@ -704,7 +715,23 @@ main() {
 
     echo "===== SETUP COMPLETE ====="
     echo "Climate database $PG_DBNAME is now ready for use!"
-    
+}
+
+# New main function to handle single or multiple databases
+main() {
+    if [ "$CLI_DB_NAME" = "all_databases" ]; then
+        echo "Running setup for ALL databases defined in $CONFIG_JSON"
+        for DB in $(jq -r '.databases | keys_unsorted[]' "$CONFIG_JSON"); do
+            echo "=========================================="
+            echo "Processing database: $DB"
+            echo "=========================================="
+            PG_DBNAME=$DB
+            run_single_db
+        done
+    else
+        # Either a single database was specified via CLI or environment variable
+        run_single_db
+    fi
 }
 
 # Execute main function
