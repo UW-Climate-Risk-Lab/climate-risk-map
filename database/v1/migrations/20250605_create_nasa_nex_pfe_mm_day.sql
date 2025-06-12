@@ -23,7 +23,7 @@ CREATE TABLE climate.nasa_nex_pfe_mm_day (
 
 -- Unique index to constrain possible values for a given feature (osm_id)
 CREATE UNIQUE INDEX idx_unique_nasa_nex_pfe_mm_day_record
-    ON climate.nasa_nex_pfe_mm_day (osm_id, month, start_year, end_year, ssp);
+    ON climate.nasa_nex_pfe_mm_day (osm_id, month, start_year, end_year, ssp, return_period);
 
 CREATE INDEX idx_nasa_nex_pfe_mm_day_on_osm_id ON climate.nasa_nex_pfe_mm_day (osm_id);
 CREATE INDEX idx_nasa_nex_pfe_mm_day_on_month ON climate.nasa_nex_pfe_mm_day (month);
@@ -31,5 +31,6 @@ CREATE INDEX idx_nasa_nex_pfe_mm_day_on_start_year ON climate.nasa_nex_pfe_mm_da
 CREATE INDEX idx_nasa_nex_pfe_mm_day_on_end_year ON climate.nasa_nex_pfe_mm_day (end_year);
 CREATE INDEX idx_nasa_nex_pfe_mm_day_on_month_year ON climate.nasa_nex_pfe_mm_day (month, start_year, end_year);
 CREATE INDEX idx_nasa_nex_pfe_mm_day_on_ssp ON climate.nasa_nex_pfe_mm_day (ssp);
+CREATE INDEX idx_nasa_nex_pfe_mm_day_on_return_period ON climate.nasa_nex_pfe_mm_day (return_period);
 
 COMMIT;

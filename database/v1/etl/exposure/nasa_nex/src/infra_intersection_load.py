@@ -279,7 +279,7 @@ def main(
             if time_period_type == "decade_month":
                 # Build and execute each index creation with the full index name treated as a single identifier
                 cur.execute(
-                    sql.SQL("CREATE UNIQUE INDEX {index_name} ON {schema}.{target_table} (osm_id, month, decade, ssp);").format(
+                    sql.SQL("CREATE UNIQUE INDEX {index_name} ON {schema}.{target_table} (osm_id, month, decade, ssp, return_period);").format(
                         index_name=sql.Identifier(f"idx_unique_{target_table_name}_record"),
                         schema=schema_ident,
                         target_table=target_table_ident,
