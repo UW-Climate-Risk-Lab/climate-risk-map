@@ -408,10 +408,10 @@ def zonal_aggregation_linestring_optimized(
     """
     # --- Input Validation ---
     if not isinstance(infra, gpd.GeoDataFrame) or infra.empty:
-        print("Input 'infra' must be a non-empty GeoDataFrame.")
+        logger.info("Input 'infra' must be a non-empty GeoDataFrame.")
         return pd.DataFrame()
     if not isinstance(climate, xr.Dataset):
-        print("Input 'climate' must be an xarray Dataset.")
+        logger.info("Input 'climate' must be an xarray Dataset.")
         return pd.DataFrame()
 
     # Validate climate dimensions
@@ -449,8 +449,8 @@ def zonal_aggregation_linestring_optimized(
             f"ID column '{id_column}' not found in GeoDataFrame index or columns: {infra.columns.tolist()}"
         )
 
-    print(f"Processing {len(infra)} LineString infrastructure features...")
-    print(
+    logger.info(f"Processing {len(infra)} LineString infrastructure features...")
+    logger.info(
         f"Simplification tolerance: {simplify_tolerance if simplify_tolerance > 0 else 'Disabled'}"
     )
 
@@ -470,12 +470,12 @@ def zonal_aggregation_linestring_optimized(
         all_points_data.extend(points)
 
     if not all_points_data:
-        print(
+        logger.info(
             "No valid points could be extracted from the geometries after simplification."
         )
         return pd.DataFrame()
 
-    print(f"Extracted {len(all_points_data)} points from geometries.")
+    logger.info(f"Extracted {len(all_points_data)} points from geometries.")
 
     # --- Step 2: Create GeoDataFrame from Sampled Points ---
     try:
@@ -496,15 +496,15 @@ def zonal_aggregation_linestring_optimized(
         )  # Drop=True prevents id_column appearing twice
 
     except Exception as e:
-        print(f"Error creating GeoDataFrame from sampled points: {e}")
+        logger.info(f"Error creating GeoDataFrame from sampled points: {e}")
         return pd.DataFrame()
 
     if gdf_sampled_points.empty:
-        print("GeoDataFrame of sampled points is empty.")
+        logger.info("GeoDataFrame of sampled points is empty.")
         return pd.DataFrame()
 
     # --- Step 3: Extract Climate Data at Point Locations ---
-    print("Extracting climate data at point locations...")
+    logger.info("Extracting climate data at point locations...")
     try:
         # xarray-vectorize extracts data for each point using its index (id_column)
         ds_linestring_points = climate.xvec.extract_points(
@@ -515,22 +515,22 @@ def zonal_aggregation_linestring_optimized(
         )
 
     except Exception as e:
-        print(
+        logger.info(
             f"Error during climate data extraction (climate.xvec.extract_points): {e}"
         )
-        print("Check CRS compatibility between climate data and infrastructure data.")
-        print(
+        logger.info("Check CRS compatibility between climate data and infrastructure data.")
+        logger.info(
             f"Climate CRS (if available): {getattr(climate.rio, 'crs', 'Not spatial xarray/rio not available')}"
         )
-        print(f"Infrastructure CRS: {infra.crs}")
+        logger.info(f"Infrastructure CRS: {infra.crs}")
         # Check if bounds overlap roughly (assuming similar CRS for bounds check)
         try:
-            print(
+            logger.info(
                 f"Climate bounds (approx): lon={climate[x_dim].min().item()}-{climate[x_dim].max().item()}, lat={climate[y_dim].min().item()}-{climate[y_dim].max().item()}"
             )
-            print(f"Sample points bounds: {gdf_sampled_points.total_bounds}")
+            logger.info(f"Sample points bounds: {gdf_sampled_points.total_bounds}")
         except Exception as bounds_e:
-            print(f"Could not determine bounds for comparison: {bounds_e}")
+            logger.info(f"Could not determine bounds for comparison: {bounds_e}")
         return pd.DataFrame()
 
     # --- Step 4: Convert Extracted Data to DataFrame ---
@@ -538,13 +538,13 @@ def zonal_aggregation_linestring_optimized(
     df_linestring = convert_ds_to_df(ds=ds_linestring_points, time_period_type=time_period_type)
 
     if df_linestring.empty:
-        print(
+        logger.info(
             "DataFrame is empty after converting extracted climate data (convert_ds_to_df returned empty). Check logs."
         )
         return pd.DataFrame()
 
     # --- Step 5: Aggregate Results ---
-    print("Aggregating LineString results...")
+    logger.info("Aggregating LineString results...")
     # Define the aggregations based on the original logic
     # Consider if 'mean' of median/stddev is appropriate for your analysis.
     agg_dict = {
@@ -563,13 +563,13 @@ def zonal_aggregation_linestring_optimized(
     }
 
     if not agg_dict_filtered:
-        print(
+        logger.info(
             f"Error: None of the target ensemble columns found for aggregation in the DataFrame. "
             f"Available columns: {df_linestring.columns.tolist()}"
         )
         return pd.DataFrame()
     else:
-        print(f"Aggregating columns: {list(agg_dict_filtered.keys())}")
+        logger.info(f"Aggregating columns: {list(agg_dict_filtered.keys())}")
 
     # Define grouping columns
     grouping_cols = [id_column, "decade", "month"]
@@ -582,7 +582,7 @@ def zonal_aggregation_linestring_optimized(
     ]
     if missing_group_cols:
         # This shouldn't happen if convert_ds_to_df worked correctly
-        print(
+        logger.info(
             f"Critical Error: Missing required grouping columns post-conversion: {missing_group_cols}. DataFrame columns: {df_linestring.columns.tolist()}"
         )
         return pd.DataFrame()
@@ -599,17 +599,17 @@ def zonal_aggregation_linestring_optimized(
         # df_aggregated['point_count'] = grouped.size()
 
         df_aggregated = df_aggregated.reset_index()
-        print("LineString Aggregation complete.")
+        logger.info("LineString Aggregation complete.")
 
     except KeyError as e:
         # Should be less likely now with checks, but handle just in case
-        print(
+        logger.info(
             f"Error during aggregation: Missing column {e}. Ensure columns {grouping_cols} and ensemble variables exist."
         )
-        print(f"Columns available for aggregation: {df_linestring.columns.tolist()}")
+        logger.info(f"Columns available for aggregation: {df_linestring.columns.tolist()}")
         return pd.DataFrame()
     except Exception as e:
-        print(f"An unexpected error occurred during aggregation: {e}")
+        logger.info(f"An unexpected error occurred during aggregation: {e}")
         return pd.DataFrame()
 
     return df_aggregated
