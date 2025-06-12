@@ -108,6 +108,10 @@ def main(
         # Drop the now-scalar coordinate
         if 'return_period' in ds.coords:
             ds = ds.drop_vars('return_period')
+    
+    # Ensemble count is not currently used in the database, should be stored in metadata
+    if "ensemble_count" in ds.data_vars:
+        ds = ds.drop_vars("ensemble_count")
 
     # Rename variables from value_* to ensemble_*
     ds = rename_value_variables(ds)

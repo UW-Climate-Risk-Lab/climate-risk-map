@@ -96,7 +96,6 @@ def convert_ds_to_df_decade_month(ds: xr.Dataset) -> pd.DataFrame:
     Args:
         da (xr.DataArray): Datarray
     """
-
     # We know that that each ID has a geometry associated with
     # We want to drop the geometry values (ran into error with converting to dataframe with geometry type that i couldnt resolve)
     # Solution was replace geometry values with id column values (we do not need geometries after this)
@@ -128,6 +127,7 @@ def convert_ds_to_df_year_span_month(ds: xr.Dataset) -> pd.DataFrame:
     Returns:
         pd.DataFrame: A formatted DataFrame.
     """
+
     ds_modified = (ds.set_index({GEOMETRY_COLUMN: ID_COLUMN})
                    .rename_dims({GEOMETRY_COLUMN: ID_COLUMN})
                    .drop_vars([GEOMETRY_COLUMN])
@@ -141,6 +141,7 @@ def convert_ds_to_df_year_span_month(ds: xr.Dataset) -> pd.DataFrame:
     # The year_period column will be in format YYYY-YYYY (example: "2015-2044")
     df["start_year"] = df["year_period"].str[0:4].astype(int)
     df["end_year"] = df["year_period"].str[5:].astype(int)
+    df.drop(columns=['year_period'], inplace=True)
     
     return df
 
