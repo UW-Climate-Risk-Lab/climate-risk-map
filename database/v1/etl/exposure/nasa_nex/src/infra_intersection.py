@@ -96,6 +96,16 @@ def convert_ds_to_df_decade_month(ds: xr.Dataset) -> pd.DataFrame:
     Args:
         da (xr.DataArray): Datarray
     """
+    final_columns = ["decade",
+                     "month",
+                     ID_COLUMN,
+                     "ensemble_max",
+                     "ensemble_mean",
+                     "ensemble_median",
+                     "ensemble_min",
+                     "ensemble_q1",
+                     "ensemble_q3",
+                     "ensemble_stddev"]
     # We know that that each ID has a geometry associated with
     # We want to drop the geometry values (ran into error with converting to dataframe with geometry type that i couldnt resolve)
     # Solution was replace geometry values with id column values (we do not need geometries after this)
@@ -113,7 +123,8 @@ def convert_ds_to_df_decade_month(ds: xr.Dataset) -> pd.DataFrame:
 
     df["decade"] = df["decade_month"].apply(lambda x: int(x[0:4]))
     df["month"] = df["decade_month"].apply(lambda x: int(x[-2:]))
-    df.drop(columns=["decade_month"], inplace=True)
+    
+    df_final = df[final_columns]
 
     return df
 
@@ -128,6 +139,18 @@ def convert_ds_to_df_year_span_month(ds: xr.Dataset) -> pd.DataFrame:
         pd.DataFrame: A formatted DataFrame.
     """
 
+    final_columns = ["start_year",
+                     "end_year",
+                     "month",
+                     ID_COLUMN,
+                     "ensemble_max",
+                     "ensemble_mean",
+                     "ensemble_median",
+                     "ensemble_min",
+                     "ensemble_q1",
+                     "ensemble_q3",
+                     "ensemble_stddev"]
+
     ds_modified = (ds.set_index({GEOMETRY_COLUMN: ID_COLUMN})
                    .rename_dims({GEOMETRY_COLUMN: ID_COLUMN})
                    .drop_vars([GEOMETRY_COLUMN])
@@ -141,9 +164,10 @@ def convert_ds_to_df_year_span_month(ds: xr.Dataset) -> pd.DataFrame:
     # The year_period column will be in format YYYY-YYYY (example: "2015-2044")
     df["start_year"] = df["year_period"].str[0:4].astype(int)
     df["end_year"] = df["year_period"].str[5:].astype(int)
-    df.drop(columns=['year_period'], inplace=True)
+
+    df_final = df[final_columns]
     
-    return df
+    return df_final
 
 
 def convert_ds_to_df(ds: xr.Dataset, time_period_type: str) -> pd.DataFrame:
