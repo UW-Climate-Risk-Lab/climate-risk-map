@@ -18,6 +18,9 @@
         "y_min": "44.4",
         "x_max": "-114.0",
         "y_max": "49.5"
+      },
+      "fema_args": {
+        "state_filter": "WA"
       }
     },
     "california": {
@@ -28,6 +31,9 @@
         "y_min": "32.5",
         "x_max": "-114.1",
         "y_max": "42.0"
+      },
+      "fema_args": {
+        "state_filter": "CA"
       }
     },
     "florida": {
@@ -38,6 +44,9 @@
         "y_min": "24.5",
         "x_max": "-80.0",
         "y_max": "31.0"
+      },
+      "fema_args": {
+        "state_filter": "FL"
       }
     },
     "new_york": {
@@ -48,6 +57,9 @@
         "y_min": "40.5",
         "x_max": "-71.8",
         "y_max": "45.0"
+      },
+      "fema_args": {
+        "state_filter": "NY"
       }
     },
     "oregon": {
@@ -58,6 +70,9 @@
         "y_min": "42.0",
         "x_max": "-116.5",
         "y_max": "46.3"
+      },
+      "fema_args": {
+        "state_filter": "OR"
       }
     },
     "texas": {
@@ -68,6 +83,9 @@
         "y_min": "25.8",
         "x_max": "-93.5",
         "y_max": "36.5"
+      },
+      "fema_args": {
+        "state_filter": "TX"
       }
     },
     "us_virgin_islands": {
@@ -78,6 +96,9 @@
         "y_min": "17.1",
         "x_max": "-63.5",
         "y_max": "19.1"
+      },
+      "fema_args": {
+        "state_filter": "VI"
       }
     }
   },
@@ -233,5 +254,8 @@
       "s3_prefix_input": "climate-risk-map/backend/climate/NEX-GDDP-CMIP6/DECADE_MONTH_ENSEMBLE/ssp585/fwi_decade_month_ssp585.zarr",
       "s3_prefix_geotiff": "climate-risk-map/frontend/NEX-GDDP-CMIP6/fwi/ssp585/cogs"
     }
-  ]
+  ],
+  "fema_args": {
+    "s3_prefix": "climate-risk-map/backend/exposure/fema/nfhl_raw_zips"
+  }
 }

@@ -567,6 +567,86 @@ run_usda_wildfire_exposure_etl() {
 
 
 
+# Step 5b: Run FEMA Flood Exposure ETL Process (US States Only)
+run_fema_exposure_etl() {
+    echo "===== STEP 5b: RUNNING FEMA FLOOD EXPOSURE ETL PROCESS ====="
+    
+    # Check if Docker is installed
+    if ! command -v docker &> /dev/null; then
+        echo "Error: Docker is not installed or not in PATH"
+        exit 1
+    fi
+    
+    # Check if ETL directory exists
+    if [ ! -d "$EXPOSURE_ETL_DIR/fema" ]; then
+        echo "Error: FEMA ETL directory not found at $EXPOSURE_ETL_DIR/fema"
+        exit 1
+    fi
+    
+    # Check if Dockerfile exists in ETL directory
+    if [ ! -f "$EXPOSURE_ETL_DIR/fema/Dockerfile" ]; then
+        echo "Error: Dockerfile not found in FEMA ETL directory"
+        exit 1
+    fi
+    
+    # Navigate to FEMA ETL directory
+    cd "$EXPOSURE_ETL_DIR/fema"
+    
+    # Build Docker image
+    echo "Building FEMA Flood Exposure ETL Docker image..."
+    sudo docker build -t database-v1-fema-flood-etl .
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to build FEMA Flood Exposure ETL Docker image"
+        cd "$ROOT_DIR"  # Return to root directory
+        exit 1
+    fi
+    
+    # Get FEMA configuration from config.json
+    S3_PREFIX_FEMA=$(jq -r '.fema_args.s3_prefix' "$CONFIG_JSON")
+    
+    # Check if this database has FEMA configuration
+    STATE_FILTER=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].fema_args.state_filter // empty' "$CONFIG_JSON")
+    
+    if [ -z "$STATE_FILTER" ] || [ "$STATE_FILTER" = "null" ]; then
+        echo "Info: Database '$PG_DBNAME' does not have FEMA configuration. Skipping FEMA ETL."
+        cd "$ROOT_DIR"
+        return 0
+    fi
+    
+    echo "Processing FEMA flood data for state: $STATE_FILTER"
+    echo "  - S3 Bucket: $S3_BUCKET"
+    echo "  - S3 Prefix: $S3_PREFIX_FEMA"
+    echo "  - State Filter: $STATE_FILTER"
+    echo "  - Target Database: $PG_DBNAME"
+    
+    # Run Docker container with environment variables and arguments
+    echo "Running FEMA flood exposure ETL process..."
+    
+    sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+        -e PG_DBNAME=$PG_DBNAME \
+        -e PGUSER=$PGCLIMATE_USER \
+        -e PGPASSWORD=$PGCLIMATE_PASSWORD \
+        -e PGHOST=$PGCLIMATE_HOST \
+        -e PGPORT=$PGPORT \
+        -e PG_SCHEMA=climate \
+        database-v1-fema-flood-etl \
+        --s3-bucket "$S3_BUCKET" \
+        --s3-prefix "$S3_PREFIX_FEMA" \
+        --state-filter "$STATE_FILTER"
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: FEMA flood exposure ETL process failed"
+        cd "$ROOT_DIR"  # Return to root directory
+        exit 1
+    fi
+    
+    # Return to root directory
+    cd "$ROOT_DIR"
+    
+    echo "FEMA flood exposure ETL process completed successfully"
+}
+
 # Step 6: Run Geotiff Process
 run_geotiff_etl() {
     echo "===== STEP 6: RUNNING GEOTIFF ETL PROCESS ====="
@@ -681,6 +761,9 @@ run_single_db() {
 
         run_usda_wildfire_exposure_etl
 
+        # Run FEMA Flood Exposure ETL process (US States only)
+        run_fema_exposure_etl
+
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
 
@@ -707,6 +790,9 @@ run_single_db() {
         run_nasa_nex_exposure_etl
 
         run_usda_wildfire_exposure_etl
+
+        # Run FEMA Flood Exposure ETL process (US States only)
+        run_fema_exposure_etl
 
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
