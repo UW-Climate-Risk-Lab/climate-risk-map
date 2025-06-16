@@ -3,12 +3,18 @@ import boto3
 import json
 import time
 import logging
+import re
 from botocore.exceptions import ClientError
 
 from prompts import PROMPTS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def _sanitize_for_iam_name(name):
+    # Allowed characters for IAM role/policy names: alphanumeric, +=,.@_-
+    # Replace any character NOT in the allowed set with an underscore
+    return re.sub(r'[^a-zA-Z0-9+=,.@_-]', '_', name)
 
 def delete_existing_agent_and_role(bedrock_agent_client, iam_client, agent_name, role_name):
     """Deletes an existing Bedrock agent and its associated IAM role if they exist."""
@@ -91,14 +97,24 @@ def main():
     HAZARD = args.hazard
     
     # We use a simplified model name for resource naming to avoid special characters
-    model_name_safe = FOUNDATIONAL_MODEL.split('.')[1].replace('-','_')
+    # Sanitize the foundational model name part
+    if '.' in FOUNDATIONAL_MODEL:
+        raw_model_part = FOUNDATIONAL_MODEL.split('.', 1)[1]
+    else:
+        raw_model_part = FOUNDATIONAL_MODEL # Fallback if no dot is present
+    model_name_safe = _sanitize_for_iam_name(raw_model_part)
 
-    AGENT_NAME = f'climate-risk-map-ai-agent-{HAZARD}-{model_name_safe}'
-    IAM_ROLE_NAME = f'{AGENT_NAME}-role'[:63]
-    MODEL_POLICY_NAME = f'{AGENT_NAME}-model-policy'
+    # Sanitize the hazard name
+    hazard_name_safe = _sanitize_for_iam_name(HAZARD)
+
+    AGENT_NAME = f'climate-risk-map-ai-agent-{hazard_name_safe}-{model_name_safe}'
+    
+    # Sanitize IAM role and policy names to adhere to AWS naming conventions
+    IAM_ROLE_NAME = _sanitize_for_iam_name(f'{AGENT_NAME}-role')[:63]
+    MODEL_POLICY_NAME = _sanitize_for_iam_name(f'{AGENT_NAME}-model-policy')
+    INFERENCE_POLICY_NAME = _sanitize_for_iam_name(f'{AGENT_NAME}-inference-policy')
     
     INFERENCE_PROFILE = f"us.{FOUNDATIONAL_MODEL}"
-    INFERENCE_POLICY_NAME = f'{AGENT_NAME}-inference-policy'
     
     INSTRUCTION = PROMPTS[HAZARD]['instruction_prompt']
 
