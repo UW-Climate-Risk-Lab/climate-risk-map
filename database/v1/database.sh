@@ -316,6 +316,10 @@ refresh_unexposed_id_views() {
 # Step 4c: Create or Refresh Hazard Views
 create_or_refresh_hazard_views() {
     echo "===== STEP 4c: CREATING/REFRESHING HAZARD VIEWS ====="
+
+    # TODO: Need to integrate the flood directory into this. Flood is special and requires a 2 part sql exection
+    # due to FEMA flood zone aggregation. This can probably be optimized into a single script later and added as flood.sql
+    # by creating the subdivided table as a CTE
     
     # Database connection string
     DB_CONN="-U $PGUSER -d $PG_DBNAME -h $PGHOST -p $PGPORT"
@@ -323,11 +327,6 @@ create_or_refresh_hazard_views() {
     echo "Creating/refreshing hazard views..."
     if [ -d "$HAZARD_VIEW_DIR" ]; then
         for SQL_FILE in "$HAZARD_VIEW_DIR"/*.sql; do
-            if [[ "$(basename "$SQL_FILE")" == "flood.sql" ]]; then
-                echo "Skipping flood.sql"
-                # Here, we skip flood.sql because it is very computationally intensive and should be run manually
-                continue
-            fi
             if [ -f "$SQL_FILE" ]; then
                 echo "Processing $SQL_FILE..."
                 if ! PGPASSWORD=$PG_SUPER_PASSWORD psql $DB_CONN -f "$SQL_FILE"; then
