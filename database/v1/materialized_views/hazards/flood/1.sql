@@ -1,7 +1,7 @@
 -- This query creates a new table containing the subdivided flood zones.
 -- It might take 15-45 minutes to run, but it's a one-time cost.
 
-DROP TABLE IF EXISTS climate.latest_flood_zones_subdivided;
+DROP TABLE IF EXISTS climate.latest_flood_zones_subdivided CASCADE;
 
 CREATE TABLE climate.latest_flood_zones_subdivided AS
 WITH latest_zones AS (

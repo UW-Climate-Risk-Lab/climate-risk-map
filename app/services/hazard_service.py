@@ -23,7 +23,7 @@ class HazardService:
         ssp: int,
         month: int,
         decade: int,
-        region_name: str,
+        region_name: str
     ) -> Tuple[str, float]:
         """Processes request to get url of hazard tile overlay
 
@@ -65,7 +65,7 @@ class HazardService:
             month=month,
             ssp=ssp,
             region=region,
-            measure=hazard.display_measure,
+            measure=hazard.display_measure
         )
 
         if not hazard_tilejson_url:
