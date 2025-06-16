@@ -291,17 +291,19 @@ class GeotiffProcessor:
                 ds["month_of_year"].data if has_month else [None]
             )
 
-            for year_period in ds["year_period"].data:
-                for return_period in ds["return_period"].data:
-                    for month in month_values:
+            for i_year, year_period in enumerate(ds["year_period"].data):
+                for i_return_period, return_period in enumerate(ds["return_period"].data):
+                    for i_month, month in enumerate(month_values):
                         selection_kwargs = dict(
-                            year_period=year_period,
-                            return_period=return_period,
+                            year_period=i_year,
+                            start_year=i_year,
+                            end_year=i_year,
+                            return_period=i_return_period,
                         )
                         if month is not None:
-                            selection_kwargs["month_of_year"] = month
+                            selection_kwargs["month_of_year"] = i_month
 
-                        da = ds[variable].sel(selection_kwargs)
+                        da = ds[variable].isel(selection_kwargs)
                         da.rio.set_spatial_dims(x_dim=X_DIM, y_dim=Y_DIM, inplace=True)
 
                         # Apply clipping if a geometry is provided
@@ -432,10 +434,6 @@ class MainProcessor:
             # Load dataset
             logger.info(f"Loading dataset from {self.s3_uri_input}")
             ds = xr.open_zarr(self.s3_uri_input)
-
-            if {"year_period", "return_period"}.issubset(ds.dims):
-                # Remove unnecessary coordinate variables that can conflict with dimension names
-                ds = ds.drop_vars(["start_year", "end_year"], errors="ignore")
 
             # Set geospatial info
             logger.info("Setting coordinate reference system")
