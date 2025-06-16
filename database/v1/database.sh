@@ -323,6 +323,11 @@ create_or_refresh_hazard_views() {
     echo "Creating/refreshing hazard views..."
     if [ -d "$HAZARD_VIEW_DIR" ]; then
         for SQL_FILE in "$HAZARD_VIEW_DIR"/*.sql; do
+            if [[ "$(basename "$SQL_FILE")" == "flood.sql" ]]; then
+                echo "Skipping flood.sql"
+                # Here, we skip flood.sql because it is very computationally intensive and should be run manually
+                continue
+            fi
             if [ -f "$SQL_FILE" ]; then
                 echo "Processing $SQL_FILE..."
                 if ! PGPASSWORD=$PG_SUPER_PASSWORD psql $DB_CONN -f "$SQL_FILE"; then

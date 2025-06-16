@@ -23,7 +23,7 @@ CREATE TABLE climate.nasa_nex_pluvial_change_factor (
 
 -- Unique index to constrain possible values for a given feature (osm_id)
 CREATE UNIQUE INDEX idx_unique_nasa_nex_pluvial_change_factor_record
-    ON climate.nasa_nex_pluvial_change_factor (osm_id, month, start_year, end_year, ssp);
+    ON climate.nasa_nex_pluvial_change_factor (osm_id, month, start_year, end_year, ssp, return_period);
 
 CREATE INDEX idx_nasa_nex_pluvial_change_factor_on_osm_id ON climate.nasa_nex_pluvial_change_factor (osm_id);
 CREATE INDEX idx_nasa_nex_pluvial_change_factor_on_month ON climate.nasa_nex_pluvial_change_factor (month);
