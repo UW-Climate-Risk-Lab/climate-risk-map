@@ -101,7 +101,8 @@ def test_zonal_aggregation_max(sample_climate_data, sample_infra_data):
         zonal_agg_method="max",
         x_dim="x",
         y_dim="y",
-        linestring_tolerance=0
+        linestring_tolerance=0,
+        time_period_type="decade_month"
     )
 
     assert_frame_equal(df.sort_values(by="osm_id").reset_index(drop=True), expected_df)
@@ -131,7 +132,8 @@ def test_zonal_aggregation_mean(sample_climate_data, sample_infra_data):
         zonal_agg_method="mean",
         x_dim="x",
         y_dim="y",
-        linestring_tolerance=0
+        linestring_tolerance=0,
+        time_period_type="decade_month"
     )
 
     # Check that the DataFrame contains expected data

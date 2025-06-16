@@ -96,16 +96,16 @@ def convert_ds_to_df_decade_month(ds: xr.Dataset) -> pd.DataFrame:
     Args:
         da (xr.DataArray): Datarray
     """
-    final_columns = ["decade",
-                     "month",
-                     ID_COLUMN,
-                     "ensemble_max",
+    final_columns = [ID_COLUMN,
                      "ensemble_mean",
                      "ensemble_median",
+                     "ensemble_stddev",
                      "ensemble_min",
+                     "ensemble_max",
                      "ensemble_q1",
                      "ensemble_q3",
-                     "ensemble_stddev"]
+                     "decade",
+                     "month"]
     # We know that that each ID has a geometry associated with
     # We want to drop the geometry values (ran into error with converting to dataframe with geometry type that i couldnt resolve)
     # Solution was replace geometry values with id column values (we do not need geometries after this)
@@ -126,7 +126,7 @@ def convert_ds_to_df_decade_month(ds: xr.Dataset) -> pd.DataFrame:
     
     df_final = df[final_columns]
 
-    return df
+    return df_final
 
 
 def convert_ds_to_df_year_span_month(ds: xr.Dataset) -> pd.DataFrame:
