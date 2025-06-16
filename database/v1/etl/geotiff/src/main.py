@@ -214,14 +214,21 @@ class GeotiffProcessor:
             ds (xr.Dataset): Dataset to process
             geometry (gpd.GeoDataFrame): Geodataframe containing geometries of clipping mask to use
             variable (str): Variable to use in Dataset
-            region_name (str): region/region name for use on output files
+            region_name (str): Region name for use in output file names
             output_dir (Path): Local (temp) directory to save generated geotiffs temporarily
             s3_bucket (str): S3 bucket name
             s3_prefix (str): S3 prefix for uploads
             geotiff_driver (str): Driver to use for Geotiff file format
             output_resolution (float, optional): Desired output resolution in degrees. If None, 
                                                  original resolution is preserved.
-            resampling_method (str, optional): Method to use for resampling. Default is "cubic".
+            resampling_method (str, optional): Method to use for resampling. Default is "linear".
+
+        Notes:
+            The function supports two different temporal structures in the input dataset:
+            1. Legacy datasets containing a single "decade_month" dimension (e.g. "2050-06").
+            2. Newer datasets that contain both "year_period" (e.g. "2015-2044") and "return_period" 
+               (e.g. 2, 5, 100) dimensions. In this case, a separate GeoTIFF is created for every
+               combination of year_period and return_period.
 
         Returns:
             List[GeotiffTask]: List of prepared geotiff tasks
@@ -232,49 +239,131 @@ class GeotiffProcessor:
         ds = ds.assign_coords({X_DIM: (((ds[X_DIM] + 180) % 360) - 180)})
         ds = ds.sortby(X_DIM)
 
-        # Loop through each variable and timestep(ASSUME decade month, for example 2030-08, 2030-09, etc...) so that
-        # we generate an individual geotiff file per variable and timestep
-        for decade_month in ds["decade_month"].data:
-            da = ds[variable].sel(decade_month=decade_month)
-            da.rio.set_spatial_dims(x_dim=X_DIM, y_dim=Y_DIM, inplace=True)
+        # Determine which temporal dimensions are available and iterate accordingly
+        if "decade_month" in ds.dims:
+            # Legacy behaviour – iterate over decade_month
+            for decade_month in ds["decade_month"].data:
+                da = ds[variable].sel(decade_month=decade_month)
+                da.rio.set_spatial_dims(x_dim=X_DIM, y_dim=Y_DIM, inplace=True)
 
-            # Apply clipping if a geometry is provided
-            if geometry:
-                clipped_array = da.rio.clip(
-                    geometry.geometry.values, geometry.crs, drop=True, all_touched=True
-                )
-                file_name = f"{variable}-{decade_month}-{region_name}.tif"
-            else:
-                clipped_array = da
-                file_name = f"{variable}-{decade_month}-global.tif"
-            
-            # Apply resampling if output_resolution is specified
-            if output_resolution is not None:
-                resampled_array = GeotiffProcessor.resample_data_array(
-                    clipped_array, 
-                    output_resolution,
-                    resampling_method
-                )
-                # Update the filename to indicate the resolution
-                res_str = str(output_resolution).replace('.', 'p')
-                if "global" in file_name:
-                    file_name = f"{variable}-{decade_month}-global-{res_str}deg.tif"
+                # Apply clipping if a geometry is provided
+                if geometry:
+                    clipped_array = da.rio.clip(
+                        geometry.geometry.values, geometry.crs, drop=True, all_touched=True
+                    )
+                    file_name = f"{variable}-{decade_month}-{region_name}.tif"
                 else:
-                    file_name = f"{variable}-{decade_month}-{region_name}-{res_str}deg.tif"
-                clipped_array = resampled_array
-            
-            output_path = output_dir / file_name
+                    clipped_array = da
+                    file_name = f"{variable}-{decade_month}-global.tif"
+                
+                # Apply resampling if output_resolution is specified
+                if output_resolution is not None:
+                    resampled_array = GeotiffProcessor.resample_data_array(
+                        clipped_array, 
+                        output_resolution,
+                        resampling_method
+                    )
+                    res_str = str(output_resolution).replace('.', 'p')
+                    if "global" in file_name:
+                        file_name = f"{variable}-{decade_month}-global-{res_str}deg.tif"
+                    else:
+                        file_name = f"{variable}-{decade_month}-{region_name}-{res_str}deg.tif"
+                    clipped_array = resampled_array
+                
+                output_path = output_dir / file_name
 
-            task = GeotiffTask(
-                da=clipped_array,
-                output_path=output_path,
-                variable=variable,
-                decade_month=str(decade_month),
-                s3_bucket=s3_bucket,
-                s3_prefix=s3_prefix,
-                geotiff_driver=geotiff_driver
+                task = GeotiffTask(
+                    da=clipped_array,
+                    output_path=output_path,
+                    variable=variable,
+                    decade_month=str(decade_month),
+                    s3_bucket=s3_bucket,
+                    s3_prefix=s3_prefix,
+                    geotiff_driver=geotiff_driver
+                )
+                tasks.append(task)
+
+        elif {"year_period", "return_period"}.issubset(ds.dims):
+            # New dataset type – iterate over all combinations. month_of_year may or may not be present.
+            has_month = "month_of_year" in ds.dims
+
+            month_values = (
+                ds["month_of_year"].data if has_month else [None]
             )
-            tasks.append(task)
+
+            for i_year, year_period in enumerate(ds["year_period"].data):
+                for i_return_period, return_period in enumerate(ds["return_period"].data):
+                    for i_month, month in enumerate(month_values):
+                        selection_kwargs = dict(
+                            year_period=i_year,
+                            start_year=i_year,
+                            end_year=i_year,
+                            return_period=i_return_period,
+                        )
+                        if month is not None:
+                            selection_kwargs["month_of_year"] = i_month
+
+                        da = ds[variable].isel(selection_kwargs)
+                        da.rio.set_spatial_dims(x_dim=X_DIM, y_dim=Y_DIM, inplace=True)
+
+                        # Apply clipping if a geometry is provided
+                        if geometry:
+                            clipped_array = da.rio.clip(
+                                geometry.geometry.values,
+                                geometry.crs,
+                                drop=True,
+                                all_touched=True,
+                            )
+                        else:
+                            clipped_array = da
+
+                        # Build file name parts
+                        if month is not None:
+                            time_str = f"{year_period}-{int(month)}-{return_period}"
+                        else:
+                            time_str = f"{year_period}-{return_period}"
+
+                        if geometry:
+                            file_name = f"{variable}-{time_str}-{region_name}.tif"
+                        else:
+                            file_name = f"{variable}-{time_str}-global.tif"
+
+                        # Apply resampling if output_resolution is specified
+                        if output_resolution is not None:
+                            resampled_array = GeotiffProcessor.resample_data_array(
+                                clipped_array,
+                                output_resolution,
+                                resampling_method,
+                            )
+                            res_str = str(output_resolution).replace(".", "p")
+                            if "global" in file_name:
+                                file_name = (
+                                    f"{variable}-{time_str}-global-{res_str}deg.tif"
+                                )
+                            else:
+                                file_name = (
+                                    f"{variable}-{time_str}-{region_name}-{res_str}deg.tif"
+                                )
+                            clipped_array = resampled_array
+
+                        output_path = output_dir / file_name
+
+                        task = GeotiffTask(
+                            da=clipped_array,
+                            output_path=output_path,
+                            variable=variable,
+                            decade_month=str(time_str),  # reuse field for general time id
+                            s3_bucket=s3_bucket,
+                            s3_prefix=s3_prefix,
+                            geotiff_driver=geotiff_driver,
+                        )
+                        tasks.append(task)
+
+        else:
+            raise ValueError(
+                "Dataset does not contain the expected temporal dimensions: "
+                "either 'decade_month' or the combination of 'year_period' and 'return_period'."
+            )
         return tasks
 
 
@@ -344,7 +433,7 @@ class MainProcessor:
 
             # Load dataset
             logger.info(f"Loading dataset from {self.s3_uri_input}")
-            ds = xr.load_dataset(self.s3_uri_input)
+            ds = xr.open_zarr(self.s3_uri_input)
 
             # Set geospatial info
             logger.info("Setting coordinate reference system")

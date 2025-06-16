@@ -49,6 +49,7 @@ def main(
     y_min: float,
     x_max: float,
     y_max: float,
+    return_period: int = None,
 ) -> xr.Dataset:
     """Processes climate data
 
@@ -61,6 +62,7 @@ def main(
         y_min (str): For bounding box, latitude minimum
         x_max (str): For bounding box, longitude maximum
         y_max (str): For bounding box, latitude maximum
+        return_period (int, optional): Return period in years to filter by. Defaults to None.
 
     Returns:
         xr.Dataset: Xarray dataset of processed climate data
@@ -82,6 +84,34 @@ def main(
     ds.rio.write_coordinate_system(inplace=True)
 
     ds = ds.sel({x_dim: slice(x_min, x_max), y_dim: slice(y_min, y_max)})
+
+    # ------------------------------------------------------------------
+    # Early exit if the spatial subset contains no data
+    # This can happen if the user supplies a bounding box that lies
+    # completely outside the extent of the climate dataset. Proceeding
+    # with an empty Dataset will lead to downstream errors during the
+    # infrastructure intersection step (e.g., KeyError for missing
+    # coordinates). Detect the situation early and return ``None`` so
+    # the calling code can terminate gracefully.
+    # ------------------------------------------------------------------
+    if (ds[x_dim].size == 0) or (ds[y_dim].size == 0):
+        logger.warning(
+            "No climate data found within the provided bounding box. "
+            "Skipping further processing for this dataset."
+        )
+        return None
+
+    # Filter by return period if provided
+    if return_period is not None and 'return_period' in ds.dims:
+        logger.info(f"Filtering dataset by return period: {return_period} years.")
+        ds = ds.sel(return_period=return_period)
+        # Drop the now-scalar coordinate
+        if 'return_period' in ds.coords:
+            ds = ds.drop_vars('return_period')
+    
+    # Ensemble count is not currently used in the database, should be stored in metadata
+    if "ensemble_count" in ds.data_vars:
+        ds = ds.drop_vars("ensemble_count")
 
     # Rename variables from value_* to ensemble_*
     ds = rename_value_variables(ds)

@@ -88,15 +88,24 @@ def convert_small_polygons(
     return result_gdf
 
 
-def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
-    """Converts a DataArray to a Dataframe. This should be called after zonal aggregation with xvec
+def convert_ds_to_df_decade_month(ds: xr.Dataset) -> pd.DataFrame:
+    """Converts a DataArray to a Dataframe for decade_month datasets. This should be called after zonal aggregation with xvec
 
     Used since we ultimately want the data in tabular form for PostGIS.
 
     Args:
         da (xr.DataArray): Datarray
     """
-
+    final_columns = [ID_COLUMN,
+                     "ensemble_mean",
+                     "ensemble_median",
+                     "ensemble_stddev",
+                     "ensemble_min",
+                     "ensemble_max",
+                     "ensemble_q1",
+                     "ensemble_q3",
+                     "decade",
+                     "month"]
     # We know that that each ID has a geometry associated with
     # We want to drop the geometry values (ran into error with converting to dataframe with geometry type that i couldnt resolve)
     # Solution was replace geometry values with id column values (we do not need geometries after this)
@@ -114,10 +123,61 @@ def convert_ds_to_df(ds: xr.Dataset) -> pd.DataFrame:
 
     df["decade"] = df["decade_month"].apply(lambda x: int(x[0:4]))
     df["month"] = df["decade_month"].apply(lambda x: int(x[-2:]))
-    df.drop(columns=["decade_month"], inplace=True)
+    
+    df_final = df[final_columns]
 
-    return df
+    return df_final
 
+
+def convert_ds_to_df_year_span_month(ds: xr.Dataset) -> pd.DataFrame:
+    """Converts a DataArray to a Dataframe for year_span_month datasets. This should be called after zonal aggregation with xvec
+    
+    Args:
+        ds (xr.Dataset): Dataset with dimensions (osm_id, month, start_year, end_year)
+    
+    Returns:
+        pd.DataFrame: A formatted DataFrame.
+    """
+
+    final_columns = ["start_year",
+                     "end_year",
+                     "month",
+                     ID_COLUMN,
+                     "ensemble_max",
+                     "ensemble_mean",
+                     "ensemble_median",
+                     "ensemble_min",
+                     "ensemble_q1",
+                     "ensemble_q3",
+                     "ensemble_stddev"]
+
+    ds_modified = (ds.set_index({GEOMETRY_COLUMN: ID_COLUMN})
+                   .rename_dims({GEOMETRY_COLUMN: ID_COLUMN})
+                   .drop_vars([GEOMETRY_COLUMN])
+                   .assign_coords({ID_COLUMN: ds[ID_COLUMN].values}))
+    
+    df = ds_modified.to_dataframe().reset_index()
+    
+    df = df.rename(columns={"month_of_year": "month"})
+
+    # This ensures the start year and end year are properly labeled in the datset
+    # The year_period column will be in format YYYY-YYYY (example: "2015-2044")
+    df["start_year"] = df["year_period"].str[0:4].astype(int)
+    df["end_year"] = df["year_period"].str[5:].astype(int)
+
+    df_final = df[final_columns]
+    
+    return df_final
+
+
+def convert_ds_to_df(ds: xr.Dataset, time_period_type: str) -> pd.DataFrame:
+    """Converts a DataArray to a Dataframe. This should be called after zonal aggregation with xvec"""
+    if time_period_type == "decade_month":
+        return convert_ds_to_df_decade_month(ds)
+    elif time_period_type == "year_span_month":
+        return convert_ds_to_df_year_span_month(ds)
+    else:
+        raise ValueError(f"Unsupported time_period_type: {time_period_type}")
 
 def task_xvec_zonal_stats(
     climate: xr.Dataset,
@@ -127,6 +187,7 @@ def task_xvec_zonal_stats(
     zonal_agg_method,
     method,
     index,
+    time_period_type: str
 ) -> pd.DataFrame:
     """Used for running xvec.zonal_stats in parallel process pool. Param types are the same
     as xvec.zonal_stats().
@@ -145,16 +206,33 @@ def task_xvec_zonal_stats(
         pd.DataFrame: DataFrame in format of convert_da_to_df()
     """
 
-    ds = climate.xvec.zonal_stats(
-        geometry,
-        x_coords=x_dim,
-        y_coords=y_dim,
-        stats=zonal_agg_method,
-        method=method,
-        index=index,
-    )
+    
+    if time_period_type == "year_span_month":
+        # We need to drop this due to the multiindex dimension breaking the xvec zonal stats function (This was the error)
+        # ValueError: conflicting dimensions for multi-index product variables 'variable' ('variable',), 'year_period' ('year_period',), 
+        # 'end_year' ('year_period',), 'start_year' ('year_period',), 'month_of_year' ('month_of_year',)
+        climate_dropped_years = climate.drop(("start_year", "end_year")) 
 
-    df = convert_ds_to_df(ds=ds)
+        ds = climate_dropped_years.xvec.zonal_stats(
+            geometry,
+            x_coords=x_dim,
+            y_coords=y_dim,
+            stats=zonal_agg_method,
+            method=method,
+            index=index,
+        )
+
+    else:
+        ds = climate.xvec.zonal_stats(
+            geometry,
+            x_coords=x_dim,
+            y_coords=y_dim,
+            stats=zonal_agg_method,
+            method=method,
+            index=index,
+        )
+
+    df = convert_ds_to_df(ds=ds, time_period_type=time_period_type)
 
     return df
 
@@ -164,12 +242,13 @@ def zonal_aggregation_point(
     infra: gpd.GeoDataFrame,
     x_dim: str,
     y_dim: str,
+    time_period_type: str
 ) -> pd.DataFrame:
     ds = climate.xvec.extract_points(
         infra.geometry, x_coords=x_dim, y_coords=y_dim, index=True
     )
 
-    df = convert_ds_to_df(ds=ds)
+    df = convert_ds_to_df(ds=ds, time_period_type=time_period_type)
     return df
 
 
@@ -178,6 +257,7 @@ def zonal_aggregation_linestring(
     infra: gpd.GeoDataFrame,
     x_dim: str,
     y_dim: str,
+    time_period_type: str,
 ) -> pd.DataFrame:
     """Linestring cannot be zonally aggreated, so must be broken into points"""
 
@@ -197,7 +277,7 @@ def zonal_aggregation_linestring(
         ds_linestring_points = climate.xvec.extract_points(
             gdf_sampled_points.geometry, x_coords=x_dim, y_coords=y_dim, index=True
         )
-        df_linestring = convert_ds_to_df(ds=ds_linestring_points)
+        df_linestring = convert_ds_to_df(ds=ds_linestring_points, time_period_type=time_period_type)
 
         # TODO: At this step, we are left with OSM ids broken out into individual points.
         # Depending on the resolution of the climate dataset, there will be different exposure measures
@@ -208,10 +288,14 @@ def zonal_aggregation_linestring(
         # and then store the linestring segments in the database with their individual exposure values. A single osm id may be comprised of between 1 and N line segments.
         # The downside to this is extra segment geometries will need to be stored, possibly in their own tables. This also creates the eventual output dataset to the user more complicated
         # as a single entity may now have multiple records of exposure, one for each line segment.
+        
+        grouping_cols = [ID_COLUMN, "decade", "month"]
+        if time_period_type == "year_span_month":
+            grouping_cols = [ID_COLUMN, "month", "start_year", "end_year"]
 
         df_linestring = (
             df_linestring.drop_duplicates()
-            .groupby([ID_COLUMN, "decade", "month"])
+            .groupby(grouping_cols)
             .agg(
                 {
                     "ensemble_mean": "mean",
@@ -301,6 +385,7 @@ def zonal_aggregation_linestring_optimized(
     infra: gpd.GeoDataFrame,
     x_dim: str,
     y_dim: str,
+    time_period_type: str,
     simplify_tolerance: float = 0.0001,  # Key parameter: Adjust based on CRS units & desired accuracy vs speed. Set to 0 to disable.
     id_column: str = "osm_id",  # Ensure this matches the ID column in 'infra'
     geometry_column: str = "geometry",  # Ensure this matches the geometry column in 'infra'
@@ -347,10 +432,10 @@ def zonal_aggregation_linestring_optimized(
     """
     # --- Input Validation ---
     if not isinstance(infra, gpd.GeoDataFrame) or infra.empty:
-        print("Input 'infra' must be a non-empty GeoDataFrame.")
+        logger.info("Input 'infra' must be a non-empty GeoDataFrame.")
         return pd.DataFrame()
     if not isinstance(climate, xr.Dataset):
-        print("Input 'climate' must be an xarray Dataset.")
+        logger.info("Input 'climate' must be an xarray Dataset.")
         return pd.DataFrame()
 
     # Validate climate dimensions
@@ -388,8 +473,8 @@ def zonal_aggregation_linestring_optimized(
             f"ID column '{id_column}' not found in GeoDataFrame index or columns: {infra.columns.tolist()}"
         )
 
-    print(f"Processing {len(infra)} LineString infrastructure features...")
-    print(
+    logger.info(f"Processing {len(infra)} LineString infrastructure features...")
+    logger.info(
         f"Simplification tolerance: {simplify_tolerance if simplify_tolerance > 0 else 'Disabled'}"
     )
 
@@ -409,12 +494,12 @@ def zonal_aggregation_linestring_optimized(
         all_points_data.extend(points)
 
     if not all_points_data:
-        print(
+        logger.info(
             "No valid points could be extracted from the geometries after simplification."
         )
         return pd.DataFrame()
 
-    print(f"Extracted {len(all_points_data)} points from geometries.")
+    logger.info(f"Extracted {len(all_points_data)} points from geometries.")
 
     # --- Step 2: Create GeoDataFrame from Sampled Points ---
     try:
@@ -435,15 +520,15 @@ def zonal_aggregation_linestring_optimized(
         )  # Drop=True prevents id_column appearing twice
 
     except Exception as e:
-        print(f"Error creating GeoDataFrame from sampled points: {e}")
+        logger.info(f"Error creating GeoDataFrame from sampled points: {e}")
         return pd.DataFrame()
 
     if gdf_sampled_points.empty:
-        print("GeoDataFrame of sampled points is empty.")
+        logger.info("GeoDataFrame of sampled points is empty.")
         return pd.DataFrame()
 
     # --- Step 3: Extract Climate Data at Point Locations ---
-    print("Extracting climate data at point locations...")
+    logger.info("Extracting climate data at point locations...")
     try:
         # xarray-vectorize extracts data for each point using its index (id_column)
         ds_linestring_points = climate.xvec.extract_points(
@@ -454,36 +539,36 @@ def zonal_aggregation_linestring_optimized(
         )
 
     except Exception as e:
-        print(
+        logger.info(
             f"Error during climate data extraction (climate.xvec.extract_points): {e}"
         )
-        print("Check CRS compatibility between climate data and infrastructure data.")
-        print(
+        logger.info("Check CRS compatibility between climate data and infrastructure data.")
+        logger.info(
             f"Climate CRS (if available): {getattr(climate.rio, 'crs', 'Not spatial xarray/rio not available')}"
         )
-        print(f"Infrastructure CRS: {infra.crs}")
+        logger.info(f"Infrastructure CRS: {infra.crs}")
         # Check if bounds overlap roughly (assuming similar CRS for bounds check)
         try:
-            print(
+            logger.info(
                 f"Climate bounds (approx): lon={climate[x_dim].min().item()}-{climate[x_dim].max().item()}, lat={climate[y_dim].min().item()}-{climate[y_dim].max().item()}"
             )
-            print(f"Sample points bounds: {gdf_sampled_points.total_bounds}")
+            logger.info(f"Sample points bounds: {gdf_sampled_points.total_bounds}")
         except Exception as bounds_e:
-            print(f"Could not determine bounds for comparison: {bounds_e}")
+            logger.info(f"Could not determine bounds for comparison: {bounds_e}")
         return pd.DataFrame()
 
     # --- Step 4: Convert Extracted Data to DataFrame ---
     # Use the integrated and adapted function
-    df_linestring = convert_ds_to_df(ds=ds_linestring_points)
+    df_linestring = convert_ds_to_df(ds=ds_linestring_points, time_period_type=time_period_type)
 
     if df_linestring.empty:
-        print(
+        logger.info(
             "DataFrame is empty after converting extracted climate data (convert_ds_to_df returned empty). Check logs."
         )
         return pd.DataFrame()
 
     # --- Step 5: Aggregate Results ---
-    print("Aggregating results...")
+    logger.info("Aggregating LineString results...")
     # Define the aggregations based on the original logic
     # Consider if 'mean' of median/stddev is appropriate for your analysis.
     agg_dict = {
@@ -502,23 +587,26 @@ def zonal_aggregation_linestring_optimized(
     }
 
     if not agg_dict_filtered:
-        print(
+        logger.info(
             f"Error: None of the target ensemble columns found for aggregation in the DataFrame. "
             f"Available columns: {df_linestring.columns.tolist()}"
         )
         return pd.DataFrame()
     else:
-        print(f"Aggregating columns: {list(agg_dict_filtered.keys())}")
+        logger.info(f"Aggregating columns: {list(agg_dict_filtered.keys())}")
 
     # Define grouping columns
     grouping_cols = [id_column, "decade", "month"]
+    if time_period_type == "year_span_month":
+        grouping_cols = [id_column, "month", "start_year", "end_year"]
+
     # We already checked these columns exist in convert_ds_to_df, but double-check
     missing_group_cols = [
         col for col in grouping_cols if col not in df_linestring.columns
     ]
     if missing_group_cols:
         # This shouldn't happen if convert_ds_to_df worked correctly
-        print(
+        logger.info(
             f"Critical Error: Missing required grouping columns post-conversion: {missing_group_cols}. DataFrame columns: {df_linestring.columns.tolist()}"
         )
         return pd.DataFrame()
@@ -535,17 +623,17 @@ def zonal_aggregation_linestring_optimized(
         # df_aggregated['point_count'] = grouped.size()
 
         df_aggregated = df_aggregated.reset_index()
-        print("Aggregation complete.")
+        logger.info("LineString Aggregation complete.")
 
     except KeyError as e:
         # Should be less likely now with checks, but handle just in case
-        print(
+        logger.info(
             f"Error during aggregation: Missing column {e}. Ensure columns {grouping_cols} and ensemble variables exist."
         )
-        print(f"Columns available for aggregation: {df_linestring.columns.tolist()}")
+        logger.info(f"Columns available for aggregation: {df_linestring.columns.tolist()}")
         return pd.DataFrame()
     except Exception as e:
-        print(f"An unexpected error occurred during aggregation: {e}")
+        logger.info(f"An unexpected error occurred during aggregation: {e}")
         return pd.DataFrame()
 
     return df_aggregated
@@ -557,10 +645,11 @@ def zonal_aggregation_polygon(
     x_dim: str,
     y_dim: str,
     zonal_agg_method: str,
+    time_period_type: str,
 ) -> pd.DataFrame:
     # The following parallelizes the zonal aggregation of polygon geometry features
     # Limit workers for memory considerations.
-    workers = min(os.cpu_count(), len(infra.geometry), 4)
+    workers = min(os.cpu_count(), len(infra.geometry), 32)
     futures = []
     results = []
     geometry_chunks = np.array_split(infra.geometry, workers)
@@ -577,6 +666,7 @@ def zonal_aggregation_polygon(
                     zonal_agg_method,
                     "exactextract",
                     True,
+                    time_period_type,
                 )
             )
         cf.as_completed(futures)
@@ -598,6 +688,7 @@ def zonal_aggregation(
     zonal_agg_method: str,
     x_dim: str,
     y_dim: str,
+    time_period_type: str,
     linestring_tolerance: float = 0.0001
 ) -> pd.DataFrame:
     """Performs zonal aggregation on climate data and infrastructure data.
@@ -633,7 +724,7 @@ def zonal_aggregation(
 
     if len(point_infra != 0):
         df_point = zonal_aggregation_point(
-            climate=climate, infra=point_infra, x_dim=x_dim, y_dim=y_dim
+            climate=climate, infra=point_infra, x_dim=x_dim, y_dim=y_dim, time_period_type=time_period_type
         )
         logger.info("Point geometries intersected successfully")
     else:
@@ -645,6 +736,7 @@ def zonal_aggregation(
             infra=line_infra,
             x_dim=x_dim,
             y_dim=y_dim,
+            time_period_type=time_period_type,
             simplify_tolerance=linestring_tolerance
         )
 
@@ -659,6 +751,7 @@ def zonal_aggregation(
             x_dim=x_dim,
             y_dim=y_dim,
             zonal_agg_method=zonal_agg_method,
+            time_period_type=time_period_type,
         )
 
         logger.info("Polygon geometries intersected successfully")
@@ -732,6 +825,7 @@ def round_ensemble_columns(df: pd.DataFrame, decimal_places: int = 2) -> pd.Data
 def main(
     climate_ds: xr.Dataset,
     climate_variable: str,
+    time_period_type: str,
     crs: str,
     zonal_agg_method: List[str] | str,
     polygon_area_threshold: float,  # Changed from point_only
@@ -743,6 +837,7 @@ def main(
     Args:
         climate_ds (xr.Dataset): Climate dataset
         climate_variable (str): Climate variable being queried
+        time_period_type (str): Type of dataset, e.g., 'decade_month' or 'year_span_month'
         crs (str): Coordinate Reference System
         zonal_agg_method (List[str] | str): Method(s) for zonal aggregation
         polygon_area_threshold (float): Threshold in square kilometers below which
@@ -780,13 +875,10 @@ def main(
         zonal_agg_method=zonal_agg_method,
         x_dim=constants.X_DIM,
         y_dim=constants.Y_DIM,
+        time_period_type=time_period_type,
     )
     logger.info("Zonal Aggregation Computed")
 
-    failed_aggregations = df.loc[df["ensemble_mean"].isna(), ID_COLUMN].nunique()
-    logger.warning(
-        f"{str(failed_aggregations)} osm_ids were unable to be zonally aggregated"
-    )
     df = df.dropna()
 
     # Round ensemble columns to 2 decimal places
@@ -795,6 +887,9 @@ def main(
     # Add the metadata column
     df["metadata"] = json.dumps(metadata)
 
-    df = df.drop_duplicates(subset=['month', 'decade', ID_COLUMN])
+    if time_period_type == "decade_month":
+        df = df.drop_duplicates(subset=['month', 'decade', ID_COLUMN])
+    elif time_period_type == "year_span_month":
+        df = df.drop_duplicates(subset=['month', 'start_year', 'end_year', ID_COLUMN])
 
     return df

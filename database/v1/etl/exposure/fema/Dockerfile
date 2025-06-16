@@ -44,6 +44,6 @@ ENV CPLUS_INCLUDE_PATH=/usr/include/gdal \
 # Set working directory
 WORKDIR /app
 
-COPY src/ src/
+COPY main.py .
     
-ENTRYPOINT ["/bin/bash", "-c", "uv run src/run.py \"$@\"", "--"]
+ENTRYPOINT ["/bin/bash", "-c", "uv run main.py \"$@\"", "--"]

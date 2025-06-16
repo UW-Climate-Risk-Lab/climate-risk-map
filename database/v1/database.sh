@@ -33,6 +33,7 @@ EXPOSURE_ETL_DIR="$ROOT_DIR/etl/exposure"
 ASSET_GROUP_DIR="$ROOT_DIR/materialized_views/asset_groups"
 UNEXPOSED_DIR="$ROOT_DIR/materialized_views/unexposed_ids"
 GEOTIFF_ETL_DIR="$ROOT_DIR/etl/geotiff"
+HAZARD_VIEW_DIR="$ROOT_DIR/materialized_views/hazards"
 CONFIG_JSON="$ROOT_DIR/config.json"
 
 if [ ! -f "$CONFIG_JSON" ]; then
@@ -52,7 +53,7 @@ else
 fi
 
 # Override environment variables with command line arguments if provided
-if [ -n "$CLI_DB_NAME" ]; then
+if [ -n "$CLI_DB_NAME" ] && [ "$CLI_DB_NAME" != "all_databases" ]; then
     PG_DBNAME=$CLI_DB_NAME
     echo "Using database name from command line: $PG_DBNAME"
     # Check if the database name exists in config.json
@@ -68,7 +69,14 @@ fi
 PGOSM_SRID=${PGOSM_SRID:-4326}
 
 # Check required environment variables
-required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_REGION" "PGOSM_SUBREGION" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST" "PG_MAINTENANCE_MEMORY")
+if [ "$CLI_DB_NAME" = "all_databases" ]; then
+    # When processing all databases, PG_DBNAME, PGOSM_REGION, and PGOSM_SUBREGION will be set
+    # dynamically for each database inside the loop, so they are not required at this point.
+    required_vars=("PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST" "PG_MAINTENANCE_MEMORY" "PG_MAX_PARALLEL_MAINTENANCE_WORKERS")
+else
+    required_vars=("PG_DBNAME" "PGUSER" "PGPASSWORD" "PGHOST" "PGPORT" "S3_BUCKET" "PGOSM_USER" "PGOSM_PASSWORD" "PGOSM_RAM" "PGOSM_REGION" "PGOSM_SUBREGION" "PGOSM_LAYERSET" "PGOSM_LANGUAGE" "PGOSM_SRID" "PGCLIMATE_USER" "PGCLIMATE_PASSWORD" "PGCLIMATE_HOST" "PG_MAINTENANCE_MEMORY" "PG_MAX_PARALLEL_MAINTENANCE_WORKERS")
+fi
+
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -297,7 +305,7 @@ refresh_unexposed_id_views() {
     # Refresh all unexposed_ids views
     # Note, does not check if exposure exists for every SSP scenario and time step
 
-    for VIEW in unexposed_ids_nasa_nex_fwi unexposed_ids_usda_burn_probability
+    for VIEW in unexposed_ids_nasa_nex_fwi unexposed_ids_usda_burn_probability unexposed_ids_nasa_nex_pfe_mm_day unexposed_ids_nasa_nex_pluvial_change_factor
     do
         echo "Refreshing osm.$VIEW..."
         PGPASSWORD=$PG_SUPER_PASSWORD psql -U "$PGUSER" -d "$PG_DBNAME" -h "$PGHOST" -p "$PGPORT" \
@@ -305,6 +313,34 @@ refresh_unexposed_id_views() {
     done
 }
 
+# Step 4c: Create or Refresh Hazard Views
+create_or_refresh_hazard_views() {
+    echo "===== STEP 4c: CREATING/REFRESHING HAZARD VIEWS ====="
+
+    # TODO: Need to integrate the flood directory into this. Flood is special and requires a 2 part sql exection
+    # due to FEMA flood zone aggregation. This can probably be optimized into a single script later and added as flood.sql
+    # by creating the subdivided table as a CTE
+    
+    # Database connection string
+    DB_CONN="-U $PGUSER -d $PG_DBNAME -h $PGHOST -p $PGPORT"
+    
+    echo "Creating/refreshing hazard views..."
+    if [ -d "$HAZARD_VIEW_DIR" ]; then
+        for SQL_FILE in "$HAZARD_VIEW_DIR"/*.sql; do
+            if [ -f "$SQL_FILE" ]; then
+                echo "Processing $SQL_FILE..."
+                if ! PGPASSWORD=$PG_SUPER_PASSWORD psql $DB_CONN -f "$SQL_FILE"; then
+                    echo "Error executing $SQL_FILE"
+                    exit 1
+                fi
+            fi
+        done
+    else
+        echo "Warning: Hazard view directory not found at $HAZARD_VIEW_DIR"
+    fi
+    
+    echo "Hazard views created/refreshed successfully"
+}
 
 # Step 5: Run Climate ETL Process
 run_nasa_nex_exposure_etl() {
@@ -362,6 +398,8 @@ run_nasa_nex_exposure_etl() {
         SSP=$(jq -r ".climate_exposure_args[$i].ssp" "$CONFIG_JSON")
         ZONAL_AGG_METHOD=$(jq -r ".climate_exposure_args[$i].zonal_agg_method" "$CONFIG_JSON")
         POLYGON_AREA_THRESHOLD=$(jq -r ".climate_exposure_args[$i].polygon_area_threshold" "$CONFIG_JSON")
+        TIME_PERIOD_TYPE=$(jq -r ".climate_exposure_args[$i].time_period_type" "$CONFIG_JSON")
+        RETURN_PERIOD=$(jq -r ".climate_exposure_args[$i].return_period" "$CONFIG_JSON")
         
         echo "Processing dataset $((i+1))/$DATASET_COUNT:"
         echo "  - Zarr Store URI: $S3_ZARR_STORE_URI"
@@ -374,27 +412,42 @@ run_nasa_nex_exposure_etl() {
         echo "  - X max: $X_MAX"
         echo "  - Y max: $Y_MAX"
         echo "  - Postgres maintenance memory $PG_MAINTENANCE_MEMORY"
+        echo "  - Postgres maintenance workers $PG_MAX_PARALLEL_MAINTENANCE_WORKERS"
+
         
         # Run Docker container with environment variables and arguments
         echo "Running ETL process for climate dataset $((i+1))..."
         
-        sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+        DOCKER_RUN_CMD="sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
             -e PG_DBNAME=$PG_DBNAME \
             -e PGUSER=$PGCLIMATE_USER \
             -e PGPASSWORD=$PGCLIMATE_PASSWORD \
             -e PGHOST=$PGCLIMATE_HOST \
             -e PGPORT=$PGPORT \
             database-v1-nasa-nex-etl \
-            --s3-zarr-store-uri "$S3_ZARR_STORE_URI" \
-            --climate-variable "$CLIMATE_VARIABLE" \
-            --ssp "$SSP" \
-            --zonal-agg-method "$ZONAL_AGG_METHOD" \
-            --polygon-area-threshold "$POLYGON_AREA_THRESHOLD" \
-            --x_min "$X_MIN" \
-            --y_min "$Y_MIN" \
-            --x_max "$X_MAX" \
-            --y_max "$Y_MAX" \
-            --pg_maintenance_memory "$PG_MAINTENANCE_MEMORY" \
+            --s3-zarr-store-uri $S3_ZARR_STORE_URI \
+            --climate-variable $CLIMATE_VARIABLE \
+            --ssp $SSP \
+            --zonal-agg-method $ZONAL_AGG_METHOD \
+            --polygon-area-threshold $POLYGON_AREA_THRESHOLD \
+            --x_min $X_MIN \
+            --y_min $Y_MIN \
+            --x_max $X_MAX \
+            --y_max $Y_MAX \
+            --pg_maintenance_memory $PG_MAINTENANCE_MEMORY \
+            --pg_max_parallel_workers $PG_MAX_PARALLEL_MAINTENANCE_WORKERS"
+
+        if [ -n "$TIME_PERIOD_TYPE" ] && [ "$TIME_PERIOD_TYPE" != "null" ]; then
+            DOCKER_RUN_CMD="$DOCKER_RUN_CMD --time-period-type $TIME_PERIOD_TYPE"
+            echo "  - Time Period: $TIME_PERIOD_TYPE"
+        fi
+
+        if [ -n "$RETURN_PERIOD" ] && [ "$RETURN_PERIOD" != "null" ]; then
+            DOCKER_RUN_CMD="$DOCKER_RUN_CMD --return-period $RETURN_PERIOD"
+            echo "  - Return Period: $RETURN_PERIOD"
+        fi
+
+        eval $DOCKER_RUN_CMD
         
         if [ $? -ne 0 ]; then
             echo "Error: ETL process failed for dataset $((i+1))"
@@ -477,6 +530,8 @@ run_usda_wildfire_exposure_etl() {
         echo "  - X max: $X_MAX"
         echo "  - Y max: $Y_MAX"
         echo "  - Postgres maintenance memory $PG_MAINTENANCE_MEMORY"
+        echo "  - Postgres maintenance workers $PG_MAX_PARALLEL_MAINTENANCE_WORKERS"
+        
         
         # Run Docker container with environment variables and arguments
         echo "Running ETL process for climate dataset $((i+1))..."
@@ -497,6 +552,7 @@ run_usda_wildfire_exposure_etl() {
             --x_max "$X_MAX" \
             --y_max "$Y_MAX" \
             --pg_maintenance_memory "$PG_MAINTENANCE_MEMORY" \
+            --pg_max_parallel_workers "$PG_MAX_PARALLEL_MAINTENANCE_WORKERS"
         
         if [ $? -ne 0 ]; then
             echo "Error: ETL process failed for dataset $((i+1))"
@@ -514,6 +570,86 @@ run_usda_wildfire_exposure_etl() {
 }
 
 
+
+# Step 5b: Run FEMA Flood Exposure ETL Process (US States Only)
+run_fema_exposure_etl() {
+    echo "===== STEP 5b: RUNNING FEMA FLOOD EXPOSURE ETL PROCESS ====="
+    
+    # Check if Docker is installed
+    if ! command -v docker &> /dev/null; then
+        echo "Error: Docker is not installed or not in PATH"
+        exit 1
+    fi
+    
+    # Check if ETL directory exists
+    if [ ! -d "$EXPOSURE_ETL_DIR/fema" ]; then
+        echo "Error: FEMA ETL directory not found at $EXPOSURE_ETL_DIR/fema"
+        exit 1
+    fi
+    
+    # Check if Dockerfile exists in ETL directory
+    if [ ! -f "$EXPOSURE_ETL_DIR/fema/Dockerfile" ]; then
+        echo "Error: Dockerfile not found in FEMA ETL directory"
+        exit 1
+    fi
+    
+    # Navigate to FEMA ETL directory
+    cd "$EXPOSURE_ETL_DIR/fema"
+    
+    # Build Docker image
+    echo "Building FEMA Flood Exposure ETL Docker image..."
+    sudo docker build -t database-v1-fema-flood-etl .
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to build FEMA Flood Exposure ETL Docker image"
+        cd "$ROOT_DIR"  # Return to root directory
+        exit 1
+    fi
+    
+    # Get FEMA configuration from config.json
+    S3_PREFIX_FEMA=$(jq -r '.fema_args.s3_prefix' "$CONFIG_JSON")
+    
+    # Check if this database has FEMA configuration
+    STATE_FILTER=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].fema_args.state_filter // empty' "$CONFIG_JSON")
+    
+    if [ -z "$STATE_FILTER" ] || [ "$STATE_FILTER" = "null" ]; then
+        echo "Info: Database '$PG_DBNAME' does not have FEMA configuration. Skipping FEMA ETL."
+        cd "$ROOT_DIR"
+        return 0
+    fi
+    
+    echo "Processing FEMA flood data for state: $STATE_FILTER"
+    echo "  - S3 Bucket: $S3_BUCKET"
+    echo "  - S3 Prefix: $S3_PREFIX_FEMA"
+    echo "  - State Filter: $STATE_FILTER"
+    echo "  - Target Database: $PG_DBNAME"
+    
+    # Run Docker container with environment variables and arguments
+    echo "Running FEMA flood exposure ETL process..."
+    
+    sudo docker run -v ~/.aws/credentials:/root/.aws/credentials:ro --rm \
+        -e PG_DBNAME=$PG_DBNAME \
+        -e PGUSER=$PGCLIMATE_USER \
+        -e PGPASSWORD=$PGCLIMATE_PASSWORD \
+        -e PGHOST=$PGCLIMATE_HOST \
+        -e PGPORT=$PGPORT \
+        -e PG_SCHEMA=climate \
+        database-v1-fema-flood-etl \
+        --s3-bucket "$S3_BUCKET" \
+        --s3-prefix "$S3_PREFIX_FEMA" \
+        --state-filter "$STATE_FILTER"
+    
+    if [ $? -ne 0 ]; then
+        echo "Error: FEMA flood exposure ETL process failed"
+        cd "$ROOT_DIR"  # Return to root directory
+        exit 1
+    fi
+    
+    # Return to root directory
+    cd "$ROOT_DIR"
+    
+    echo "FEMA flood exposure ETL process completed successfully"
+}
 
 # Step 6: Run Geotiff Process
 run_geotiff_etl() {
@@ -595,8 +731,12 @@ run_geotiff_etl() {
     echo "Geotiff ETL process completed successfully for all datasets"
 }
 
-# Main execution
-main() {
+# Main execution logic for a single database (previously main)
+run_single_db() {
+    # Ensure OSM parameters are set for the current database
+    PGOSM_REGION=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].osm_region' "$CONFIG_JSON")
+    PGOSM_SUBREGION=$(jq -r --arg dbname "$PG_DBNAME" '.databases[$dbname].osm_subregion' "$CONFIG_JSON")
+
     echo "Starting climate database setup for region: $PG_DBNAME"
     echo "OSM Region: $PGOSM_REGION"
     echo "OSM Subregion: $PGOSM_SUBREGION"
@@ -611,6 +751,9 @@ main() {
         # Run OSM ETL process
         run_osm_etl
 
+        # Try creating views if there are ny new ones
+        create_views
+
         # Refresh Asset Views (capture new IDs from OSM)
         refresh_asset_views
 
@@ -622,8 +765,14 @@ main() {
 
         run_usda_wildfire_exposure_etl
 
+        # Run FEMA Flood Exposure ETL process (US States only)
+        run_fema_exposure_etl
+
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
+
+        # Create or refresh hazard views
+        create_or_refresh_hazard_views
 
         # Run Geotiff pipeline (Currently running ad hoc for global, no need for individual regions)
         # run_geotiff_etl
@@ -646,8 +795,14 @@ main() {
 
         run_usda_wildfire_exposure_etl
 
+        # Run FEMA Flood Exposure ETL process (US States only)
+        run_fema_exposure_etl
+
         # Refresh Unexposed ID views
         refresh_unexposed_id_views
+
+        # Create or refresh hazard views
+        create_or_refresh_hazard_views
 
         # Run Geotiff pipeline (Currently running ad hoc for global, no need for individual regions)
         # run_geotiff_etl
@@ -656,7 +811,23 @@ main() {
 
     echo "===== SETUP COMPLETE ====="
     echo "Climate database $PG_DBNAME is now ready for use!"
-    
+}
+
+# New main function to handle single or multiple databases
+main() {
+    if [ "$CLI_DB_NAME" = "all_databases" ]; then
+        echo "Running setup for ALL databases defined in $CONFIG_JSON"
+        for DB in $(jq -r '.databases | keys_unsorted[]' "$CONFIG_JSON"); do
+            echo "=========================================="
+            echo "Processing database: $DB"
+            echo "=========================================="
+            PG_DBNAME=$DB
+            run_single_db
+        done
+    else
+        # Either a single database was specified via CLI or environment variable
+        run_single_db
+    fi
 }
 
 # Execute main function

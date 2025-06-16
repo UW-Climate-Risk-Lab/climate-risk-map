@@ -59,6 +59,12 @@ def setup_args():
         required=True,
         help="Maintenance memory on Postgres Instance, affects data load step. SHould be about 25 percent of total postgres RAM. Example '16GB'",
     )
+    parser.add_argument(
+        "--pg_max_parallel_workers",
+        type=int,
+        required=True,
+        help="Maintenance memory on Postgres Instance, affects data load step. SHould be about 25 percent of total postgres RAM. Example '16GB'",
+    )
     return parser.parse_args()
 
 
@@ -71,7 +77,8 @@ def main(
     y_min: str,
     x_max: str,
     y_max: str,
-    pg_maintenance_memory: str
+    pg_maintenance_memory: str,
+    num_parallel_workers: int,
 ):
     """Runs a processing pipeline for a given zarr store"""
 
@@ -108,6 +115,15 @@ def main(
         x_max=x_max,
         y_max=y_max,
     )
+    
+    # If no data was returned (e.g., bounding box outside dataset extent)
+    # exit the pipeline gracefully.
+    if ds is None:
+        logger.warning(
+            "No climate data available within the specified bounding box. "
+            "Pipeline will terminate without processing any exposure intersections."
+        )
+        return
 
     metadata = utils.create_metadata(ds=ds)
 
@@ -134,7 +150,8 @@ def main(
             df=df,
             usda_variable=usda_variable,
             conn=infra_intersection_load_conn,
-            maintenance_work_mem=pg_maintenance_memory
+            maintenance_work_mem=pg_maintenance_memory,
+            num_parallel_workers=num_parallel_workers
         )
         connection_pool.putconn(infra_intersection_load_conn)
 
@@ -151,6 +168,7 @@ if __name__ == "__main__":
         x_max=args.x_max,
         y_min=args.y_min,
         y_max=args.y_max,
-        pg_maintenance_memory=args.pg_maintenance_memory
+        pg_maintenance_memory=args.pg_maintenance_memory,
+        num_parallel_workers=args.pg_max_parallel_workers
     )
     logger.info(f"EXPOSURE SUCCEEDED FOR {args.s3_zarr_store_uri}")

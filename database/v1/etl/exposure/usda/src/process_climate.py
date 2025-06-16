@@ -61,6 +61,22 @@ def main(
 
     ds = ds.sel({x_dim: slice(x_min, x_max), y_dim: slice(y_min, y_max)})
 
+    # ------------------------------------------------------------------
+    # Early exit if the spatial subset contains no data
+    # This can happen if the user supplies a bounding box that lies
+    # completely outside the extent of the climate dataset. Proceeding
+    # with an empty Dataset will lead to downstream errors during the
+    # infrastructure intersection step (e.g., KeyError for missing
+    # coordinates). Detect the situation early and return ``None`` so
+    # the calling code can terminate gracefully.
+    # ------------------------------------------------------------------
+    if (ds[x_dim].size == 0) or (ds[y_dim].size == 0):
+        logger.warning(
+            "No climate data found within the provided bounding box. "
+            "Skipping further processing for this dataset."
+        )
+        return None
+
     ds = ds.compute()
 
     return ds
