@@ -1,8 +1,8 @@
 import dash_bootstrap_components as dbc
 
-from dash import html
+from dash import html, dcc
 
-from config.ui_config import PRIMARY_COLOR, SECONDARY_COLOR
+from config.ui_config import PRIMARY_COLOR, SECONDARY_COLOR, BUTTON_STYLE
 from config.chat.messages import ChatMessage
 
 
@@ -207,6 +207,7 @@ def create_ai_analysis_modal():
                             "borderRadius": "10px",
                         },
                     ),
+                    
                 ],
                 style={"backgroundColor": "#f8f9fa"},
             ),

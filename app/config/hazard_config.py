@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from typing import List, Optional
 
-from config.settings import S3_BUCKET
+from config.settings import S3_BUCKET,FLOOD_AGENT_ALIAS_ID, FLOOD_AGENT_ID, WILDFIRE_AGENT_ALIAS_ID, WILDFIRE_AGENT_ID
 from config.map_config import Region
 
 import logging
@@ -34,6 +34,8 @@ class Hazard:
     display_return_period: Optional[int] # Used for hazard overlay tiles in frontend
     available_year_periods: Optional[List[str]] # These should be in format like ["2015-2044", "2045-2074"]. Signifys the period of years that hazard was calculated for
     geotiff: Geotiff
+    bedrock_agent_id: str
+    bedrock_agent_alias_id: str
 
     def _validate_inputs(self, measure: str, ssp: int) -> bool:
         """Validate input parameters for geotiff URI generation."""
@@ -136,6 +138,8 @@ class HazardConfig:
                 colormap="oranges",
                 opacity=0.6,
             ),
+            bedrock_agent_id=WILDFIRE_AGENT_ID,
+            bedrock_agent_alias_id=WILDFIRE_AGENT_ALIAS_ID
         ),
         Hazard(
             name="flood",
@@ -166,6 +170,8 @@ class HazardConfig:
                 colormap="blues",
                 opacity=0.6,
             ),
+            bedrock_agent_id=FLOOD_AGENT_ID,
+            bedrock_agent_alias_id=FLOOD_AGENT_ALIAS_ID
         )
     ]
 

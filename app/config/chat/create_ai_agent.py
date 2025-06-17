@@ -196,7 +196,7 @@ def main():
     try:
         response = bedrock_agent.create_agent(
             agentName=AGENT_NAME,
-            foundationModel=FOUNDATIONAL_MODEL,
+            foundationModel=INFERENCE_PROFILE,
             instruction=INSTRUCTION,
             agentResourceRoleArn=roleArn,
         )
