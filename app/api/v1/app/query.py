@@ -121,29 +121,65 @@ class GetDataQueryBuilder:
                     climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),
                     climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
                 )
-            
             )
-            select_fields.append(
-                sql.SQL("{climate_table_alias}.ensemble_mean").format(
-                    climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),
-                    climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
-                )
-
-            # HARDCODED IN FOR WILDFIRE, TODO: MAKE THIS DYNAMIC!
-            )
-            select_fields.append(
-                sql.SQL("{climate_table_alias}.ensemble_mean_historic_baseline").format(
-                    climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),
-                    climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
-                )
-            )
+            # Add hazard-specific value columns
             if self.input_params.climate_variable == "wildfire":
-                select_fields.append(
+                select_fields.extend([
+                    sql.SQL("{climate_table_alias}.ensemble_mean").format(
+                        climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                    sql.SQL("{climate_table_alias}.ensemble_mean_historical_baseline").format(
+                        climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
                     sql.SQL("{climate_table_alias}.burn_probability").format(
                         climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),
                         climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
-                    )
-                )
+                    ),
+                ])
+            elif self.input_params.climate_variable == "flood":
+                select_fields.extend([
+                    sql.SQL("{climate_table_alias}.return_period").format(
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                    sql.SQL("{climate_table_alias}.ensemble_median").format(
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                    sql.SQL("{climate_table_alias}.ensemble_q3").format(
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                    sql.SQL("{climate_table_alias}.ensemble_median_historical_baseline").format(
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                    sql.SQL("{climate_table_alias}.ensemble_q3_historical_baseline").format(
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                    sql.SQL("{climate_table_alias}.flood_zone").format(
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                    sql.SQL("{climate_table_alias}.flood_zone_subtype").format(
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                    sql.SQL("{climate_table_alias}.is_sfha").format(
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                    sql.SQL("{climate_table_alias}.flood_depth").format(
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                ])
+            else:
+                # Default case: assume ensemble_mean naming convention
+                select_fields.extend([
+                    sql.SQL("{climate_table_alias}.ensemble_mean").format(
+                        climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                    sql.SQL("{climate_table_alias}.ensemble_mean_historical_baseline").format(
+                        climate_schema=sql.Identifier(config.CLIMATE_SCHEMA_NAME),
+                        climate_table_alias=sql.Identifier(config.CLIMATE_TABLE_ALIAS),
+                    ),
+                ])
 
         select_statement = sql.SQL("SELECT {columns}").format(
             columns=sql.SQL(", ").join(select_fields)

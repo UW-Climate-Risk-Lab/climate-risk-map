@@ -480,7 +480,7 @@ def register_chat_callbacks(app):
                     )
 
                 new_session_id, initial_message_component = (
-                    ChatService.start_ai_session(df=df)
+                    ChatService.start_ai_session(df=df, hazard_name=selected_hazard)
                 )
                 if not new_session_id or not initial_message_component:
                     # Handle error
@@ -540,7 +540,7 @@ def register_chat_callbacks(app):
                     )
 
                 ai_response_message_component = ChatService.invoke_ai_agent(
-                    user_input=ai_message_to_process, session_id=session_id
+                    user_input=ai_message_to_process, session_id=session_id, hazard_name=selected_hazard
                 )
                 logger.info("Received subsequent AI response.")
                 updated_messages = current_messages + [ai_response_message_component]

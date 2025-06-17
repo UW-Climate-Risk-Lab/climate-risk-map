@@ -1,4 +1,3 @@
-
 DROP MATERIALIZED VIEW IF EXISTS climate.flood;
 
 BEGIN;
@@ -64,40 +63,49 @@ asset_flood_zone AS (
             fz.lomr_effective_date DESC NULLS LAST
         LIMIT 1
     ) fz ON TRUE
-    
-    
-)
+),
 -- 4. Final, simple join between your existing view and the new spatial data.
-SELECT
-    ep.osm_id,
-    ep.month,
-    ep.start_year,
-    ep.end_year,
-    ep.ssp,
-    ep.return_period,
-    ep.pfe_ensemble_median,
-    ep.pfe_ensemble_q3,
-    ep.pfe_ensemble_median_historical_baseline,
-    ep.pfe_ensemble_q3_historical_baseline,
-    afz.flood_zone,
-    afz.flood_zone_subtype,
-    afz.is_sfha,
-    afz.flood_depth
-FROM climate.extreme_precip ep
-LEFT JOIN asset_flood_zone afz ON ep.osm_id = afz.osm_id;
+base AS (
+    SELECT
+        ep.osm_id,
+        ep.month,
+        ep.start_year,
+        ep.end_year,
+        ep.ssp,
+        ep.return_period,
+        ep.pfe_ensemble_median AS ensemble_median,
+        ep.pfe_ensemble_q3 AS ensemble_q3,
+        ep.pfe_ensemble_median_historical_baseline AS ensemble_median_historical_baseline,
+        ep.pfe_ensemble_q3_historical_baseline AS ensemble_q3_historical_baseline,
+        afz.flood_zone,
+        afz.flood_zone_subtype,
+        afz.is_sfha,
+        afz.flood_depth
+    FROM climate.extreme_precip ep
+    LEFT JOIN asset_flood_zone afz ON ep.osm_id = afz.osm_id
+)
+SELECT b.*, gs.decade
+FROM base b
+-- This logic ensures that decades are only generated if they START within a period.
+-- This is more efficient and robust than generating duplicates and then filtering.
+JOIN LATERAL generate_series(
+    (ceil(b.start_year / 10.0) * 10)::integer,
+    (floor(b.end_year / 10.0) * 10)::integer,
+    10
+) AS gs(decade) ON TRUE;
 
 
 -- Your index creation remains the same.
 CREATE UNIQUE INDEX idx_unique_flood_record
     ON climate.flood
-    (osm_id , month , start_year , end_year , ssp , return_period ,
+    (osm_id , month , decade , ssp , return_period ,
      flood_zone , flood_zone_subtype , is_sfha , flood_depth);
 
 CREATE INDEX idx_flood_on_osm_id ON climate.flood (osm_id);
 CREATE INDEX idx_flood_on_month ON climate.flood (month);
 CREATE INDEX idx_flood_on_start_year ON climate.flood (start_year);
 CREATE INDEX idx_flood_on_end_year ON climate.flood (end_year);
-CREATE INDEX idx_flood_on_month_year ON climate.flood (month, start_year, end_year);
+CREATE INDEX idx_flood_on_decade ON climate.flood (decade);
 CREATE INDEX idx_flood_on_ssp ON climate.flood (ssp);
 CREATE INDEX idx_flood_on_return_period ON climate.flood (return_period);
 

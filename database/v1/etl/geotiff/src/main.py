@@ -319,7 +319,7 @@ class GeotiffProcessor:
 
                         # Build file name parts
                         if month is not None:
-                            time_str = f"{year_period}-{int(month)}-{return_period}"
+                            time_str = f"{year_period}-{int(month):02d}-{return_period}"
                         else:
                             time_str = f"{year_period}-{return_period}"
 

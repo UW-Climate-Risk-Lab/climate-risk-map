@@ -156,7 +156,7 @@ TEST_BBOX = {
                             SQL(", "),
                             Composed([Identifier("climate_table"), SQL(".ensemble_mean")]),
                             SQL(", "),
-                            Composed([Identifier("climate_table"), SQL(".ensemble_mean_historic_baseline")]),
+                            Composed([Identifier("climate_table"), SQL(".ensemble_mean_historical_baseline")]),
                         ]
                     ),
                 ]
@@ -353,7 +353,7 @@ TEST_BBOX = {
                             SQL(", "),
                             Composed([Identifier("climate_table"), SQL(".ensemble_mean")]),
                             SQL(", "),
-                            Composed([Identifier("climate_table"), SQL(".ensemble_mean_historic_baseline")]),
+                            Composed([Identifier("climate_table"), SQL(".ensemble_mean_historical_baseline")]),
                             SQL(", "), # Added for wildfire
                             Composed([Identifier("climate_table"), SQL(".burn_probability")]), # Added for wildfire
                         ]

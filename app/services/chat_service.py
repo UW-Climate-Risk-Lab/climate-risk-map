@@ -15,15 +15,13 @@ from typing import List, Dict, Tuple, Optional
 from config.settings import (
     MAX_DOWNLOAD_AREA,
     ENABLE_AI_ANALYSIS,
-    AGENT_ID,
-    AGENT_ALIAS_ID,
     AGENT_REGION
 )
-from config.hazard_config import HazardConfig
+from config.hazard_config import HazardConfig, Hazard
 from config.exposure import get_asset
 from config.map_config import MapConfig
 from config.chat.messages import ChatMessage
-from config.chat.prompts import INITIAL_PROMPT
+from config.chat.prompts import PROMPTS
 
 from services.download_service import DownloadService
 
@@ -38,6 +36,8 @@ class ChatService:
     def _invoke_bedrock_agent(
         session_id: str,
         input_text: str,
+        agent_id: str,
+        agent_alias_id: str, 
         end_session: bool = False,
         session_state: Optional[Dict] = None,
     ) -> str:
@@ -70,8 +70,8 @@ class ChatService:
             )  # Instantiate per call
 
             invoke_params = {
-                "agentAliasId": AGENT_ALIAS_ID,
-                "agentId": AGENT_ID,
+                "agentAliasId": agent_alias_id,
+                "agentId": agent_id,
                 "sessionId": session_id,
                 "inputText": input_text,
                 "endSession": end_session,
@@ -280,6 +280,7 @@ class ChatService:
     @staticmethod
     def invoke_ai_agent(
         user_input: str,
+        hazard_name: str,
         session_id: str,
     ) -> ChatMessage:
         """
@@ -297,11 +298,15 @@ class ChatService:
             return ChatMessage.create_message(
                 role="ai", text="I didn't receive any input. Please try again."
             )
+        
+        hazard = HazardConfig.get_hazard(hazard_name=hazard_name)
 
         text = ChatService._invoke_bedrock_agent(
             session_id=session_id,
             input_text=user_input,
             end_session=False,  # Typically don't end session here
+            agent_id=hazard.bedrock_agent_id,
+            agent_alias_id=hazard.bedrock_agent_alias_id
         )
 
         if text is None:  # Handle case where agent invocation failed completely
@@ -313,8 +318,7 @@ class ChatService:
 
     @staticmethod
     def start_ai_session(
-        df: pd.DataFrame,  # The pre-processed data for the selected criteria
-        initial_prompt: str = INITIAL_PROMPT,
+        df: pd.DataFrame, hazard_name: str  # The pre-processed data for the selected criteria
     ) -> Tuple[Optional[str], Optional[ChatMessage]]:
         """
         Starts a new Bedrock agent session, uploads initial data, and sends the initial prompt.
@@ -330,6 +334,7 @@ class ChatService:
         """
         session_id = str(uuid.uuid4())
         logger.info(f"Starting new AI session: {session_id}")
+        hazard = HazardConfig.get_hazard(hazard_name=hazard_name)
 
         df = DownloadService.parse_osm_tags(df=df, tag_format="prefix")
 
@@ -348,6 +353,7 @@ class ChatService:
             )
             return None, None
 
+        initial_prompt = PROMPTS[hazard.name]["initial_prompt"]
         # Add dataset context
         initial_prompt = initial_prompt + "Here is a sample of the first 3 rows of the data\n" +str(df.head(3)) + "\n"
         initial_prompt = initial_prompt + "Here are the datatypes of the avilable columns\n" + str(df.dtypes)
@@ -374,6 +380,8 @@ class ChatService:
             input_text=initial_prompt,
             session_state=session_state,
             end_session=False,
+            agent_id=hazard.bedrock_agent_id,
+            agent_alias_id=hazard.bedrock_agent_alias_id
         )
 
         if text is None:  # Handle case where initial agent invocation failed

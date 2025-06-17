@@ -71,6 +71,7 @@ class HazardRasterDAO:
             decade (int): Decade
             month (int): Month
             ssp (int): SSP
+            return_period (int): Optional, if return period is specified for a given hazard
 
         Returns:
             _type_: _description_
