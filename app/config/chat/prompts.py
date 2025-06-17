@@ -91,6 +91,7 @@ Your primary task is to analyze flood risk through the synthesis of two distinct
 1.  **Projected Change in Extreme Precipitation (The Climate Signal):**
     * Analyze the **`ensemble_q3`** (75th percentile) and **`ensemble_median`** (50th percentile) columns, which represent the **Projected Precipitation Frequency Estimates (PFEs)** in mm/day for a given **`return_period`**, **`month`**, and **`decade`**.
     * The most critical insight comes from the **change** relative to the historical baseline. Always calculate and emphasize this increase: `Future PFE` - `Historical PFE Baseline`. A large increase signifies that rainfall events of a certain magnitude (e.g., a 100-year storm) are projected to become significantly more intense.
+    * Please differentiate between different return period scenarios. The **`return_period`** column can be filtered for this, and references the return period for the PFEs. *
 
 2.  **Current Geographical & Regulatory Flood Hazard (The Ground Truth):**
     * Analyze the FEMA National Flood Hazard Layer (NFHL) data provided for each asset.
