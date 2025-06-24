@@ -77,7 +77,7 @@ class Hazard:
 
     def get_hazard_geotiff_s3_uri(
         self, measure: str, ssp: int, decade: int, month: int, region: Region
-    ) -> str:
+    ) -> str | None:
         """Geotiffs live in S3 and are segmented by time step (for now decade and month),
         aggregation measure, and SSP scenario. This method takes a hazard and the given inputs
         and produces the S3 URI to the geotiff
@@ -156,9 +156,9 @@ class HazardConfig:
             ],
             display_measure="ensemble_q3",
             display_resolution="0p05deg",
-            unit="",
+            unit="mm/day",
             min_value=0,
-            max_value=100,
+            max_value=151,
             available_ssp=[245, 585],
             available_return_periods=[2, 5, 20, 100, 500],
             display_return_period=100,
@@ -176,7 +176,7 @@ class HazardConfig:
     ]
 
     @classmethod
-    def get_hazard(cls, hazard_name: str) -> Hazard:
+    def get_hazard(cls, hazard_name: str) -> Hazard | None:
         """Returns hazard object
 
         Args:
