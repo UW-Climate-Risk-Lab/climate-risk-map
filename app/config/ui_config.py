@@ -26,14 +26,23 @@ ALERT_WARNING_COLOR = "#F0AD4E"
 ALERT_DANGER_COLOR = "#D9534F"
 
 # Logo location
-LOGO_PATH = ASSETS_PATH + "/icons/cloud-bolt-uw.png"
+GENERIC_LOGO_PATH = ASSETS_PATH + "/icons/cloud-bolt-uw.png"
+UW_CRL_LOGO_PATH = ASSETS_PATH + "/icons/CRL-logo.png"
 
 # Logo style
-LOGO_STYLE = {
+GENERIC_LOGO_STYLE = {
     "width": "10vw",
     "max-width": "50px",
     "height": "auto",
     "object-fit": "contain",
+}
+
+UW_CRL_LOGO_STYLE = {
+    "width": "15vw",
+    "max-width": "500px",
+    "height": "auto",
+    "object-fit": "fill",
+    "padding": "5px"
 }
 
 # Title style
