@@ -2,8 +2,10 @@ import dash_bootstrap_components as dbc
 from dash import html, dcc
 
 from config.ui_config import (
-    LOGO_PATH,
-    LOGO_STYLE,
+    GENERIC_LOGO_PATH,
+    UW_CRL_LOGO_PATH,
+    GENERIC_LOGO_STYLE,
+    UW_CRL_LOGO_STYLE,
     TITLE_STYLE,
     TITLE_BAR_STYLE,
     TITLE_CONTAINER_STYLE,
@@ -22,31 +24,47 @@ def create_title_bar() -> html.Div:
     Returns:
         html.Div: Title bar component
     """
+    row_children = []
+    if APPLICATION_TITLE != "UW Climate Risk Lab":
+        # The UW Climate Risk Lab logo has text in it. if we dont use that logo,
+        # We want to add the application text next to the logo.
+        row_children.append(
+            dbc.Col(
+                html.Div(
+                    APPLICATION_TITLE,
+                    style=TITLE_STYLE,
+                ),
+                width="auto",
+            ),
+        )
+        icon = GENERIC_LOGO_PATH
+        logo_style = GENERIC_LOGO_STYLE
+    else:
+        icon = UW_CRL_LOGO_PATH
+        logo_style = UW_CRL_LOGO_STYLE
+
+    row_children.append(
+        dbc.Col(
+            html.Img(
+                src=icon,
+                style=logo_style,
+            ),
+            width="auto",
+        ),
+    )
+
+    div_children = [
+        dbc.Row(
+            align="center",
+            children=row_children,
+            justify="center",
+            class_name="g-0",
+            style=TITLE_BAR_STYLE,
+        )
+    ]
+
     return html.Div(
-        [
-            dbc.Row(
-                align="center",
-                children=[
-                    dbc.Col(
-                        html.Img(
-                            src=LOGO_PATH,
-                            style=LOGO_STYLE,
-                        ),
-                        width="auto",
-                    ),
-                    dbc.Col(
-                        html.Div(
-                            APPLICATION_TITLE,
-                            style=TITLE_STYLE,
-                        ),
-                        width="auto",
-                    ),
-                ],
-                justify="center",
-                class_name="g-0",
-                style=TITLE_BAR_STYLE,
-            )
-        ],
+        children=div_children,
         style=TITLE_CONTAINER_STYLE,
     )
 
@@ -69,7 +87,9 @@ def create_region_selector() -> dbc.Row:
                                 "label": region.label,
                                 "value": region.name,
                             }
-                            for region in sorted(MapConfig.REGIONS, key=lambda region: region.label)
+                            for region in sorted(
+                                MapConfig.REGIONS, key=lambda region: region.label
+                            )
                         ],
                         id="region-select-dropdown",
                         placeholder="Select a Region",
